@@ -14,7 +14,15 @@ const videoUrl = computed(() => {
 
 onMounted(() => {
   if (videoRef.value) {
-    videoRef.value.play().catch(e => console.warn('Inactivity video failed to play:', e));
+    const playPromise = videoRef.value.play();
+    if (playPromise !== undefined) {
+      playPromise.catch(error => {
+        // Only log if it's not a harmless interruption
+        if (error.name !== 'AbortError') {
+          console.warn('Inactivity video failed to play:', error);
+        }
+      });
+    }
   }
 });
 </script>
@@ -24,8 +32,10 @@ onMounted(() => {
     <video 
       ref="videoRef"
       id="promo-video" 
+      autoplay
       loop 
       muted 
+      playsinline
       :src="videoUrl"
     ></video>
     <div class="video-overlay">

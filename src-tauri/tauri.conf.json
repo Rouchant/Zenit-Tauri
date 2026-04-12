@@ -23,7 +23,8 @@
         "alwaysOnTop": true,
         "skipTaskbar": false,
         "center": true,
-        "focus": true
+        "focus": true,
+        "devtools": false
       },
       {
         "label": "return",
@@ -64,7 +65,8 @@
         "installMode": "perMachine",
         "installerIcon": "icons/icon.ico",
         "sidebarImage": "icons/nsis/sidebar.bmp",
-        "headerImage": "icons/nsis/header.bmp"
+        "headerImage": "icons/nsis/header.bmp",
+        "installerHooks": "nsis/hooks.nsh"
       }
     },
     "resources": {

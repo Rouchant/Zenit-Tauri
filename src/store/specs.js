@@ -114,7 +114,6 @@ export const useSpecsStore = defineStore('specs', () => {
     // Normalizar barras para evitar problemas en WebView de Windows
     const normalizedPath = filePath.replace(/\\/g, '/');
     const url = convertFileSrc(normalizedPath);
-    console.log(`Video path: ${filePath} -> Translated URL: ${url}`);
     return url;
   };
 

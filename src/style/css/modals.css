@@ -219,7 +219,7 @@
 
 .video-control-row {
     display: flex;
-    justify-content: space-between;
+    justify-content: flex-start;
     align-items: center;
     gap: 15px;
     margin-bottom: 15px;
@@ -276,6 +276,7 @@
     white-space: nowrap;
     width: 140px;
     height: 38px;
+    flex: none;
     flex-shrink: 0;
     display: inline-flex;
     align-items: center;
@@ -310,6 +311,11 @@
     border-radius: 12px;
     width: 100%;
     color: white;
+}
+
+.password-content input[type="password"]::-ms-reveal,
+.password-content input[type="password"]::-ms-clear {
+    filter: invert(100%);
 }
 
 /* Specs Modal Grid */
