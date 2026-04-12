@@ -1,6 +1,7 @@
 import { defineStore } from 'pinia';
 import { reactive, ref } from 'vue';
 import { tauriAPI } from '../api/tauriApi';
+import { convertFileSrc } from '@tauri-apps/api/core';
 
 export const useSpecsStore = defineStore('specs', () => {
   const currentSpecs = ref({});
