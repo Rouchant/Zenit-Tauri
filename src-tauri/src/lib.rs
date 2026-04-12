@@ -152,7 +152,7 @@ async fn save_custom_video(app: AppHandle, source_path: String) -> Result<Option
         return Ok(None);
     }
 
-    let custom_dir = get_user_data_dir(&app).join("custom_videos");
+    let custom_dir = get_user_data_dir(&app).join("custom-videos");
     fs::create_dir_all(&custom_dir).map_err(|e| format!("Error creando directorio: {}", e))?;
 
     let file_name = src.file_name().unwrap_or_default().to_string_lossy();
@@ -313,6 +313,14 @@ fn quit_app(app: AppHandle) {
     app.exit(0);
 }
 
+/// Permite cambiar el estado AlwaysOnTop de la ventana principal de forma dinámica.
+/// Útil para permitir que cuadros de diálogo o el teclado en pantalla se muestren arriba.
+#[tauri::command]
+fn set_always_on_top(app: AppHandle, on_top: bool) -> Result<(), String> {
+    let main_window = app.get_webview_window("main").ok_or("Main window not found")?;
+    main_window.set_always_on_top(on_top).map_err(|e| e.to_string())
+}
+
 /// Equivalente a: ipcMain.handle('get-video-path')
 /// Devuelve el directorio base de recursos de la app
 #[tauri::command]
@@ -322,7 +330,7 @@ fn get_video_path(app: AppHandle) -> String {
 
 /// Habilita el inicio automático creando un acceso directo nativo (.lnk)
 #[tauri::command]
-async fn setup_autostart(app: AppHandle) -> Result<(), String> {
+async fn setup_autostart(_app: AppHandle) -> Result<(), String> {
     let exe_path = std::env::current_exe().map_err(|e| e.to_string())?;
     let target_dir = exe_path.parent().ok_or("No se pudo obtener el directorio del ejecutable")?;
     let shortcut_path = get_autostart_shortcut_path()?;
@@ -389,7 +397,7 @@ pub fn run() {
             // Crear directorio userData si no existe
             let user_data = app.path().app_data_dir().unwrap_or_default();
             let _ = fs::create_dir_all(&user_data);
-            let _ = fs::create_dir_all(user_data.join("custom_videos"));
+            let _ = fs::create_dir_all(user_data.join("custom-videos"));
 
             Ok(())
         })
@@ -403,6 +411,7 @@ pub fn run() {
             minimize_app,
             restore_app,
             quit_app,
+            set_always_on_top,
             get_video_path,
             setup_autostart,
             remove_autostart,

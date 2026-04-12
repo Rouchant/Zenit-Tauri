@@ -153,6 +153,12 @@ watch([showPasswordModal, showAdminModal, showSpecsModal], () => {
   store.isModalOpen = showPasswordModal.value || showAdminModal.value || showSpecsModal.value;
 });
 
+// Desactivar AlwaysOnTop cuando el menú de personalización está abierto 
+// para permitir que los diálogos de selección de archivos se sobrepongan.
+watch(showAdminModal, (isOpen) => {
+  tauriAPI.setAlwaysOnTop(!isOpen);
+});
+
 let lastReset = 0;
 const resetTimer = () => {
   const now = Date.now();

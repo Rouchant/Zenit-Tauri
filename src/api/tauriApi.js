@@ -42,4 +42,7 @@ export const tauriAPI = {
 
   /** Cierra la aplicación */
   quitApp: () => invoke('quit_app'),
+
+  /** Cambia el estado AlwaysOnTop de la ventana principal */
+  setAlwaysOnTop: (onTop) => invoke('set_always_on_top', { onTop }),
 };

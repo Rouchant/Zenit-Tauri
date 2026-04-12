@@ -6,7 +6,11 @@ import { tauriAPI } from '../../api/tauriApi';
 const emit = defineEmits(['close']);
 const store = useSpecsStore();
 
-const editableSpecs = reactive({ ...store.currentSpecs });
+const editableSpecs = reactive({ 
+    videoType: 'default',
+    landingVideoType: 'default',
+    ...store.currentSpecs 
+});
 
 const formatPath = (fullPath) => {
     if (!fullPath) return 'Sin archivo';

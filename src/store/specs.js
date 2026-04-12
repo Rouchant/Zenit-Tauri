@@ -92,6 +92,14 @@ export const useSpecsStore = defineStore('specs', () => {
         currentSpecs.value.store = 'none';
       }
 
+      // Asegurar que los tipos de video tengan valores por defecto
+      if (!currentSpecs.value.videoType) {
+        currentSpecs.value.videoType = 'default';
+      }
+      if (!currentSpecs.value.landingVideoType) {
+        currentSpecs.value.landingVideoType = 'default';
+      }
+
       updateTheme(currentSpecs.value.store);
     } catch (err) {
       console.error('Failed to load specs:', err);
@@ -103,7 +111,11 @@ export const useSpecsStore = defineStore('specs', () => {
   // En Tauri, los videos custom se acceden con rutas de sistema convertidas
   const getVideoUrl = (filePath) => {
     if (!filePath) return '';
-    return convertFileSrc(filePath);
+    // Normalizar barras para evitar problemas en WebView de Windows
+    const normalizedPath = filePath.replace(/\\/g, '/');
+    const url = convertFileSrc(normalizedPath);
+    console.log(`Video path: ${filePath} -> Translated URL: ${url}`);
+    return url;
   };
 
   return {
