@@ -1,4 +1,5 @@
-use std::path::{Path, PathBuf};
+use std::fs;
+use std::path::PathBuf;
 use std::process::Command;
 use tauri::{AppHandle, Manager, Runtime, WebviewWindow, LogicalPosition, LogicalSize};
 use mslnk::ShellLink;
@@ -34,6 +35,8 @@ fn get_autostart_shortcut_path() -> Result<PathBuf, String> {
         .join("Startup")
         .join("Zenit.lnk"))
 }
+
+
 
 /// Ejecuta configuraciones de sistema (Brillo, Energía, etc.)
 fn run_system_setup() {
@@ -317,21 +320,20 @@ fn get_video_path(app: AppHandle) -> String {
     get_resource_dir(&app).to_string_lossy().into_owned()
 }
 
-/// Registra la app en el inicio de Windows creando un acceso directo .lnk
+/// Habilita el inicio automático creando un acceso directo nativo (.lnk)
 #[tauri::command]
-async fn setup_autostart(app: AppHandle) -> Result<String, String> {
+async fn setup_autostart(app: AppHandle) -> Result<(), String> {
     let exe_path = std::env::current_exe().map_err(|e| e.to_string())?;
     let target_dir = exe_path.parent().ok_or("No se pudo obtener el directorio del ejecutable")?;
     let shortcut_path = get_autostart_shortcut_path()?;
 
     let mut sl = ShellLink::new(&exe_path).map_err(|e| e.to_string())?;
-    sl.set_working_dir(target_dir.to_string_lossy().into_owned());
+    sl.set_working_dir(Some(target_dir.to_string_lossy().into_owned()));
     sl.create_lnk(&shortcut_path).map_err(|e| e.to_string())?;
-
-    Ok(format!("Acceso directo creado en: {:?}", shortcut_path))
+    Ok(())
 }
 
-/// Elimina el acceso directo de la carpeta de Inicio
+/// Deshabilita el inicio automático eliminando el acceso directo
 #[tauri::command]
 fn remove_autostart() -> Result<(), String> {
     let shortcut = get_autostart_shortcut_path()?;
@@ -352,6 +354,7 @@ pub fn run() {
         .plugin(tauri_plugin_fs::init())
         .plugin(tauri_plugin_process::init())
         .plugin(tauri_plugin_shell::init())
+        .plugin(tauri_plugin_autostart::init(tauri_plugin_autostart::MacosLauncher::LaunchAgent, None))
         .plugin(
             tauri_plugin_global_shortcut::Builder::new()
                 .with_handler(|_app, _shortcut, _event| {

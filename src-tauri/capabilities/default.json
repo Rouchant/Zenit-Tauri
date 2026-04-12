@@ -25,6 +25,7 @@
     "process:allow-exit",
     "shell:allow-spawn",
     "shell:allow-execute",
-    "global-shortcut:default"
+    "global-shortcut:default",
+    "autostart:default"
   ]
 }
