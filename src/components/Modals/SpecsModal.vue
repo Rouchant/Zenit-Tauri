@@ -1,5 +1,6 @@
 <script setup>
 import { useSpecsStore } from '../../store/specs';
+import { tauriAPI } from '../../api/tauriApi';
 
 const emit = defineEmits(['close']);
 const store = useSpecsStore();
@@ -7,7 +8,7 @@ const specs = store.currentSpecs;
 
 const tryPc = () => {
     emit('close');
-    window.electronAPI.minimizeApp(specs.store);
+    tauriAPI.minimizeApp(specs.store);
 };
 </script>
 

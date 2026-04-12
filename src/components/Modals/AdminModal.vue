@@ -1,6 +1,7 @@
 <script setup>
 import { ref, reactive, onMounted } from 'vue';
 import { useSpecsStore } from '../../store/specs';
+import { tauriAPI } from '../../api/tauriApi';
 
 const emit = defineEmits(['close']);
 const store = useSpecsStore();
@@ -24,9 +25,9 @@ const restoreField = (field) => {
 };
 
 const selectVideo = async (type) => {
-    const path = await window.electronAPI.selectVideo();
+    const path = await tauriAPI.selectVideo();
     if (path) {
-        const safePath = await window.electronAPI.saveCustomVideo(path);
+        const safePath = await tauriAPI.saveCustomVideo(path);
         if (safePath) {
             if (type === 'inactivity') {
                 editableSpecs.customVideoPath = safePath;

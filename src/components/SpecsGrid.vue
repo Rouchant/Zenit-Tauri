@@ -2,6 +2,7 @@
 import { computed } from 'vue';
 import { useSpecsStore } from '../store/specs';
 import SpecCard from './SpecCard.vue';
+import { tauriAPI } from '../api/tauriApi';
 
 const store = useSpecsStore();
 const emit = defineEmits(['open-specs']);
@@ -18,7 +19,7 @@ const procIcon = computed(() => {
 const osLogo = computed(() => '/assets/ui/windows-11.svg');
 
 const tryPc = () => {
-    window.electronAPI.minimizeApp(store.currentSpecs.store);
+    tauriAPI.minimizeApp(store.currentSpecs.store);
 };
 </script>
 

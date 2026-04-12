@@ -1,5 +1,6 @@
 import { defineStore } from 'pinia';
 import { reactive, ref } from 'vue';
+import { tauriAPI } from '../api/tauriApi';
 
 export const useSpecsStore = defineStore('specs', () => {
   const currentSpecs = ref({});
@@ -58,12 +59,9 @@ export const useSpecsStore = defineStore('specs', () => {
     // Merge to avoid losing non-editable fields
     currentSpecs.value = { ...currentSpecs.value, ...specs };
     
-    // Multi-persistence: Store in JS and File
+    // Multi-persistencia: LocalStorage + archivo JSON via Tauri
     localStorage.setItem('customSpecs', JSON.stringify(currentSpecs.value));
-    
-    if (window.electronAPI && window.electronAPI.saveConfig) {
-      await window.electronAPI.saveConfig(currentSpecs.value);
-    }
+    await tauriAPI.saveConfig(currentSpecs.value);
     
     updateTheme(specs.store);
   };
@@ -71,24 +69,16 @@ export const useSpecsStore = defineStore('specs', () => {
   const loadSpecs = async () => {
     isLoading.value = true;
     try {
-      // 1. Get Physical Backup if exists
-      let backupSpecs = null;
-      if (window.electronAPI && window.electronAPI.loadConfig) {
-        backupSpecs = await window.electronAPI.loadConfig();
-      }
+      // 1. Cargar backup físico (config.json en userData)
+      const backupSpecs = await tauriAPI.loadConfig().catch(() => null);
 
-      // 2. Get Auto-detected hardware
-      if (window.electronAPI) {
-        autoDetectedSpecs.value = await window.electronAPI.getSystemSpecs();
-      } else {
-        autoDetectedSpecs.value = {
-          brand: 'PC Generico', processor: 'Procesador Demo', ram: '8GB', storage: '256GB SSD', 
-          gpu: 'Graficos', display: '1920x1080', os: 'Windows', cores: 4, threads: 8
-        };
-      }
+      // 2. Detectar hardware automáticamente via PowerShell
+      autoDetectedSpecs.value = await tauriAPI.getSystemSpecs().catch(() => ({
+        brand: 'PC Generico', processor: 'Procesador Demo', ram: '8GB', storage: '256GB SSD',
+        gpu: 'Graficos', display: '1920x1080', os: 'Windows', cores: 4, threads: 8
+      }));
 
-      // 3. Merge hierarchy: Auto-detected < LocalStorage < File Backup
-      // This ensures File Backup is the ground truth
+      // 3. Merge: Auto-detectado < LocalStorage < Backup de archivo
       const localS = JSON.parse(localStorage.getItem('customSpecs')) || {};
       currentSpecs.value = { 
         ...autoDetectedSpecs.value, 
@@ -96,7 +86,7 @@ export const useSpecsStore = defineStore('specs', () => {
         ...(backupSpecs || {}) 
       };
       
-      // Default store to 'none' if missing
+      // Default store a 'none' si no existe
       if (!currentSpecs.value.store) {
         currentSpecs.value.store = 'none';
       }
@@ -109,11 +99,10 @@ export const useSpecsStore = defineStore('specs', () => {
     }
   };
 
-  const getVideoUrl = (path) => {
-    if (!path) return '';
-    // Use custom protocol to bypass CORS/WebSecurity issues in dev mode
-    const cleanPath = path.replace(/\\/g, '/');
-    return `zenit-file:///${cleanPath}`;
+  // En Tauri, los videos custom se acceden con rutas de sistema convertidas
+  const getVideoUrl = (filePath) => {
+    if (!filePath) return '';
+    return convertFileSrc(filePath);
   };
 
   return {

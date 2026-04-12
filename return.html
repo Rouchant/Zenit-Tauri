@@ -108,7 +108,9 @@
         </div>
     </button>
 
-    <script>
+    <script type="module">
+        import { invoke } from '@tauri-apps/api/core';
+
         // Apply theme from URL parameter
         const urlParams = new URLSearchParams(window.location.search);
         const store = urlParams.get('store') || 'none';
@@ -119,6 +121,10 @@
         } else {
             document.body.classList.add(`theme-${store}`);
         }
+
+        document.getElementById('restore-btn').addEventListener('click', () => {
+            invoke('restore_app');
+        });
     </script>
 </body>
 </html>

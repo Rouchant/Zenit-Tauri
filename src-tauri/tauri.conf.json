@@ -1,0 +1,68 @@
+{
+  "$schema": "../node_modules/@tauri-apps/cli/config.schema.json",
+  "productName": "Zenit",
+  "version": "1.0.1",
+  "identifier": "com.zenit.app",
+  "build": {
+    "frontendDist": "../dist_app",
+    "devUrl": "http://localhost:5173",
+    "beforeDevCommand": "npm run dev",
+    "beforeBuildCommand": "npm run build:renderer"
+  },
+  "app": {
+    "windows": [
+      {
+        "label": "main",
+        "title": "Zenit",
+        "url": "/index.html",
+        "width": 1280,
+        "height": 720,
+        "resizable": false,
+        "fullscreen": true,
+        "decorations": false,
+        "alwaysOnTop": true,
+        "skipTaskbar": false,
+        "center": true,
+        "focus": true
+      },
+      {
+        "label": "return",
+        "title": "Zenit Return",
+        "url": "/return.html",
+        "width": 400,
+        "height": 160,
+        "resizable": false,
+        "fullscreen": false,
+        "decorations": false,
+        "alwaysOnTop": true,
+        "transparent": true,
+        "skipTaskbar": false,
+        "visible": false
+      }
+    ],
+    "security": {
+      "csp": null
+    }
+  },
+  "bundle": {
+    "active": true,
+    "targets": ["nsis"],
+    "icon": [
+      "icons/32x32.png",
+      "icons/128x128.png",
+      "icons/128x128@2x.png",
+      "icons/icon.icns",
+      "icons/icon.ico"
+    ],
+    "windows": {
+      "nsis": {
+        "installMode": "perMachine"
+      }
+    },
+    "resources": {
+      "../get-specs.ps1": "get-specs.ps1",
+      "../setup-autostart.ps1": "setup-autostart.ps1",
+      "../system-setup.ps1": "system-setup.ps1"
+    }
+  }
+}

@@ -9,6 +9,12 @@ export default defineConfig({
   build: {
     outDir: 'dist_app',
     emptyOutDir: true,
+    rollupOptions: {
+      input: {
+        main: resolve(__dirname, 'index.html'),
+        return: resolve(__dirname, 'return.html'),
+      },
+    },
   },
   resolve: {
     alias: {

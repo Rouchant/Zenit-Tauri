@@ -92,6 +92,7 @@
 <script setup>
 import { onMounted, onUnmounted, ref, watch, reactive } from 'vue';
 import { useSpecsStore } from './store/specs';
+import { tauriAPI } from './api/tauriApi';
 
 // Components
 import Header from './components/Header.vue';
@@ -174,7 +175,7 @@ const openPassword = (mode) => {
 const onPasswordVerified = () => {
   showPasswordModal.value = false;
   if (passwordMode.value === 'exit') {
-    window.electronAPI.quitApp();
+    tauriAPI.quitApp();
   } else {
     showAdminModal.value = true;
   }
