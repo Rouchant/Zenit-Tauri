@@ -1,92 +1,74 @@
-# 💻 Zenit - Showcase App (Vue 3 Edition)
+# 🚀 Zenit - Kiosk Framework (Tauri v2 Edition)
 
-![Version](https://img.shields.io/badge/version-1.0.0-blue.svg)
-![Vue 3](https://img.shields.io/badge/framework-Vue%203-42b883.svg)
-![Vite](https://img.shields.io/badge/build-Vite-646cff.svg)
-![Electron](https://img.shields.io/badge/platform-Electron-47848F.svg)
+![Version](https://img.shields.io/badge/version-1.0.1-blue.svg)
+![Tauri](https://img.shields.io/badge/framework-Tauri%20v2-FFC131.svg)
+![Vue 3](https://img.shields.io/badge/frontend-Vue%203-42b883.svg)
+![Vite](https://img.shields.io/badge/build-Vite%206-646cff.svg)
 ![Windows](https://img.shields.io/badge/OS-Windows%2010%2F11-0078D4.svg)
 
-Una solución premium de **Showcase Terminal** diseñada específicamente para equipos de exhibición en puntos de venta (Retail). Esta aplicación transforma cualquier laptop en una vitrina digital interactiva, técnica y visualmente impactante.
+Una solución de nivel empresarial para **Showcase Terminals**, diseñada específicamente para equipos de exhibición en puntos de venta (Retail). **Zenit** ha sido reconstruido desde cero utilizando **Tauri v2**, ofreciendo un rendimiento nativo superior, una seguridad mejorada y un consumo de recursos mínimo.
 
 ---
 
-## ✨ Novedades en la Versión 2.0 (Vue 3)
+## ✨ Características Principales
 
-Recientemente migrado a una arquitectura moderna basada en componentes, ofreciendo mayor estabilidad y rendimiento en equipos de entrada.
+### 🛡️ Kiosk Lockdown & Security
+- **Anti-Focus Theft**: Implementación nativa en Rust que utiliza el `AttachThreadInput` hack y simulación de teclas de sistema (`Escape`) para asegurar que la aplicación mantenga siempre el foco, incluso ante overlays de Windows.
+- **Bloqueo de Atajos**: Inhabilitación de combinaciones de teclas críticas como `Alt+Tab`, `Win+D`, `Alt+F4` y `Win+L` mediante el plugin de shortcuts globales de Tauri.
+- **Auto-Restore**: Temporizador inteligente de 5 minutos que restaura la aplicación a pantalla completa si es minimizada por mantenimiento.
 
-### 🔍 Telemetría Avanzada
-- **Detección Dinámica**: Scripts de **PowerShell** optimizados para reconocer hardware de última generación (Intel Core 5/Ultra, AMD Ryzen 8000).
-- **Resolución Real**: Detección de dimensiones físicas ignorando el escalado de Windows para una visualización perfecta.
-- **Gestión de Estado**: Integración de **Pinia** para una reactividad instantánea en los specs.
+### 🛰️ Telemetría de Hardware Nativa
+- **PowerShell Bridge**: Integración profunda con el sistema para detectar especificaciones exactas (CPU Intel Ultra/Ryzen 8000, RAM, GPU) mediante scripts optimizados ejecutados en el backend.
+- **Detección de Pantalla**: Obtención de dimensiones físicas reales ignorando el escalado de DPI de Windows para una visualización pixel-perfect.
 
-### 🎥 Gestión de Contenido 2.0
-- **Persistencia de Video**: Los videos personalizados se copian automáticamente a una carpeta de sistema protegida para evitar errores por borrado accidental.
-- **Protocolo Zenit-File**: Protocolo de archivos personalizado (`zenit-file://`) que permite cargar contenido local pesado de forma segura y eficiente.
-- **Optimización i3**: Sistema de pausa inteligente para videos de fondo al abrir ventanas de detalles, maximizando la fluidez en hardware de bajos recursos.
-
-### 🎨 Diseño Premium
-- **Vue-Driven Components**: Interfaz modular, limpia y fácil de mantener.
-- **Aspect Ratio 16:9**: Contenedor de video diseñado para mantener proporciones cinematográficas en todo momento.
-- **Transitions Pro**: Botón de retorno instantáneo precargado en segundo plano.
+### 🎥 Gestión de Contenido Dinámico
+- **Custom Assets**: Los administradores pueden subir videos personalizados que se almacenan de forma persistente en `%APPDATA%/zenit/custom_videos/`.
+- **Protocolos Seguros**: Uso de las APIs de sistema de archivos de Tauri v2 para cargar contenido local pesado de forma eficiente sin comprometer la seguridad.
 
 ---
 
-## 🛠️ Requisitos del Sistema
+## 🛠️ Requisitos del Desarrollo
 
-- **S.O.**: Windows 10 o Windows 11 (Recomendado).
-- **Entorno**: [Node.js](https://nodejs.org/) v18 o superior.
-- **PowerShell**: 5.1 o superior.
+- **S.O.**: Windows 10/11 con **Webview2** instalado.
+- **Entorno**: [Node.js](https://nodejs.org/) v20+ y [Rust](https://www.rust-lang.org/) (Stable).
+- **Herramientas de Build**: Visual Studio Build Tools con soporte para C++.
 
 ---
 
-## 🚀 Instalación y Desarrollo
+## 🚀 Instalación y Ejecución
 
-### 1. Clonar e Instalar Dependencias
+### 1. Preparación
 ```powershell
 npm install
 ```
 
-### 2. Ejecutar en Modo Desarrollo
-Para trabajar con **Hot Module Replacement (HMR)** integral:
-
-**Terminal A (Servidor de Estilos/Lógica):**
+### 2. Modo Desarrollo
+Ejecuta la interfaz de Vue y el backend de Tauri simultáneamente con HMR (Hot Module Replacement):
 ```powershell
-npm run dev
+npm run tauri:dev
 ```
 
-**Terminal B (App de Electron):**
+### 3. Compilación de Producción
+Genera un bundle optimizado y un instalador NSIS profesional:
 ```powershell
-npm start
-```
-
-### 3. Configuración de Contenido
-Los recursos estáticos (videos originales, logos, fuentes) ahora residen en la carpeta `public/`. Los videos personalizados seleccionados por el administrador se guardarán en `%APPDATA%/zenit/custom_videos/`.
-
----
-
-## 📁 Nueva Estructura del Proyecto
-
-- **`src/`**: Código fuente de Vue (Main, Components, Stores, Styles).
-- **`public/`**: Assets estáticos servidos directamente por Vite.
-- **`main.js`**: Proceso principal de Electron (Gestiona ventanas, protocolos e IPC).
-- **`preload.js`**: Puente de seguridad entre Electron y Vue.
-- **`get-specs.ps1`**: El motor de telemetría de hardware en PowerShell.
-
----
-
-## 📦 Compilación y Distribución
-
-```powershell
-# Para generar el bundle optimizado
-npm run build
-
-# Para generar instaladores profesionales (.exe)
-npm run dist
+npm run tauri:build
 ```
 
 ---
 
-> **Nota para Administradores**: Para editar la información o cambiar videos, usa el "Hotspot" secreto (esquina superior derecha) e ingresa la contraseña.
+## 📁 Estructura del Proyecto
+
+- **`src-tauri/`**: El "cerebro" en Rust. Gestiona ventanas, seguridad, PowerShell y APIs de sistema.
+- **`src/`**: Aplicación de frontend basada en Vue 3 y Pinia.
+- **`public/`**: Assets estáticos y recursos base.
+- **`dist_app/`**: Build de producción del frontend (consumido por Tauri).
+- **`*.ps1`**: Scripts de automatización y telemetría distribuidos como recursos externos.
 
 ---
-Desarrollado con ❤️ por el equipo de **Zenit**.
+
+## 🔒 Acceso Administrativo
+Para editar la configuración o cambiar los videos en modo exposición, utiliza el **Hotspot invisible** en la esquina superior derecha e introduce la clave maestra.
+
+---
+
+> **Zenit** es una evolución tecnológica que prioriza la estabilidad en entornos Retail 24/7. Construido con ❤️ por el equipo de **Zenit**.
