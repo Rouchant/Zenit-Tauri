@@ -60,8 +60,11 @@ try {
     $os = Get-CimInstance -ClassName Win32_OperatingSystem | Select-Object -First 1
     $osName = $os.Caption -replace "Microsoft ", ""
 
+    $ramSize = [math]::Round($system.TotalPhysicalMemory / 1GB, 0)
+    if ($ramSize -eq 0) { $ramSize = [math]::Round($system.TotalPhysicalMemory / 1MB / 1024, 0) }
+    if ($ramSize -eq 0) { $ramSize = 4 } # Final fallback
+
     $memSticks = Get-CimInstance -ClassName Win32_PhysicalMemory
-    $ramSize = [math]::Round(($memSticks | Measure-Object -Property Capacity -Sum).Sum / 1GB, 0)
     $ramTypeRaw = ($memSticks | Select-Object -First 1).SMBIOSMemoryType
     $ramType = switch ($ramTypeRaw) { 26 { "DDR4" } 34 { "DDR5" } 35 { "LPDDR5" } default { "DDR4" } }
 

@@ -41,9 +41,12 @@
         body.theme-ripley { --primary: #9932cc; --secondary: #7928a1; }
         body.theme-default { --primary: #00f2ff; --secondary: #0072ff; }
 
+        html {
+            background: transparent;
+        }
         body {
             margin: 0;
-            padding: 8px; /* Reduced padding */
+            padding: 0; /* No padding needed now with smaller window */
             overflow: hidden;
             display: flex;
             justify-content: center;
@@ -58,18 +61,18 @@
             background: linear-gradient(135deg, var(--secondary), var(--primary));
             color: #000;
             border: none;
-            padding: 16px 40px;
-            border-radius: 16px;
+            padding: 12px 32px; /* Slightly tighter padding */
+            border-radius: 12px;
             font-weight: 800;
-            font-size: 1.1rem;
+            font-size: 1rem;
             cursor: pointer;
             transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
-            -webkit-app-region: no-drag; /* Button is specifically NOT draggable */
+            -webkit-app-region: no-drag; 
             white-space: nowrap;
             display: flex;
             flex-direction: column;
             align-items: center;
-            gap: 8px;
+            gap: 4px;
             box-shadow: 0 4px 15px rgba(0,0,0,0.3);
             position: relative;
             z-index: 100;
@@ -88,22 +91,14 @@
     </style>
 </head>
 <body class="theme-default">
-    <button class="return-btn" onclick="window.electronAPI.restoreApp()">
+    <button id="restore-btn" class="return-btn">
         <span class="btn-text">Volver a características</span>
         <div class="btn-icon">
-            <svg xmlns="http://www.w3.org/2000/svg" width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+            <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
                 <path d="M12 17v4"/>
-                <path d="m14.305 7.53.923-.382"/>
-                <path d="m15.228 4.852-.923-.383"/>
-                <path d="m16.852 3.228-.383-.924"/>
-                <path d="m16.852 8.772-.383.923"/>
-                <path d="m19.148 3.228.383-.924"/>
-                <path d="m19.53 9.696-.382-.924"/>
-                <path d="m20.772 4.852.924-.383"/>
-                <path d="m20.772 7.148.924.383"/>
-<path d="M22 13v2a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h7"/>
-<path d="M8 21h8"/>
-<circle cx="18" cy="6" r="3"/>
+                <path d="M22 13v2a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h7"/>
+                <path d="M8 21h8"/>
+                <circle cx="18" cy="6" r="3"/>
             </svg>
         </div>
     </button>
@@ -122,8 +117,12 @@
             document.body.classList.add(`theme-${store}`);
         }
 
-        document.getElementById('restore-btn').addEventListener('click', () => {
-            invoke('restore_app');
+        document.getElementById('restore-btn').addEventListener('click', async () => {
+            try {
+                await invoke('restore_app');
+            } catch (err) {
+                console.error('Failed to restore app:', err);
+            }
         });
     </script>
 </body>

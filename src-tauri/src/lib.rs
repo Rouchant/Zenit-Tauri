@@ -185,12 +185,18 @@ async fn restore_app_logic(app: &AppHandle) -> Result<(), String> {
     let main_window = app.get_webview_window("main").ok_or("Main window not found")?;
     let return_window = app.get_webview_window("return").ok_or("Return window not found")?;
 
+    // Asegurar que la ventana no esté minimizada y sea visible
     main_window.unminimize().map_err(|e| e.to_string())?;
     main_window.show().map_err(|e| e.to_string())?;
+    
+    // Truco para forzar el foco y el Z-order (siempre encima) en Windows
+    let _ = main_window.set_always_on_top(false);
+    let _ = main_window.set_always_on_top(true);
+    
     main_window.set_focus().map_err(|e| e.to_string())?;
     main_window.set_fullscreen(true).map_err(|e| e.to_string())?;
-    main_window.set_always_on_top(true).map_err(|e| e.to_string())?;
 
+    // Ocultar la ventana de retorno
     return_window.hide().map_err(|e| e.to_string())?;
 
     Ok(())

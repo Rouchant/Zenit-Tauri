@@ -167,6 +167,13 @@ const resetTimer = () => {
   }, store.CONFIG.INACTIVITY_LIMIT);
 };
 
+// Force window focus and on-top status when screensaver starts
+watch(() => store.isVideoMode, (isVideo) => {
+  if (isVideo) {
+    tauriAPI.restoreApp();
+  }
+});
+
 const openPassword = (mode) => {
   passwordMode.value = mode;
   showPasswordModal.value = true;
