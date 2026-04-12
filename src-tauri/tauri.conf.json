@@ -64,9 +64,7 @@
       }
     },
     "resources": {
-      "../get-specs.ps1": "get-specs.ps1",
-      "../setup-autostart.ps1": "setup-autostart.ps1",
-      "../system-setup.ps1": "system-setup.ps1"
+      "../get-specs.ps1": "get-specs.ps1"
     }
   }
 }

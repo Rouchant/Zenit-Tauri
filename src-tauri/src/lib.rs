@@ -1,7 +1,7 @@
-use std::fs;
-use std::path::PathBuf;
+use std::path::{Path, PathBuf};
 use std::process::Command;
 use tauri::{AppHandle, Manager, Runtime, WebviewWindow, LogicalPosition, LogicalSize};
+use mslnk::ShellLink;
 use tauri_plugin_dialog::DialogExt;
 use std::sync::Arc;
 use tokio::sync::Mutex;
@@ -18,9 +18,51 @@ fn get_user_data_dir(app: &AppHandle) -> PathBuf {
     app.path().app_data_dir().expect("No se pudo obtener app_data_dir")
 }
 
-/// Devuelve la ruta del directorio de recursos (scripts PS1)
+/// Devuelve la ruta del directorio de recursos
 fn get_resource_dir(app: &AppHandle) -> PathBuf {
     app.path().resource_dir().expect("No se pudo obtener resource_dir")
+}
+
+/// Obtiene la ruta al acceso directo en la carpeta de Inicio de Windows
+fn get_autostart_shortcut_path() -> Result<PathBuf, String> {
+    let appdata = std::env::var("APPDATA").map_err(|e| e.to_string())?;
+    Ok(PathBuf::from(appdata)
+        .join("Microsoft")
+        .join("Windows")
+        .join("Start Menu")
+        .join("Programs")
+        .join("Startup")
+        .join("Zenit.lnk"))
+}
+
+/// Ejecuta configuraciones de sistema (Brillo, Energía, etc.)
+fn run_system_setup() {
+    println!("Configurando ajustes de sistema (PowerCfg)...");
+    
+    // 1. Desactivar Hibernación y Suspensión
+    let _ = Command::new("powercfg").args(["/x", "-hibernate-timeout-ac", "0"]).status();
+    let _ = Command::new("powercfg").args(["/x", "-standby-timeout-ac", "0"]).status();
+    let _ = Command::new("powercfg").args(["/x", "-monitor-timeout-ac", "0"]).status();
+    let _ = Command::new("powercfg").args(["/hibernate", "off"]).status();
+
+    // 2. Intentar establecer plan de alto rendimiento
+    if let Ok(output) = Command::new("powercfg").arg("/l").output() {
+        let stdout = String::from_utf8_lossy(&output.stdout);
+        if let Some(line) = stdout.lines().find(|l| l.contains("High performance") || l.contains("Alto rendimiento")) {
+            if let Some(guid) = line.split_whitespace().nth(3) {
+                let _ = Command::new("powercfg").args(["/s", guid]).status();
+            }
+        }
+    }
+
+    // 3. Brillo al 100% (vía comando rápido para evitar scripts externos)
+    let _ = Command::new("powershell")
+        .args([
+            "-NoProfile",
+            "-Command",
+            "(Get-WmiObject -Namespace root/WMI -Class WmiMonitorBrightnessMethods).WmiSetBrightness(1,100)"
+        ])
+        .spawn();
 }
 
 // ─── Comandos IPC ───────────────────────────────────────────────────────────
@@ -275,37 +317,24 @@ fn get_video_path(app: AppHandle) -> String {
     get_resource_dir(&app).to_string_lossy().into_owned()
 }
 
-/// Equivalente a: ipcMain.handle('setup-autostart') — ejecuta setup-autostart.ps1
+/// Registra la app en el inicio de Windows creando un acceso directo .lnk
 #[tauri::command]
 async fn setup_autostart(app: AppHandle) -> Result<String, String> {
-    let resource_dir = get_resource_dir(&app);
-    let script_path = resource_dir.join("setup-autostart.ps1");
+    let exe_path = std::env::current_exe().map_err(|e| e.to_string())?;
+    let target_dir = exe_path.parent().ok_or("No se pudo obtener el directorio del ejecutable")?;
+    let shortcut_path = get_autostart_shortcut_path()?;
 
-    let output = Command::new("powershell.exe")
-        .args([
-            "-ExecutionPolicy",
-            "Bypass",
-            "-File",
-            script_path.to_str().unwrap_or("setup-autostart.ps1"),
-        ])
-        .output()
-        .map_err(|e| format!("Error setup autostart: {}", e))?;
+    let mut sl = ShellLink::new(&exe_path).map_err(|e| e.to_string())?;
+    sl.set_working_dir(target_dir.to_string_lossy().into_owned());
+    sl.create_lnk(&shortcut_path).map_err(|e| e.to_string())?;
 
-    Ok(String::from_utf8_lossy(&output.stdout).into_owned())
+    Ok(format!("Acceso directo creado en: {:?}", shortcut_path))
 }
 
-/// Equivalente a: ipcMain.handle('remove-autostart')
+/// Elimina el acceso directo de la carpeta de Inicio
 #[tauri::command]
 fn remove_autostart() -> Result<(), String> {
-    let appdata = std::env::var("APPDATA").map_err(|e| e.to_string())?;
-    let shortcut = PathBuf::from(appdata)
-        .join("Microsoft")
-        .join("Windows")
-        .join("Start Menu")
-        .join("Programs")
-        .join("Startup")
-        .join("Zenit.lnk");
-
+    let shortcut = get_autostart_shortcut_path()?;
     if shortcut.exists() {
         fs::remove_file(&shortcut).map_err(|e| format!("Error eliminando acceso directo: {}", e))
     } else {
@@ -336,19 +365,8 @@ pub fn run() {
                 maximize_timer: Arc::new(Mutex::new(None)),
             });
 
-            // Ejecutar system-setup.ps1 al iniciar
-            let resource_dir = app.path().resource_dir().unwrap_or_default();
-            let script_path = resource_dir.join("system-setup.ps1");
-            if script_path.exists() {
-                let _ = Command::new("powershell.exe")
-                    .args([
-                        "-ExecutionPolicy",
-                        "Bypass",
-                        "-File",
-                        script_path.to_str().unwrap_or(""),
-                    ])
-                    .spawn();
-            }
+            // Ejecutar ajustes de sistema al iniciar
+            run_system_setup();
 
             // Registrar shortcuts kiosk (bloquear Alt+Tab, Windows Key, etc.)
             use tauri_plugin_global_shortcut::GlobalShortcutExt;
