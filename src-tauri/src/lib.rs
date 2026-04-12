@@ -180,20 +180,73 @@ async fn minimize_app(app: AppHandle, state: tauri::State<'_, AppState>, store: 
     Ok(())
 }
 
+use windows_sys::Win32::UI::WindowsAndMessaging::*;
+use windows_sys::Win32::UI::Input::KeyboardAndMouse::*;
+use windows_sys::Win32::System::Threading::*;
+use windows_sys::Win32::Foundation::*;
+
 /// Lógica interna para restaurar la app
 async fn restore_app_logic(app: &AppHandle) -> Result<(), String> {
     let main_window = app.get_webview_window("main").ok_or("Main window not found")?;
     let return_window = app.get_webview_window("return").ok_or("Return window not found")?;
 
+    // 1. Quitar fullscreen temporalmente para forzar el refresco del Z-order
+    let _ = main_window.set_fullscreen(false);
+    
     // Asegurar que la ventana no esté minimizada y sea visible
     main_window.unminimize().map_err(|e| e.to_string())?;
     main_window.show().map_err(|e| e.to_string())?;
+
+    // Pequeño delay para dejar que Windows procese el cambio de estado
+    tokio::time::sleep(tokio::time::Duration::from_millis(100)).await;
     
-    // Truco para forzar el foco y el Z-order (siempre encima) en Windows
-    let _ = main_window.set_always_on_top(false);
-    let _ = main_window.set_always_on_top(true);
+    // 2. TRUCO ULTRA AGRESIVO: Simular la tecla ESCAPE
+    // Esto cierra el Menú Inicio o cualquier menú contextual que esté robando el foco.
+    unsafe {
+        keybd_event(0x1B, 0, 0, 0); // Presionar ESC (VK_ESCAPE = 0x1B)
+        keybd_event(0x1B, 0, 0x0002, 0); // Soltar ESC
+    }
+
+    // 3. Forzar el foco usando la API nativa de Windows (AttachThreadInput hack)
+    // Extraemos el HWND en un bloque separado para que el Result (que no es Send)
+    // se destruya antes de cualquier .await en el bucle.
+    let hwnd_isize = main_window.hwnd().ok().map(|h| h.0 as isize);
     
-    main_window.set_focus().map_err(|e| e.to_string())?;
+    if let Some(hwnd_val_raw) = hwnd_isize {
+        unsafe {
+            let hwnd_val = hwnd_val_raw as HWND;
+            let foreground_hwnd = GetForegroundWindow();
+            
+            if foreground_hwnd != 0 && foreground_hwnd != hwnd_val {
+                let foreground_thread_id = GetWindowThreadProcessId(foreground_hwnd, std::ptr::null_mut());
+                let app_thread_id = GetCurrentThreadId();
+
+                if foreground_thread_id != app_thread_id {
+                    let _ = AttachThreadInput(app_thread_id, foreground_thread_id, 1);
+                    SetForegroundWindow(hwnd_val);
+                    SetFocus(hwnd_val);
+                    SetActiveWindow(hwnd_val);
+                    let _ = AttachThreadInput(app_thread_id, foreground_thread_id, 0);
+                }
+            }
+        }
+            
+        // Bombardeo de foco y Z-order
+        for _ in 0..2 {
+            unsafe {
+                let hwnd_val = hwnd_val_raw as HWND;
+                SetForegroundWindow(hwnd_val);
+                SetFocus(hwnd_val);
+                SetActiveWindow(hwnd_val);
+                ShowWindow(hwnd_val, SW_SHOW);
+                // HWND_TOPMOST es -1
+                SetWindowPos(hwnd_val, -1isize as HWND, 0, 0, 0, 0, SWP_NOMOVE | SWP_NOSIZE | SWP_SHOWWINDOW);
+            }
+            tokio::time::sleep(tokio::time::Duration::from_millis(50)).await;
+        }
+    }
+
+    // 4. Volver a poner fullscreen
     main_window.set_fullscreen(true).map_err(|e| e.to_string())?;
 
     // Ocultar la ventana de retorno
