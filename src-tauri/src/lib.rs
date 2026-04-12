@@ -190,16 +190,13 @@ async fn restore_app_logic(app: &AppHandle) -> Result<(), String> {
     let main_window = app.get_webview_window("main").ok_or("Main window not found")?;
     let return_window = app.get_webview_window("return").ok_or("Return window not found")?;
 
-    // 1. Quitar fullscreen temporalmente para forzar el refresco del Z-order
-    let _ = main_window.set_fullscreen(false);
+    // No quitamos fullscreen para evitar parpadeo visual.
+    // Confiamos en el Hack Nativo y la tecla Escape para robar el foco.
     
     // Asegurar que la ventana no esté minimizada y sea visible
     main_window.unminimize().map_err(|e| e.to_string())?;
     main_window.show().map_err(|e| e.to_string())?;
 
-    // Pequeño delay para dejar que Windows procese el cambio de estado
-    tokio::time::sleep(tokio::time::Duration::from_millis(100)).await;
-    
     // 2. TRUCO ULTRA AGRESIVO: Simular la tecla ESCAPE
     // Esto cierra el Menú Inicio o cualquier menú contextual que esté robando el foco.
     unsafe {
@@ -245,9 +242,6 @@ async fn restore_app_logic(app: &AppHandle) -> Result<(), String> {
             tokio::time::sleep(tokio::time::Duration::from_millis(50)).await;
         }
     }
-
-    // 4. Volver a poner fullscreen
-    main_window.set_fullscreen(true).map_err(|e| e.to_string())?;
 
     // Ocultar la ventana de retorno
     return_window.hide().map_err(|e| e.to_string())?;
