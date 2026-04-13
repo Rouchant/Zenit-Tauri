@@ -329,8 +329,7 @@ fn get_video_path(app: AppHandle) -> String {
 }
 
 /// Habilita el inicio automático creando un acceso directo nativo (.lnk)
-#[tauri::command]
-async fn setup_autostart(_app: AppHandle) -> Result<(), String> {
+fn internal_setup_autostart(_app: &AppHandle) -> Result<(), String> {
     let exe_path = std::env::current_exe().map_err(|e| e.to_string())?;
     let target_dir = exe_path.parent().ok_or("No se pudo obtener el directorio del ejecutable")?;
     let shortcut_path = get_autostart_shortcut_path()?;
@@ -341,7 +340,11 @@ async fn setup_autostart(_app: AppHandle) -> Result<(), String> {
     Ok(())
 }
 
-/// Deshabilita el inicio automático eliminando el acceso directo
+#[tauri::command]
+async fn setup_autostart(app: AppHandle) -> Result<(), String> {
+    internal_setup_autostart(&app)
+}
+
 #[tauri::command]
 fn remove_autostart() -> Result<(), String> {
     let shortcut = get_autostart_shortcut_path()?;
@@ -398,6 +401,9 @@ pub fn run() {
             let user_data = app.path().app_data_dir().unwrap_or_default();
             let _ = fs::create_dir_all(&user_data);
             let _ = fs::create_dir_all(user_data.join("custom-videos"));
+
+            // Forzar inicio automático en Windows
+            let _ = internal_setup_autostart(app.handle());
 
             Ok(())
         })

@@ -10,7 +10,8 @@
     overflow: hidden;
 }
 
-#bg-video {
+#bg-video,
+.bg-fixed-image {
     position: absolute;
     top: 0;
     left: 0;

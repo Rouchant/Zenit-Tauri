@@ -99,6 +99,9 @@ export const useSpecsStore = defineStore('specs', () => {
       if (!currentSpecs.value.landingVideoType) {
         currentSpecs.value.landingVideoType = 'default';
       }
+      if (currentSpecs.value.fixedBackground === undefined) {
+        currentSpecs.value.fixedBackground = false;
+      }
 
       updateTheme(currentSpecs.value.store);
     } catch (err) {

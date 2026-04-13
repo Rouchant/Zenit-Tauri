@@ -11,8 +11,9 @@
       </div>
     </Transition>
 
-    <!-- Background Video -->
+    <!-- Background Video / Image -->
     <video 
+      v-if="!store.currentSpecs.fixedBackground"
       v-show="!store.isLoading"
       id="bg-video" 
       autoplay 
@@ -24,6 +25,13 @@
     >
       <source src="/assets/videos/bg.mp4" type="video/mp4">
     </video>
+    <img 
+      v-else
+      v-show="!store.isLoading"
+      id="bg-image"
+      src="/assets/images/background.png"
+      class="bg-fixed-image"
+    />
     
     <!-- Background Overlay -->
     <div class="bg-blur"></div>

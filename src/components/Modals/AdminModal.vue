@@ -117,14 +117,26 @@ const selectVideo = async (type) => {
                                     <button class="restore-btn" @click="restoreField('os')" title="Restaurar">↺</button>
                                 </div>
                             </div>
-                            <div class="input-group">
-                                <label for="store-select">Retail / Tienda</label>
-                                <select id="store-select" name="store" v-model="editableSpecs.store" class="custom-select">
-                                    <option value="none">Ninguna</option>
-                                    <option value="falabella">Falabella</option>
-                                    <option value="paris">Paris</option>
-                                    <option value="ripley">Ripley</option>
-                                </select>
+                             <div class="store-config">
+                                <div class="input-group">
+                                    <label for="store-select">Retail / Tienda</label>
+                                    <select id="store-select" name="store" v-model="editableSpecs.store" class="custom-select">
+                                        <option value="none">Ninguna</option>
+                                        <option value="falabella">Falabella</option>
+                                        <option value="paris">Paris</option>
+                                        <option value="ripley">Ripley</option>
+                                    </select>
+                                </div>
+                            </div>
+                            <div class="background-config">
+                                <label>Configurar fondo</label>
+                                <div class="input-group checkbox-group fixed-bg-group">
+                                    <label for="fixed-bg-checkbox" class="checkbox-container">
+                                        <input id="fixed-bg-checkbox" name="fixedBackground" type="checkbox" v-model="editableSpecs.fixedBackground">
+                                        <span class="checkmark"></span>
+                                        Fondo Fijo (Ticket)
+                                    </label>
+                                </div>
                             </div>
                         </div>
                     </section>
