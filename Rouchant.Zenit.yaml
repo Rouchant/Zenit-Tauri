@@ -1,15 +1,28 @@
+# yaml-language-server: $schema=https://aka.ms/winget-manifest.singleton.1.12.0.schema.json
 # Rouchant.Zenit.yaml
 PackageIdentifier: Rouchant.Zenit
 PackageVersion: 1.0.2
 PackageLocale: es-ES
 Publisher: Rouchant
+PublisherUrl: https://github.com/Rouchant
 PackageName: Zenit
+ShortDescription: Aplicación de Kiosco interactiva para hardware
+Description: Zenit es una potente aplicación de kiosco diseñada para demostraciones interactivas en entornos retail. Cuenta con detección automática de especificaciones de hardware, integración dinámica de marcas (Asus, HP, Samsung) y reproducción de contenido promocional optimizado.
 License: MIT
-ShortDescription: Aplicación de Kiosco Zenit
+PackageUrl: https://github.com/Rouchant/Zenit-Tauri
+Tags:
+  - kiosk
+  - retail
+  - asus
+  - hardware
+  - specs
+  - digital-signage
+  - tauri
+  - vue
 Installers:
   - Architecture: x64
     InstallerType: nullsoft
-    InstallerUrl: https://github.com/Rouchant/Zenit-Tauri/releases/download/v1.0.2/Zenit_1.0.1_x64-setup.exe # Nota: El nombre del archivo dependerá de tu build final
-    InstallerSha256: 6f30cedffad9f68370ae6f6ba539cefa10f8ff2264c7c2948bac38e4ac2a1691 # Nota: Deberás recalcular el hash para la versión final
+    InstallerUrl: https://github.com/Rouchant/Zenit-Tauri/releases/download/1.0.2/Zenit_1.0.2_x64-setup.exe
+    InstallerSha256: 0482e54138bdebd4e54243d0c9a36b0b1f1a15514547c7138e902f104bdcf90c
 ManifestType: singleton
 ManifestVersion: 1.12.0

@@ -15,7 +15,7 @@ export const useSpecsStore = defineStore('specs', () => {
   
   const CONFIG = {
     INACTIVITY_LIMIT: 120000,
-    PASSWORD: 'rogally',
+    PASSWORD: 'zenit',
     THEMES: ['falabella', 'paris', 'ripley', 'default']
   };
 

@@ -11,7 +11,7 @@ const error = ref(false);
 const inputRef = ref(null);
 
 const verify = () => {
-  if (password.value === store.CONFIG.PASSWORD) {
+  if (password.value.toLowerCase() === store.CONFIG.PASSWORD.toLowerCase()) {
     error.value = false;
     emit('verified');
   } else {

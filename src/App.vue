@@ -171,8 +171,13 @@ watch(showAdminModal, (isOpen) => {
   tauriAPI.setAlwaysOnTop(!isOpen);
 });
 
+const isInternalFocusHack = ref(false);
+
 let lastReset = 0;
-const resetTimer = () => {
+const resetTimer = (event) => {
+  // Ignorar eventos generados por el sistema durante el hack de foco
+  if (isInternalFocusHack.value) return;
+
   const now = Date.now();
   // Optimization: Throttle events every 300ms to reduce CPU usage
   if (now - lastReset < 300 && !store.isVideoMode) return;
@@ -199,7 +204,13 @@ watch(() => store.isModalOpen, (isOpen) => {
 // Force window focus and on-top status when screensaver starts
 watch(() => store.isVideoMode, (isVideo) => {
   if (isVideo) {
-    tauriAPI.restoreApp();
+    isInternalFocusHack.value = true;
+    tauriAPI.restoreApp().finally(() => {
+      // Dejar una ventana de 1s para que los eventos de teclado/foco del sistema se procesen e ignoren
+      setTimeout(() => {
+        isInternalFocusHack.value = false;
+      }, 1000);
+    });
   }
 });
 
