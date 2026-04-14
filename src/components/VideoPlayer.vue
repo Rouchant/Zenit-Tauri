@@ -1,5 +1,5 @@
 <script setup>
-import { computed, onMounted, ref } from 'vue';
+import { computed, onMounted, ref, watch } from 'vue';
 import { useSpecsStore } from '../store/specs';
 
 const store = useSpecsStore();
@@ -9,21 +9,30 @@ const videoUrl = computed(() => {
   if (store.currentSpecs.videoType === 'custom' && store.currentSpecs.customVideoPath) {
     return store.getVideoUrl(store.currentSpecs.customVideoPath);
   }
+  // Try to use a more robust path if possible, but /assets is standard for public/assets in Vite
   return '/assets/videos/promo.mp4';
 });
 
-onMounted(() => {
+const playVideo = () => {
   if (videoRef.value) {
+    videoRef.value.load(); // Force reload the source
     const playPromise = videoRef.value.play();
     if (playPromise !== undefined) {
       playPromise.catch(error => {
-        // Only log if it's not a harmless interruption
         if (error.name !== 'AbortError') {
           console.warn('Inactivity video failed to play:', error);
         }
       });
     }
   }
+};
+
+watch(videoUrl, () => {
+  playVideo();
+});
+
+onMounted(() => {
+  playVideo();
 });
 </script>
 

@@ -70,6 +70,34 @@
     min-height: 0;
 }
 
+.landing-content-area {
+    display: flex;
+    flex-direction: column;
+    align-items: flex-end;
+    width: 100%;
+}
+
+.landing-video-container {
+    width: 100%;
+    aspect-ratio: 16 / 9;
+    border-radius: clamp(15px, 2vw, 32px);
+    overflow: hidden;
+    box-shadow: 0 20px 60px rgba(0, 0, 0, 0.5);
+    border: 1px solid rgba(255, 255, 255, 0.1);
+    background: #000;
+    /* Fix for corner bleeding on some GPUs */
+    mask-image: -webkit-radial-gradient(white, black);
+    -webkit-mask-image: -webkit-radial-gradient(white, black);
+    isolation: isolate;
+    transform: translateZ(0); 
+}
+
+.landing-video-container video {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+}
+
 .specs-column {
     display: flex;
     flex-direction: column;

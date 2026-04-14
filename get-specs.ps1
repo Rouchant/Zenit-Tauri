@@ -35,14 +35,18 @@ try {
     }
 
     $allVideos = Get-CimInstance -ClassName Win32_VideoController
-    $video = $allVideos | Where-Object { $_.Name -match "RTX|GTX|Radeon" } | Select-Object -First 1
+    # Priority: RTX -> GTX/NVIDIA -> Radeon -> First Available
+    $video = $allVideos | Where-Object { $_.Name -match "RTX" } | Select-Object -First 1
+    if (-not $video) { $video = $allVideos | Where-Object { $_.Name -match "GTX|NVIDIA|Radeon" } | Select-Object -First 1 }
     if (-not $video) { $video = $allVideos | Select-Object -First 1 }
     $gpu = $video.Name.Trim()
 
     # Resolution detection
     $h = $video.CurrentHorizontalResolution
     $v = $video.CurrentVerticalResolution
-    if ($video.VideoModeDescription -match "(\d{3,4}) x (\d{3,4})") {
+    
+    # Try more reliable way for native/current resolution
+    if ($video.VideoModeDescription -match "(\d{3,4})\s*x\s*(\d{3,4})") {
         $h = [int]$Matches[1]
         $v = [int]$Matches[2]
     }
@@ -50,7 +54,7 @@ try {
     $resName = switch ($h) {
         1280 { if ($v -eq 720) { "HD" } }
         1366 { if ($v -eq 768) { "HD" } }
-        1920 { if ($v -eq 1080) { "Full HD" } }
+        1920 { if ($v -eq 1080) { "Full HD" } elseif ($v -eq 1200) { "WUXGA" } }
         2560 { if ($v -eq 1440) { "2K QHD" } }
         3840 { if ($v -eq 2160) { "4K UHD" } }
         default { "" }
@@ -60,9 +64,14 @@ try {
     $os = Get-CimInstance -ClassName Win32_OperatingSystem | Select-Object -First 1
     $osName = $os.Caption -replace "Microsoft ", ""
 
-    $ramSize = [math]::Round($system.TotalPhysicalMemory / 1GB, 0)
-    if ($ramSize -eq 0) { $ramSize = [math]::Round($system.TotalPhysicalMemory / 1MB / 1024, 0) }
-    if ($ramSize -eq 0) { $ramSize = 4 } # Final fallback
+    # RAM Rounding to nearest multiple of 4GB
+    $rawRamGB = $system.TotalPhysicalMemory / 1GB
+    $ramSize = [math]::Round($rawRamGB / 4) * 4
+    if ($ramSize -eq 0) { 
+        # Fallback for very low RAM or detection issues
+        $ramSize = [math]::Round($rawRamGB)
+        if ($ramSize -eq 0) { $ramSize = 4 }
+    }
 
     $memSticks = Get-CimInstance -ClassName Win32_PhysicalMemory
     $ramTypeRaw = ($memSticks | Select-Object -First 1).SMBIOSMemoryType

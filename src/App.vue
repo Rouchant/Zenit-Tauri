@@ -20,16 +20,18 @@
       loop 
       muted 
       playsinline 
-      poster="/assets/images/background.png"
+      :poster="isAsus ? '/assets/images/background-asus.png' : '/assets/images/background-generic.png'"
       ref="bgVideo"
+      class="background-media"
+      :key="isAsus ? 'asus' : 'generic'"
     >
-      <source src="/assets/videos/bg.mp4" type="video/mp4">
+      <source :src="isAsus ? '/assets/videos/background-asus.mp4' : '/assets/videos/background-generic.mp4'" type="video/mp4">
     </video>
     <img 
       v-else
       v-show="!store.isLoading"
       id="bg-image"
-      src="/assets/images/background.png"
+      :src="isAsus ? '/assets/images/background-asus.png' : '/assets/images/background-generic.png'"
       class="bg-fixed-image"
     />
     
@@ -43,18 +45,20 @@
       <main class="main-content">
         <SpecsGrid @open-specs="showSpecsModal = true" />
         
-        <div class="landing-video-container">
-          <video 
-            id="landing-video" 
-            autoplay 
-            loop 
-            muted 
-            playsinline 
-            :src="store.currentSpecs.landingVideoType === 'custom' ? store.getVideoUrl(store.currentSpecs.customLandingVideoPath) : '/assets/videos/landing.mp4'"
-            ref="landingVideo"
-          >
-          </video>
-          <div id="display-price" class="price-tag">
+        <div class="landing-content-area">
+          <div class="landing-video-container">
+            <video 
+              id="landing-video" 
+              autoplay 
+              loop 
+              muted 
+              playsinline 
+              :src="store.currentSpecs.landingVideoType === 'custom' ? store.getVideoUrl(store.currentSpecs.customLandingVideoPath) : '/assets/videos/landing.mp4'"
+              ref="landingVideo"
+            >
+            </video>
+          </div>
+          <div id="display-price" class="price-tag-container" v-if="store.currentSpecs.pricePrimary || store.currentSpecs.priceSecondary">
              <div v-if="store.currentSpecs.priceSecondary" class="price-secondary" :class="{ strike: store.currentSpecs.priceStrike }">
                {{ store.currentSpecs.priceSecondary }}
              </div>
@@ -98,7 +102,7 @@
 </template>
 
 <script setup>
-import { onMounted, onUnmounted, ref, watch, reactive } from 'vue';
+import { onMounted, onUnmounted, ref, watch, reactive, computed } from 'vue';
 import { useSpecsStore } from './store/specs';
 import { tauriAPI } from './api/tauriApi';
 
@@ -116,6 +120,13 @@ const showPasswordModal = ref(false);
 const showAdminModal = ref(false);
 const showSpecsModal = ref(false);
 const passwordMode = ref('settings');
+
+const isAsus = computed(() => {
+  const brand = (store.currentSpecs.brand || '').toLowerCase();
+  // Check both brand and model just in case
+  const model = (store.currentSpecs.model || '').toLowerCase();
+  return brand.includes('asus') || model.includes('asus');
+});
 
 const bgVideo = ref(null);
 const landingVideo = ref(null);
@@ -176,10 +187,21 @@ const resetTimer = () => {
 
   clearTimeout(inactivityTimer.value);
   if (store.isVideoMode) store.isVideoMode = false;
+  
+  // Ensure we only set the timer if we are not in a modal
+  if (store.isModalOpen) return;
+
   inactivityTimer.value = setTimeout(() => {
+    console.log('Inactivity limit reached, entering video mode');
     store.isVideoMode = true;
-  }, store.CONFIG.INACTIVITY_LIMIT);
+  }, store.CONFIG.INACTIVITY_LIMIT || 120000);
 };
+
+// Auto-reset timer when modals close
+watch(() => store.isModalOpen, (isOpen) => {
+  if (!isOpen) resetTimer();
+  else clearTimeout(inactivityTimer.value);
+});
 
 // Force window focus and on-top status when screensaver starts
 watch(() => store.isVideoMode, (isVideo) => {

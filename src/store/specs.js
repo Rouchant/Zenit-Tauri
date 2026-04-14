@@ -57,8 +57,13 @@ export const useSpecsStore = defineStore('specs', () => {
     specs.gen = inferGen(specs.processor);
     if (!specs.os) specs.os = 'Windows 11 Home';
 
-    // Merge to avoid losing non-editable fields
+    // Merge to avoid losing non-editable fields (like auto-detected ones)
     currentSpecs.value = { ...currentSpecs.value, ...specs };
+
+    // Clean SKU to only numbers if it exists
+    if (currentSpecs.value.sku) {
+      currentSpecs.value.sku = String(currentSpecs.value.sku).replace(/\D/g, '');
+    }
     
     // Multi-persistencia: LocalStorage + archivo JSON via Tauri
     localStorage.setItem('customSpecs', JSON.stringify(currentSpecs.value));

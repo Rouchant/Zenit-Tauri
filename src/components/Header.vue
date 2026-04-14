@@ -33,8 +33,13 @@ const storeLogo = computed(() => {
         <img :src="storeLogo" :alt="store.currentSpecs.store">
       </div>
     </div>
-    <div class="brand-badge" id="display-brand">
-      {{ store.currentSpecs?.brand || 'Cargando...' }}
+    <div class="brand-info-container">
+      <div class="brand-badge" id="display-brand">
+        {{ store.currentSpecs?.brand || 'Cargando...' }}
+      </div>
+      <div v-if="store.currentSpecs?.sku" class="sku-badge">
+        SKU: {{ store.currentSpecs.sku }}
+      </div>
     </div>
   </header>
 </template>

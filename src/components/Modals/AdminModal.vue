@@ -63,9 +63,22 @@ const selectVideo = async (type) => {
                         <div class="hardware-grid">
                             <div class="input-group">
                                 <label for="brand-input">Modelo</label>
-                                <div class="input-with-action">
+                            <div class="input-with-action">
                                     <input id="brand-input" name="brand" type="text" v-model="editableSpecs.brand">
                                     <button class="restore-btn" @click="restoreField('brand')" title="Restaurar">↺</button>
+                                </div>
+                            </div>
+                            <div class="input-group">
+                                <label for="sku-input">SKU</label>
+                                <div class="input-with-action">
+                                    <input 
+                                        id="sku-input" 
+                                        name="sku" 
+                                        type="text" 
+                                        v-model="editableSpecs.sku" 
+                                        placeholder="inserte SKU"
+                                        @input="editableSpecs.sku = editableSpecs.sku.replace(/\D/g, '')"
+                                    >
                                 </div>
                             </div>
                             <div class="input-group">
