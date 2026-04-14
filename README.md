@@ -67,7 +67,7 @@ npm run tauri:build
 ---
 
 ## 🔒 Acceso Administrativo
-Para editar la configuración o cambiar los videos en modo exposición, utiliza el **Hotspot invisible** en la esquina superior derecha e introduce la clave maestra.
+Para editar la configuración o cambiar los videos en modo exposición, utiliza el **Hotspot invisible** en la esquina superior derecha e introduce la clave maestra "zenit", Hotspot en la parte inferior derecha para cerrar Zenit.
 
 ---
 
