@@ -5956,7 +5956,7 @@ dependencies = [
 
 [[package]]
 name = "zenit"
-version = "1.0.1"
+version = "1.0.3"
 dependencies = [
  "log",
  "mslnk",
