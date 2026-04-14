@@ -1,0 +1,15 @@
+# Rouchant.Zenit.yaml
+PackageIdentifier: Rouchant.Zenit
+PackageVersion: 1.0.2
+PackageLocale: es-ES
+Publisher: Rouchant
+PackageName: Zenit
+License: MIT
+ShortDescription: Aplicación de Kiosco Zenit
+Installers:
+  - Architecture: x64
+    InstallerType: nullsoft
+    InstallerUrl: https://github.com/Rouchant/Zenit-Tauri/releases/download/v1.0.2/Zenit_1.0.1_x64-setup.exe # Nota: El nombre del archivo dependerá de tu build final
+    InstallerSha256: 6f30cedffad9f68370ae6f6ba539cefa10f8ff2264c7c2948bac38e4ac2a1691 # Nota: Deberás recalcular el hash para la versión final
+ManifestType: singleton
+ManifestVersion: 1.12.0
