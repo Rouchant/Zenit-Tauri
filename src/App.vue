@@ -20,18 +20,18 @@
       loop 
       muted 
       playsinline 
-      :poster="isAsus ? '/assets/images/background-asus.png' : '/assets/images/background-generic.png'"
+      :poster="store.isAsus ? '/assets/images/background-asus.png' : '/assets/images/background-generic.png'"
       ref="bgVideo"
       class="background-media"
-      :key="isAsus ? 'asus' : 'generic'"
+      :key="store.isAsus ? 'asus' : 'generic'"
     >
-      <source :src="isAsus ? '/assets/videos/background-asus.mp4' : '/assets/videos/background-generic.mp4'" type="video/mp4">
+      <source :src="store.isAsus ? '/assets/videos/background-asus.mp4' : '/assets/videos/background-generic.mp4'" type="video/mp4">
     </video>
     <img 
       v-else
       v-show="!store.isLoading"
       id="bg-image"
-      :src="isAsus ? '/assets/images/background-asus.png' : '/assets/images/background-generic.png'"
+      :src="store.isAsus ? '/assets/images/background-asus.png' : '/assets/images/background-generic.png'"
       class="bg-fixed-image"
     />
     
@@ -53,7 +53,7 @@
               loop 
               muted 
               playsinline 
-              :src="store.currentSpecs.landingVideoType === 'custom' ? store.getVideoUrl(store.currentSpecs.customLandingVideoPath) : '/assets/videos/landing.mp4'"
+              :src="store.currentSpecs.landingVideoType === 'custom' ? store.getVideoUrl(store.currentSpecs.customLandingVideoPath) : (store.isAsus ? '/assets/videos/landing-asus.mp4' : '/assets/videos/landing-generic.mp4')"
               ref="landingVideo"
             >
             </video>
@@ -120,13 +120,6 @@ const showPasswordModal = ref(false);
 const showAdminModal = ref(false);
 const showSpecsModal = ref(false);
 const passwordMode = ref('settings');
-
-const isAsus = computed(() => {
-  const brand = (store.currentSpecs.brand || '').toLowerCase();
-  // Check both brand and model just in case
-  const model = (store.currentSpecs.model || '').toLowerCase();
-  return brand.includes('asus') || model.includes('asus');
-});
 
 const bgVideo = ref(null);
 const landingVideo = ref(null);

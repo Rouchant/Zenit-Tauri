@@ -9,8 +9,8 @@ const videoUrl = computed(() => {
   if (store.currentSpecs.videoType === 'custom' && store.currentSpecs.customVideoPath) {
     return store.getVideoUrl(store.currentSpecs.customVideoPath);
   }
-  // Try to use a more robust path if possible, but /assets is standard for public/assets in Vite
-  return '/assets/videos/promo.mp4';
+  // Use leading slash for root resolution
+  return store.isAsus ? '/assets/videos/promo-asus.mp4' : '/assets/videos/promo-generic.mp4';
 });
 
 const playVideo = () => {

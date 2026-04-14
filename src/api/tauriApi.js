@@ -6,43 +6,28 @@
  */
 import { invoke } from '@tauri-apps/api/core';
 
+// Helper para evitar errores en el navegador normal
+const safeInvoke = async (command, args = {}) => {
+  if (window.__TAURI_INTERNALS__) {
+    return await invoke(command, args);
+  }
+  console.warn(`[Tauri Mock] Invoke '${command}' called in browser. Skipping.`);
+  return null;
+};
+
 export const tauriAPI = {
   /** Obtiene las especificaciones del sistema via PowerShell */
-  getSystemSpecs: () => invoke('get_system_specs'),
-
-  /** Devuelve la ruta base de recursos de la app */
-  getVideoPath: () => invoke('get_video_path'),
-
-  /** Minimiza la ventana principal y muestra el botón de retorno con el tema especificado */
-  minimizeApp: (store) => invoke('minimize_app', { store }),
-
-  /** Restaura la ventana principal a pantalla completa */
-  restoreApp: () => invoke('restore_app'),
-
-  /** Abre un diálogo de selección de archivo de video */
-  selectVideo: () => invoke('select_video'),
-
-  /** Copia un video a userData/custom_videos y retorna la nueva ruta */
-  saveCustomVideo: (sourcePath) => invoke('save_custom_video', { sourcePath }),
-
-  /** Verifica si un archivo existe en el sistema */
-  checkFileExists: (filePath) => invoke('check_file_exists', { filePath }),
-
-  /** Configura el autostart ejecutando el script PowerShell */
-  setupAutostart: () => invoke('setup_autostart'),
-
-  /** Elimina el acceso directo de autostart */
-  removeAutostart: () => invoke('remove_autostart'),
-
-  /** Guarda la configuración en userData/config.json */
-  saveConfig: (configData) => invoke('save_config', { configData }),
-
-  /** Carga la configuración desde userData/config.json */
-  loadConfig: () => invoke('load_config'),
-
-  /** Cierra la aplicación */
-  quitApp: () => invoke('quit_app'),
-
-  /** Cambia el estado AlwaysOnTop de la ventana principal */
-  setAlwaysOnTop: (onTop) => invoke('set_always_on_top', { onTop }),
+  getSystemSpecs: () => safeInvoke('get_system_specs'),
+  getVideoPath: () => safeInvoke('get_video_path'),
+  minimizeApp: (store) => safeInvoke('minimize_app', { store }),
+  restoreApp: () => safeInvoke('restore_app'),
+  selectVideo: () => safeInvoke('select_video'),
+  saveCustomVideo: (sourcePath) => safeInvoke('save_custom_video', { sourcePath }),
+  checkFileExists: (filePath) => safeInvoke('check_file_exists', { filePath }),
+  setupAutostart: () => safeInvoke('setup_autostart'),
+  removeAutostart: () => safeInvoke('remove_autostart'),
+  saveConfig: (configData) => safeInvoke('save_config', { configData }),
+  loadConfig: () => safeInvoke('load_config'),
+  quitApp: () => safeInvoke('quit_app'),
+  setAlwaysOnTop: (onTop) => safeInvoke('set_always_on_top', { onTop }),
 };

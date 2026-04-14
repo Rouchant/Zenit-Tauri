@@ -20,6 +20,14 @@ const formatPath = (fullPath) => {
 };
 
 const save = () => {
+    // Validación de seguridad: si seleccionó personalizado pero no hay ruta, volver a default
+    if (editableSpecs.videoType === 'custom' && !editableSpecs.customVideoPath) {
+        editableSpecs.videoType = 'default';
+    }
+    if (editableSpecs.landingVideoType === 'custom' && !editableSpecs.customLandingVideoPath) {
+        editableSpecs.landingVideoType = 'default';
+    }
+
     store.saveCustom(editableSpecs);
     emit('close');
 };
@@ -159,7 +167,7 @@ const selectVideo = async (type) => {
 
                 <!-- Column 2: Video & Prices -->
                 <div class="modal-pane-right">
-                    <section class="settings-section">
+                  <section class="settings-section">
                         <h3 class="section-title">Contenido Visual</h3>
                         <div class="video-settings-grid">
                             <div class="video-section">
@@ -181,7 +189,9 @@ const selectVideo = async (type) => {
                                         @click="selectVideo('inactivity')"
                                     >Subir Video</button>
                                 </div>
-                                <div class="video-path-badge">{{ formatPath(editableSpecs.customVideoPath) }}</div>
+                                <div class="video-path-badge">
+                                    {{ editableSpecs.videoType === 'custom' ? formatPath(editableSpecs.customVideoPath) : (store.isAsus ? 'promo-asus.mp4' : 'promo-generic.mp4') }}
+                                </div>
                             </div>
 
                             <div class="video-section">
@@ -203,7 +213,9 @@ const selectVideo = async (type) => {
                                         @click="selectVideo('landing')"
                                     >Subir Video</button>
                                 </div>
-                                <div class="video-path-badge">{{ formatPath(editableSpecs.customLandingVideoPath) }}</div>
+                                <div class="video-path-badge">
+                                    {{ editableSpecs.landingVideoType === 'custom' ? formatPath(editableSpecs.customLandingVideoPath) : (store.isAsus ? 'landing-asus.mp4' : 'landing-generic.mp4') }}
+                                </div>
                             </div>
                         </div>
                     </section>

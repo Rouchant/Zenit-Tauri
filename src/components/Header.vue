@@ -6,8 +6,10 @@ const store = useSpecsStore();
 
 const brandLogo = computed(() => {
   const brand = (store.currentSpecs.brand || '').toLowerCase();
+  const model = (store.currentSpecs.model || '').toLowerCase();
+  const combined = `${brand} ${model}`;
   const knownBrands = ['asus', 'hp', 'samsung', 'acer', 'lenovo'];
-  const matched = knownBrands.find(b => brand.includes(b));
+  const matched = knownBrands.find(b => combined.includes(b));
   
   if (matched) return `/assets/logos/${matched}.svg`;
   return null;
@@ -25,10 +27,9 @@ const storeLogo = computed(() => {
   <header class="header">
     <div class="header-branding">
       <div class="logo-placeholder" id="header-logo-container">
-        <img v-if="brandLogo" :src="brandLogo" :alt="store.currentSpecs?.brand" :class="{ 'zenit-logo': !brandLogo.includes('logos') }">
-        <img v-else src="/assets/logo.png" alt="Zenit" class="zenit-logo">
+        <img v-if="brandLogo" :src="brandLogo" :alt="store.currentSpecs?.brand" class="brand-logo">
       </div>
-      <div class="logo-separator" v-if="storeLogo"></div>
+      <div class="logo-separator" v-if="brandLogo && storeLogo"></div>
       <div class="store-logo-placeholder" id="store-logo-container" v-if="storeLogo">
         <img :src="storeLogo" :alt="store.currentSpecs.store">
       </div>

@@ -1,5 +1,5 @@
 import { defineStore } from 'pinia';
-import { reactive, ref } from 'vue';
+import { reactive, ref, computed } from 'vue';
 import { tauriAPI } from '../api/tauriApi';
 import { convertFileSrc } from '@tauri-apps/api/core';
 
@@ -137,6 +137,17 @@ export const useSpecsStore = defineStore('specs', () => {
     saveCustom,
     loadSpecs,
     updateTheme,
-    getVideoUrl
+    getVideoUrl,
+    isAsus: computed(() => {
+      const b = (currentSpecs.value.brand || '').toLowerCase();
+      const m = (currentSpecs.value.model || '').toLowerCase();
+      return b.includes('asus') || m.includes('asus');
+    }),
+    isGeneric: computed(() => {
+      const b = (currentSpecs.value.brand || '').toLowerCase();
+      const m = (currentSpecs.value.model || '').toLowerCase();
+      const asus = b.includes('asus') || m.includes('asus');
+      return !asus || b.includes('generico');
+    })
   };
 });
