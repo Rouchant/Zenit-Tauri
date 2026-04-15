@@ -38,6 +38,8 @@ const restoreField = (field) => {
 };
 
 const selectVideo = async (type) => {
+    // Asegurar que el diálogo nativo pueda aparecer sobre la ventana kiosk
+    await tauriAPI.setAlwaysOnTop(false);
     const path = await tauriAPI.selectVideo();
     if (path) {
         const safePath = await tauriAPI.saveCustomVideo(path);
