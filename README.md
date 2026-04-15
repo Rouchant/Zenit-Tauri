@@ -1,6 +1,6 @@
 # 🚀 Zenit - Kiosk Framework (Tauri v2 Edition)
 
-![Zenit Logo](public/assets/logo.png)
+<img src="public/assets/logo.png" alt="Zenit Logo" width="200">
 
 ![Version](https://img.shields.io/badge/version-1.0.4-blue.svg)
 ![Tauri](https://img.shields.io/badge/framework-Tauri%20v2-FFC131.svg)
