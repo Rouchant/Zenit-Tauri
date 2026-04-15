@@ -1,11 +1,8 @@
 # 🚀 Zenit - Kiosk Framework (Tauri v2 Edition)
 
-<<<<<<< HEAD
 ![Zenit Logo](public/assets/logo.png)
 
-=======
->>>>>>> 94221c67d23295e39f69b443f1d76188ce0e2237
-![Version](https://img.shields.io/badge/version-1.0.3-blue.svg)
+![Version](https://img.shields.io/badge/version-1.0.4-blue.svg)
 ![Tauri](https://img.shields.io/badge/framework-Tauri%20v2-FFC131.svg)
 ![Vue 3](https://img.shields.io/badge/frontend-Vue%203-42b883.svg)
 ![Vite](https://img.shields.io/badge/build-Vite%206-646cff.svg)
@@ -25,7 +22,7 @@ Zenit es una solución de nivel empresarial para **Showcase Terminals**, diseña
 
 ### 🖥️ Detección de Hardware Inteligente
 Zenit utiliza un potente motor de telemetría basado en Rust y PowerShell para extraer y mostrar de forma resumida:
-- **Procesador (CPU)**: Identificación exacta (Intel Core Ultra, Ryzen 8000 series, etc.).
+- **Procesador (CPU)**: Identificación exacta (Intel Core Ultra, Ryzen AI, 8000 series, etc.).
 - **Memoria RAM**: Capacidad y tipo.
 - **Gráficos (GPU)**: Detección de modelos integrados y dedicados.
 - **Almacenamiento**: Estado y velocidad.
@@ -74,20 +71,15 @@ npm run tauri:build
 
 ## 📁 Estructura del Proyecto
 
-- **`src-tauri/`**: Backend en Rust (Seguridad, PowerShell Bridge, APIs de sistema).
+- **`src-tauri/`**: Backend en Rust (Seguridad, Store, PowerShell Bridge, APIs de sistema).
 - **`src/`**: Aplicación Frontend (Vue 3, Pinia for State Management).
 - **`public/assets/logos/`**: Catálogo de logos de retail y marcas integrados.
 - **`*.ps1`**: Scripts de telemetría personalizados.
 
 ---
 
-<<<<<<< HEAD
-## 🔑 Acceso Administrativo
-Ajusta los precios, SKU, videos y logos mediante el **panel oculto**. Para acceder, utiliza el **Hotspot invisible** en la esquina superior derecha e introduce la clave maestra de administrador.
-=======
 ## 🔒 Acceso Administrativo
-Para editar la configuración o cambiar los videos en modo exposición, utiliza el **Hotspot invisible** en la esquina superior derecha e introduce la clave maestra "zenit", Hotspot en la parte inferior derecha para cerrar Zenit.
->>>>>>> 94221c67d23295e39f69b443f1d76188ce0e2237
+Ajusta los precios, SKU, videos y logos mediante el **panel oculto**. Para acceder, utiliza el **Hotspot invisible** en la esquina superior izquierda e introduce la clave maestra de administrador (**"demo"**). Existe otro Hotspot en la esquina inferior derecha para cerrar Zenit.
 
 ---
 
