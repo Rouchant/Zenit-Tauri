@@ -114,9 +114,6 @@
     margin-bottom: 10px;
 }
 
-.input-group.no-label {
-    margin-top: -10px;
-}
 
 .input-group label {
     display: block;
@@ -171,7 +168,6 @@
 
 .background-config {
     width: 100%;
-    margin-top: 10px;
 }
 
 .background-config label {
@@ -212,7 +208,7 @@
 .hardware-grid {
     display: grid;
     grid-template-columns: 1fr 1fr;
-    gap: 25px 35px;
+    gap: 15px 25px;
     padding: 5px;
 }
 
@@ -291,6 +287,78 @@
     overflow: hidden;
     text-overflow: ellipsis;
     border: 1px dashed rgba(var(--primary-rgb, 171, 71, 188), 0.3);
+}
+
+/* Custom Checkbox Styling */
+.checkbox-container {
+    display: flex;
+    align-items: center;
+    position: relative;
+    padding-left: 35px;
+    cursor: pointer;
+    font-size: 0.95rem;
+    font-weight: 600;
+    color: white;
+    user-select: none;
+    transition: all 0.2s ease;
+}
+
+/* Hide the browser's default checkbox */
+.checkbox-container input {
+    position: absolute;
+    opacity: 0;
+    cursor: pointer;
+    height: 0;
+    width: 0;
+}
+
+/* Create a custom checkbox */
+.checkmark {
+    position: absolute;
+    top: 50%;
+    left: 0;
+    transform: translateY(-50%);
+    height: 24px;
+    width: 24px;
+    background-color: #202024;
+    border: 1px solid #303034;
+    border-radius: 6px;
+    transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+/* On mouse-over, add a grey background color */
+.checkbox-container:hover .checkmark {
+    background-color: #2a2a2e;
+    border-color: var(--primary);
+}
+
+/* When the checkbox is checked, add a blue background */
+.checkbox-container input:checked ~ .checkmark {
+    background-color: var(--primary);
+    border-color: var(--primary);
+}
+
+/* Create the checkmark/indicator (hidden when not checked) */
+.checkmark:after {
+    content: "";
+    position: absolute;
+    display: none;
+}
+
+/* Show the checkmark when checked */
+.checkbox-container input:checked ~ .checkmark:after {
+    display: block;
+}
+
+/* Style the checkmark/indicator */
+.checkbox-container .checkmark:after {
+    left: 8px;
+    top: 4px;
+    width: 6px;
+    height: 11px;
+    border: solid var(--bg-dark, #0d0d0f);
+    border-width: 0 2.5px 2.5px 0;
+    transform: rotate(45deg);
 }
 
 .select-file-btn {

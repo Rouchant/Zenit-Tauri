@@ -158,7 +158,7 @@ const selectVideo = async (type) => {
                                     <label for="fixed-bg-checkbox" class="checkbox-container">
                                         <input id="fixed-bg-checkbox" name="fixedBackground" type="checkbox" v-model="editableSpecs.fixedBackground">
                                         <span class="checkmark"></span>
-                                        Fondo Fijo (Ticket)
+                                        Fondo Fijo
                                     </label>
                                 </div>
                             </div>
