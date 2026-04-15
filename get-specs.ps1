@@ -10,7 +10,12 @@ try {
     if ($procName -match "i[3579]-(\d+)") { $gen = "$($Matches[1])a Gen" }
     elseif ($procName -match "Core\s+[357]\s+(\d)") { $gen = "Serie $($Matches[1])" }
     elseif ($procName -match "Ultra") { $gen = "Core Ultra" }
-    elseif ($procName -match "Ryzen\s+[3579]\s+(\d)") { $gen = "$($Matches[1])000 Series" }
+    elseif ($procName -match "Ryzen.*AI") { $gen = "Ryzen AI" }
+    elseif ($procName -match "Ryzen\s+[3579]\s+(\d)(\d{2,3})") {
+        # 3 dígitos (ej: 270) → 200 Series | 4+ dígitos (ej: 7800) → 7000 Series
+        if ($Matches[2].Length -eq 2) { $gen = "$($Matches[1])00 Series" }
+        else { $gen = "$($Matches[1])000 Series" }
+    }
     elseif ($procName -match "N(\d{3})") { $gen = "N-Series" }
 
     $system = Get-CimInstance -ClassName Win32_ComputerSystem | Select-Object -First 1
