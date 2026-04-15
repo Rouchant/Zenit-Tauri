@@ -1,6 +1,6 @@
 {
   "name": "zenit-tauri",
-  "version": "1.0.3",
+  "version": "1.0.4",
   "description": "Showcase App for POS Laptops — Powered by Tauri",
   "author": "Zenit",
   "scripts": {
@@ -20,6 +20,9 @@
   "dependencies": {
     "@tauri-apps/api": "^2.0.0",
     "@tauri-apps/plugin-log": "^2.8.0",
+    "@tauri-apps/plugin-notification": "^2.3.3",
+    "@tauri-apps/plugin-store": "^2.4.2",
+    "@tauri-apps/plugin-window-state": "^2.4.1",
     "@vitejs/plugin-vue": "^6.0.5",
     "pinia": "^3.0.4",
     "vue": "^3.5.32"

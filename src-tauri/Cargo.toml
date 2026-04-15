@@ -1,6 +1,6 @@
 [package]
 name = "zenit"
-version = "1.0.3"
+version = "1.0.4"
 description = "Zenit - Showcase App for POS Laptops"
 authors = ["Zenit"]
 license = "ISC"
@@ -31,3 +31,6 @@ tokio = { version = "1.51.1", features = ["full"] }
 windows-sys = { version = "0.52", features = ["Win32_UI_WindowsAndMessaging", "Win32_UI_Input_KeyboardAndMouse", "Win32_System_Threading", "Win32_Foundation"] }
 mslnk = "0.1.8"
 tauri-plugin-single-instance = "2.0.0-rc.0"
+tauri-plugin-store = "2"
+tauri-plugin-window-state = "2"
+tauri-plugin-notification = "2"

@@ -5,6 +5,11 @@
  * El resto del código Vue no necesita saber que usa Tauri.
  */
 import { invoke } from '@tauri-apps/api/core';
+import {
+  isPermissionGranted,
+  requestPermission,
+  sendNotification,
+} from '@tauri-apps/plugin-notification';
 
 // Helper para evitar errores en el navegador normal
 const safeInvoke = async (command, args = {}) => {
@@ -26,8 +31,26 @@ export const tauriAPI = {
   checkFileExists: (filePath) => safeInvoke('check_file_exists', { filePath }),
   setupAutostart: () => safeInvoke('setup_autostart'),
   removeAutostart: () => safeInvoke('remove_autostart'),
-  saveConfig: (configData) => safeInvoke('save_config', { configData }),
-  loadConfig: () => safeInvoke('load_config'),
   quitApp: () => safeInvoke('quit_app'),
   setAlwaysOnTop: (onTop) => safeInvoke('set_always_on_top', { onTop }),
+};
+
+/**
+ * Envía una notificación nativa al usuario.
+ * Se asegura de que los permisos estén otorgados antes de enviar.
+ */
+export const notify = async (title, body) => {
+  if (!window.__TAURI_INTERNALS__) return;
+  try {
+    let granted = await isPermissionGranted();
+    if (!granted) {
+      const permission = await requestPermission();
+      granted = permission === 'granted';
+    }
+    if (granted) {
+      sendNotification({ title, body });
+    }
+  } catch (err) {
+    console.warn('[Notification] Error:', err);
+  }
 };

@@ -1,7 +1,7 @@
 <script setup>
 import { ref, reactive, onMounted } from 'vue';
 import { useSpecsStore } from '../../store/specs';
-import { tauriAPI } from '../../api/tauriApi';
+import { tauriAPI, notify } from '../../api/tauriApi';
 
 const emit = defineEmits(['close']);
 const store = useSpecsStore();
@@ -29,6 +29,7 @@ const save = () => {
     }
 
     store.saveCustom(editableSpecs);
+    notify('Zenit', 'Configuración guardada exitosamente ✓');
     emit('close');
 };
 
@@ -142,7 +143,7 @@ const selectVideo = async (type) => {
                                 <div class="input-group">
                                     <label for="store-select">Retail / Tienda</label>
                                     <select id="store-select" name="store" v-model="editableSpecs.store" class="custom-select">
-                                        <option value="none">Ninguna</option>
+                                        <option value="none">Otras</option>
                                         <option value="falabella">Falabella</option>
                                         <option value="paris">Paris</option>
                                         <option value="ripley">Ripley</option>

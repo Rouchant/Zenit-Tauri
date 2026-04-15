@@ -4,6 +4,7 @@ use std::process::Command;
 use tauri::{AppHandle, Manager, Runtime, WebviewWindow, LogicalPosition, LogicalSize};
 use mslnk::ShellLink;
 use tauri_plugin_dialog::DialogExt;
+use tauri_plugin_store::StoreExt;
 use std::sync::Arc;
 use tokio::sync::Mutex;
 use tauri::async_runtime::JoinHandle;
@@ -97,29 +98,8 @@ async fn get_system_specs(app: AppHandle) -> Result<serde_json::Value, String> {
     serde_json::from_str(json_str).map_err(|e| format!("Error parseando JSON de specs: {}", e))
 }
 
-/// Equivalente a: ipcMain.handle('save-config')
-#[tauri::command]
-async fn save_config(app: AppHandle, config_data: serde_json::Value) -> Result<(), String> {
-    let config_path = get_user_data_dir(&app).join("config.json");
-    let json = serde_json::to_string_pretty(&config_data)
-        .map_err(|e| format!("Error serializando config: {}", e))?;
-    fs::write(&config_path, json).map_err(|e| format!("Error guardando config: {}", e))
-}
-
-/// Equivalente a: ipcMain.handle('load-config')
-#[tauri::command]
-async fn load_config(app: AppHandle) -> Result<Option<serde_json::Value>, String> {
-    let config_path = get_user_data_dir(&app).join("config.json");
-    if config_path.exists() {
-        let data = fs::read_to_string(&config_path)
-            .map_err(|e| format!("Error leyendo config: {}", e))?;
-        let value: serde_json::Value = serde_json::from_str(&data)
-            .map_err(|e| format!("Error parseando config: {}", e))?;
-        Ok(Some(value))
-    } else {
-        Ok(None)
-    }
-}
+// save_config y load_config eliminados: reemplazados por tauri-plugin-store
+// El frontend ahora accede directamente al store via @tauri-apps/plugin-store
 
 /// Equivalente a: ipcMain.handle('select-video')
 /// Abre diálogo de selección de archivo de video
@@ -376,6 +356,8 @@ pub fn run() {
         .plugin(tauri_plugin_fs::init())
         .plugin(tauri_plugin_process::init())
         .plugin(tauri_plugin_shell::init())
+        .plugin(tauri_plugin_store::Builder::new().build())
+        .plugin(tauri_plugin_notification::init())
         .plugin(tauri_plugin_autostart::init(tauri_plugin_autostart::MacosLauncher::LaunchAgent, None))
         .plugin(tauri_plugin_single_instance::init(|app, _args, _cwd| {
             let _ = app.get_webview_window("main").expect("no main window").show();
@@ -398,6 +380,10 @@ pub fn run() {
             // Ejecutar ajustes de sistema al iniciar
             run_system_setup();
 
+            // Registrar window-state plugin (desktop only)
+            #[cfg(desktop)]
+            let _ = app.handle().plugin(tauri_plugin_window_state::Builder::default().build());
+
             // Registrar shortcuts kiosk (bloquear Alt+Tab, Windows Key, etc.)
             use tauri_plugin_global_shortcut::GlobalShortcutExt;
             let shortcuts_to_block: Vec<&str> = vec![
@@ -418,6 +404,22 @@ pub fn run() {
             let _ = fs::create_dir_all(&user_data);
             let _ = fs::create_dir_all(user_data.join("custom-videos"));
 
+            // ── Migración: config.json → tauri-plugin-store ─────────────────
+            let config_path = user_data.join("config.json");
+            if config_path.exists() {
+                if let Ok(data) = fs::read_to_string(&config_path) {
+                    if let Ok(value) = serde_json::from_str::<serde_json::Value>(&data) {
+                        if let Ok(store) = app.store("store.json") {
+                            store.set("specs", value);
+                            let _ = store.save();
+                            // Renombrar el config viejo para no volver a migrar
+                            let _ = fs::rename(&config_path, user_data.join("config.json.bak"));
+                            println!("[Zenit] Migración config.json → store.json completada");
+                        }
+                    }
+                }
+            }
+
             // Forzar inicio automático en Windows
             let _ = internal_setup_autostart(app.handle());
 
@@ -425,8 +427,6 @@ pub fn run() {
         })
         .invoke_handler(tauri::generate_handler![
             get_system_specs,
-            save_config,
-            load_config,
             select_video,
             save_custom_video,
             check_file_exists,

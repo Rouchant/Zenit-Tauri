@@ -26,6 +26,9 @@
     "shell:allow-spawn",
     "shell:allow-execute",
     "global-shortcut:default",
-    "autostart:default"
+    "autostart:default",
+    "store:default",
+    "window-state:default",
+    "notification:default"
   ]
 }

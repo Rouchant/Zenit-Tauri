@@ -1,56 +1,69 @@
 # 🚀 Zenit - Kiosk Framework (Tauri v2 Edition)
 
-![Version](https://img.shields.io/badge/version-1.0.1-blue.svg)
+![Zenit Logo](public/assets/logo.png)
+
+![Version](https://img.shields.io/badge/version-1.0.3-blue.svg)
 ![Tauri](https://img.shields.io/badge/framework-Tauri%20v2-FFC131.svg)
 ![Vue 3](https://img.shields.io/badge/frontend-Vue%203-42b883.svg)
 ![Vite](https://img.shields.io/badge/build-Vite%206-646cff.svg)
 ![Windows](https://img.shields.io/badge/OS-Windows%2010%2F11-0078D4.svg)
 
-Una solución de nivel empresarial para **Showcase Terminals**, diseñada específicamente para equipos de exhibición en puntos de venta (Retail). **Zenit** ha sido reconstruido desde cero utilizando **Tauri v2**, ofreciendo un rendimiento nativo superior, una seguridad mejorada y un consumo de recursos mínimo.
+---
+
+## 💡 ¿Alguna vez te ha pasado que en tu tienda de venta de computadores no encuentras una forma de mostrar de forma resumida el hardware de tu equipo?
+
+**Zenit lo hace automático.** 
+
+Zenit es una solución de nivel empresarial para **Showcase Terminals**, diseñada específicamente para equipos de exhibición en puntos de venta (Retail). Olvídate de configurar manualmente las specs de cada equipo; Zenit detecta el hardware y lo presenta de una forma visualmente impactante y profesional.
 
 ---
 
 ## ✨ Características Principales
 
-### 🛡️ Kiosk Lockdown & Security
-- **Anti-Focus Theft**: Implementación nativa en Rust que utiliza el `AttachThreadInput` hack y simulación de teclas de sistema (`Escape`) para asegurar que la aplicación mantenga siempre el foco, incluso ante overlays de Windows.
-- **Bloqueo de Atajos**: Inhabilitación de combinaciones de teclas críticas como `Alt+Tab`, `Win+D`, `Alt+F4` y `Win+L` mediante el plugin de shortcuts globales de Tauri.
-- **Auto-Restore**: Temporizador inteligente de 5 minutos que restaura la aplicación a pantalla completa si es minimizada por mantenimiento.
+### 🖥️ Detección de Hardware Inteligente
+Zenit utiliza un potente motor de telemetría basado en Rust y PowerShell para extraer y mostrar de forma resumida:
+- **Procesador (CPU)**: Identificación exacta (Intel Core Ultra, Ryzen 8000 series, etc.).
+- **Memoria RAM**: Capacidad y tipo.
+- **Gráficos (GPU)**: Detección de modelos integrados y dedicados.
+- **Almacenamiento**: Estado y velocidad.
 
-### 🛰️ Telemetría de Hardware Nativa
-- **PowerShell Bridge**: Integración profunda con el sistema para detectar especificaciones exactas (CPU Intel Ultra/Ryzen 8000, RAM, GPU) mediante scripts optimizados ejecutados en el backend.
-- **Detección de Pantalla**: Obtención de dimensiones físicas reales ignorando el escalado de DPI de Windows para una visualización pixel-perfect.
+### 🏷️ Personalización Comercial (E-Commerce Ready)
+Sabemos que el hardware no lo es todo. Por eso Zenit te permite:
+- **Precios Dinámicos**: Configura y muestra el precio actual del equipo directamente en pantalla.
+- **Gestión de SKU**: Incluye el código de producto para facilitar la búsqueda en bodega o sistema de ventas.
+- **Branding de Retail**: Opción única para incluir los logos de los principales retails de Chile (**Falabella, Paris, Ripley**) y las marcas líderes del mercado (**Asus, Acer, HP, Lenovo**, etc.).
 
-### 🎥 Gestión de Contenido Dinámico
-- **Custom Assets**: Los administradores pueden subir videos personalizados que se almacenan de forma persistente en `%APPDATA%/zenit/custom_videos/`.
-- **Protocolos Seguros**: Uso de las APIs de sistema de archivos de Tauri v2 para cargar contenido local pesado de forma eficiente sin comprometer la seguridad.
-
----
-
-## 🛠️ Requisitos del Desarrollo
-
-- **S.O.**: Windows 10/11 con **Webview2** instalado.
-- **Entorno**: [Node.js](https://nodejs.org/) v20+ y [Rust](https://www.rust-lang.org/) (Stable).
-- **Herramientas de Build**: Visual Studio Build Tools con soporte para C++.
+### 🎥 Experiencia Visual Inmersiva
+- **Videos Personalizables**: Cambia los videos de fondo y demostración según la marca o el modelo del equipo.
+- **Transiciones Fluídas**: Interfaz ultra rápida y suave gracias a Vue 3 y Vite.
+- **Detección de Pantalla**: Visualización pixel-perfect que ignora el escalado de Windows para asegurar que todo se vea nítido.
 
 ---
 
-## 🚀 Instalación y Ejecución
+## 🛠️ Seguridad de Nivel Kiosko
 
-### 1. Preparación
+- **Anti-Focus Theft**: Mantiene la aplicación siempre al frente, bloqueando intentos de minimizarla o solaparla.
+- **Bloqueo Total de Atajos**: Inhabilita `Alt+Tab`, `Win+D`, `Alt+F4`, etc.
+- **Auto-Restore**: Temporizador de inactividad que restaura la experiencia de usuario si el equipo es dejado en mantenimiento.
+
+---
+
+## 🚀 Instalación y Desarrollo
+
+### Requisitos
+- Windows 10/11 con **Webview2**.
+- [Node.js](https://nodejs.org/) v20+.
+- [Rust](https://www.rust-lang.org/) (Stable).
+
+### Comandos Rápidos
 ```powershell
+# Instalar dependencias
 npm install
-```
 
-### 2. Modo Desarrollo
-Ejecuta la interfaz de Vue y el backend de Tauri simultáneamente con HMR (Hot Module Replacement):
-```powershell
+# Modo Desarrollo (HMR)
 npm run tauri:dev
-```
 
-### 3. Compilación de Producción
-Genera un bundle optimizado y un instalador NSIS profesional:
-```powershell
+# Compilar para Producción (Crea instalador NSIS)
 npm run tauri:build
 ```
 
@@ -58,17 +71,16 @@ npm run tauri:build
 
 ## 📁 Estructura del Proyecto
 
-- **`src-tauri/`**: El "cerebro" en Rust. Gestiona ventanas, seguridad, PowerShell y APIs de sistema.
-- **`src/`**: Aplicación de frontend basada en Vue 3 y Pinia.
-- **`public/`**: Assets estáticos y recursos base.
-- **`dist_app/`**: Build de producción del frontend (consumido por Tauri).
-- **`*.ps1`**: Scripts de automatización y telemetría distribuidos como recursos externos.
+- **`src-tauri/`**: Backend en Rust (Seguridad, PowerShell Bridge, APIs de sistema).
+- **`src/`**: Aplicación Frontend (Vue 3, Pinia for State Management).
+- **`public/assets/logos/`**: Catálogo de logos de retail y marcas integrados.
+- **`*.ps1`**: Scripts de telemetría personalizados.
 
 ---
 
-## 🔒 Acceso Administrativo
-Para editar la configuración o cambiar los videos en modo exposición, utiliza el **Hotspot invisible** en la esquina superior derecha e introduce la clave maestra.
+## 🔑 Acceso Administrativo
+Ajusta los precios, SKU, videos y logos mediante el **panel oculto**. Para acceder, utiliza el **Hotspot invisible** en la esquina superior derecha e introduce la clave maestra de administrador.
 
 ---
 
-> **Zenit** es una evolución tecnológica que prioriza la estabilidad en entornos Retail 24/7. Construido con ❤️ por el equipo de **Zenit**.
+> **Zenit** no es solo un software de vitrina, es la herramienta de ventas definitiva para el retail tecnológico. Construido con ❤️ para entornos 24/7.

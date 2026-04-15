@@ -1,12 +1,15 @@
 import { defineStore } from 'pinia';
-import { reactive, ref, computed } from 'vue';
+import { ref, computed } from 'vue';
 import { tauriAPI } from '../api/tauriApi';
 import { convertFileSrc } from '@tauri-apps/api/core';
+import { LazyStore } from '@tauri-apps/plugin-store';
+
+// LazyStore: se carga sólo al primer acceso, persistente en disco
+const tauriStore = window.__TAURI_INTERNALS__ ? new LazyStore('store.json') : null;
 
 export const useSpecsStore = defineStore('specs', () => {
   const currentSpecs = ref({});
   const autoDetectedSpecs = ref({});
-  const customSpecs = ref(JSON.parse(localStorage.getItem('customSpecs')) || null);
   
   const isVideoMode = ref(false);
   const isModalOpen = ref(false);
@@ -15,7 +18,7 @@ export const useSpecsStore = defineStore('specs', () => {
   
   const CONFIG = {
     INACTIVITY_LIMIT: 120000,
-    PASSWORD: 'zenit',
+    PASSWORD: 'demo',
     THEMES: ['falabella', 'paris', 'ripley', 'default']
   };
 
@@ -65,9 +68,11 @@ export const useSpecsStore = defineStore('specs', () => {
       currentSpecs.value.sku = String(currentSpecs.value.sku).replace(/\D/g, '');
     }
     
-    // Multi-persistencia: LocalStorage + archivo JSON via Tauri
-    localStorage.setItem('customSpecs', JSON.stringify(currentSpecs.value));
-    await tauriAPI.saveConfig(currentSpecs.value);
+    // Persistir en tauri-plugin-store (reemplaza localStorage + config.json)
+    if (tauriStore) {
+      await tauriStore.set('specs', currentSpecs.value);
+      await tauriStore.save();
+    }
     
     updateTheme(specs.store);
   };
@@ -75,21 +80,22 @@ export const useSpecsStore = defineStore('specs', () => {
   const loadSpecs = async () => {
     isLoading.value = true;
     try {
-      // 1. Cargar backup físico (config.json en userData)
-      const backupSpecs = await tauriAPI.loadConfig().catch(() => null);
+      // 1. Cargar specs del store persistente (reemplaza config.json y localStorage)
+      let storedSpecs = null;
+      if (tauriStore) {
+        storedSpecs = await tauriStore.get('specs');
+      }
 
       // 2. Detectar hardware automáticamente via PowerShell
       autoDetectedSpecs.value = await tauriAPI.getSystemSpecs().catch(() => ({
-        brand: 'PC Generico', processor: 'Procesador Demo', ram: '8GB', storage: '256GB SSD',
-        gpu: 'Graficos', display: '1920x1080', os: 'Windows', cores: 4, threads: 8
+        brand: 'Computadora', processor: 'Microprocesador', ram: '8GB', storage: '512GB SSD',
+        gpu: 'Graficos integrados', display: '1920x1080', os: 'Windows', cores: 4, threads: 8
       }));
 
-      // 3. Merge: Auto-detectado < LocalStorage < Backup de archivo
-      const localS = JSON.parse(localStorage.getItem('customSpecs')) || {};
+      // 3. Merge: Auto-detectado < Store persistente
       currentSpecs.value = { 
         ...autoDetectedSpecs.value, 
-        ...localS,
-        ...(backupSpecs || {}) 
+        ...(storedSpecs || {}) 
       };
       
       // Default store a 'none' si no existe
@@ -128,7 +134,6 @@ export const useSpecsStore = defineStore('specs', () => {
   return {
     currentSpecs,
     autoDetectedSpecs,
-    customSpecs,
     isVideoMode,
     isModalOpen,
     isLoading,
