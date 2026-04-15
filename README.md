@@ -1,7 +1,10 @@
 # 🚀 Zenit - Kiosk Framework (Tauri v2 Edition)
 
+<<<<<<< HEAD
 ![Zenit Logo](public/assets/logo.png)
 
+=======
+>>>>>>> 94221c67d23295e39f69b443f1d76188ce0e2237
 ![Version](https://img.shields.io/badge/version-1.0.3-blue.svg)
 ![Tauri](https://img.shields.io/badge/framework-Tauri%20v2-FFC131.svg)
 ![Vue 3](https://img.shields.io/badge/frontend-Vue%203-42b883.svg)
@@ -78,8 +81,13 @@ npm run tauri:build
 
 ---
 
+<<<<<<< HEAD
 ## 🔑 Acceso Administrativo
 Ajusta los precios, SKU, videos y logos mediante el **panel oculto**. Para acceder, utiliza el **Hotspot invisible** en la esquina superior derecha e introduce la clave maestra de administrador.
+=======
+## 🔒 Acceso Administrativo
+Para editar la configuración o cambiar los videos en modo exposición, utiliza el **Hotspot invisible** en la esquina superior derecha e introduce la clave maestra "zenit", Hotspot en la parte inferior derecha para cerrar Zenit.
+>>>>>>> 94221c67d23295e39f69b443f1d76188ce0e2237
 
 ---
 
