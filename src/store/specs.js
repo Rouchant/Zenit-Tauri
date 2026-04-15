@@ -49,8 +49,19 @@ export const useSpecsStore = defineStore('specs', () => {
       const intelMatch = n.match(/i[3579]-(\d{1,2})/);
       if (intelMatch) return intelMatch[1] + 'ª Gen';
       
-      const amdMatch = n.match(/ryzen\s+[3579]\s+(\d)/);
-      if (amdMatch) return amdMatch[1] + '000 Series';
+      // AMD Ryzen AI (ej: Ryzen AI 5 340, Ryzen AI 9 HX 370)
+      if (n.includes('ryzen') && n.includes('ai')) return 'Ryzen AI';
+
+      // AMD Ryzen clásico: 4+ dígitos = X000 Series, 3 dígitos = X00 Series
+      const amdMatch = n.match(/ryzen\s+[3579]\s+(\d)(\d{2,3})/);
+      if (amdMatch) {
+        const firstDigit = amdMatch[1];
+        const rest = amdMatch[2];
+        // 3 dígitos total (ej: 270) → 200 Series | 4+ dígitos (ej: 7800) → 7000 Series
+        return rest.length === 2
+          ? firstDigit + '00 Series'
+          : firstDigit + '000 Series';
+      }
 
       if (n.match(/n\d{3}/)) return 'N-Series';
       return '';
