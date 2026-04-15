@@ -67,6 +67,14 @@ npm run tauri:dev
 npm run tauri:build
 ```
 
+### 🔄 Releases automáticos con GitHub Actions
+- El workflow `.github/workflows/auto-release.yml` genera un release automáticamente al hacer push a `main` cuando se actualiza la versión.
+- Archivos monitoreados para disparar release:
+  - `package.json`
+  - `src-tauri/tauri.conf.json`
+  - `src-tauri/Cargo.toml`
+- El tag se crea como `v<version>` y solo se publica si aún no existe.
+
 ---
 
 ## 📁 Estructura del Proyecto
