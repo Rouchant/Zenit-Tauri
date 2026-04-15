@@ -52,6 +52,7 @@
   },
   "bundle": {
     "active": true,
+    "publisher": "Rouchant",
     "targets": ["nsis"],
     "icon": [
       "icons/32x32.png",
