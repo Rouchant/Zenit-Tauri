@@ -1,6 +1,6 @@
 {
   "name": "zenit-tauri",
-  "version": "1.0.4",
+  "version": "1.0.5",
   "description": "Showcase App for POS Laptops — Powered by Tauri",
   "author": "Zenit",
   "scripts": {
