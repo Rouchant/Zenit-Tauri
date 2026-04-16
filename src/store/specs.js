@@ -125,6 +125,26 @@ export const useSpecsStore = defineStore('specs', () => {
         currentSpecs.value.fixedBackground = false;
       }
 
+      // Migrar path viejo a array si existe
+      if (currentSpecs.value.customVideoPath && !currentSpecs.value.customVideoPaths) {
+        currentSpecs.value.customVideoPaths = [currentSpecs.value.customVideoPath];
+        delete currentSpecs.value.customVideoPath;
+      }
+      if (!currentSpecs.value.customVideoPaths) {
+        currentSpecs.value.customVideoPaths = [
+          { name: '', path: '' },
+          { name: '', path: '' },
+          { name: '', path: '' }
+        ];
+      } else {
+        const paths = currentSpecs.value.customVideoPaths;
+        currentSpecs.value.customVideoPaths = [
+           typeof paths[0] === 'string' ? { name: 'Video 1', path: paths[0] } : (paths[0] || { name: '', path: '' }),
+           typeof paths[1] === 'string' ? { name: 'Video 2', path: paths[1] } : (paths[1] || { name: '', path: '' }),
+           typeof paths[2] === 'string' ? { name: 'Video 3', path: paths[2] } : (paths[2] || { name: '', path: '' })
+        ];
+      }
+
       updateTheme(currentSpecs.value.store);
     } catch (err) {
       console.error('Failed to load specs:', err);

@@ -126,7 +126,7 @@ async fn select_video<R: Runtime>(window: WebviewWindow<R>) -> Result<Option<Str
 /// Equivalente a: ipcMain.handle('save-custom-video')
 /// Copia el video a la carpeta userData/custom_videos
 #[tauri::command]
-async fn save_custom_video(app: AppHandle, source_path: String) -> Result<Option<String>, String> {
+async fn save_custom_video(app: AppHandle, source_path: String, custom_name: Option<String>) -> Result<Option<String>, String> {
     let src = PathBuf::from(&source_path);
     if !src.exists() {
         return Ok(None);
@@ -135,12 +135,49 @@ async fn save_custom_video(app: AppHandle, source_path: String) -> Result<Option
     let custom_dir = get_user_data_dir(&app).join("custom-videos");
     fs::create_dir_all(&custom_dir).map_err(|e| format!("Error creando directorio: {}", e))?;
 
-    let file_name = src.file_name().unwrap_or_default().to_string_lossy();
-    let new_name = format!("{}_{}", chrono_millis(), file_name);
+    let file_ext = src.extension().and_then(|s| s.to_str()).unwrap_or("mp4");
+
+    let new_name = if let Some(name) = custom_name.as_deref().filter(|n| !n.trim().is_empty()) {
+        let safe_name = name.replace(|c: char| !c.is_alphanumeric() && c != ' ' && c != '-', "_");
+        format!("{}_{}.{}", safe_name, chrono_millis() % 10000, file_ext) 
+    } else {
+        let file_name = src.file_name().unwrap_or_default().to_string_lossy();
+        format!("{}_{}", chrono_millis(), file_name)
+    };
+
     let dest = custom_dir.join(&new_name);
 
     fs::copy(&src, &dest).map_err(|e| format!("Error copiando video: {}", e))?;
     Ok(Some(dest.to_string_lossy().into_owned()))
+}
+
+#[tauri::command]
+async fn list_custom_videos(app: AppHandle) -> Result<Vec<String>, String> {
+    let custom_dir = get_user_data_dir(&app).join("custom-videos");
+    if !custom_dir.exists() {
+        return Ok(Vec::new());
+    }
+
+    let mut videos = Vec::new();
+    if let Ok(entries) = fs::read_dir(custom_dir) {
+        for entry in entries.flatten() {
+            if let Ok(file_type) = entry.file_type() {
+                if file_type.is_file() {
+                    videos.push(entry.path().to_string_lossy().into_owned());
+                }
+            }
+        }
+    }
+    Ok(videos)
+}
+
+#[tauri::command]
+async fn delete_custom_video(path: String) -> Result<(), String> {
+    let file = PathBuf::from(&path);
+    if file.exists() {
+        fs::remove_file(file).map_err(|e| format!("Error eliminando video: {}", e))?;
+    }
+    Ok(())
 }
 
 fn chrono_millis() -> u128 {
@@ -429,6 +466,8 @@ pub fn run() {
             get_system_specs,
             select_video,
             save_custom_video,
+            list_custom_videos,
+            delete_custom_video,
             check_file_exists,
             minimize_app,
             restore_app,

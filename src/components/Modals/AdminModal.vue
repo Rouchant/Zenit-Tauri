@@ -6,22 +6,48 @@ import { tauriAPI, notify } from '../../api/tauriApi';
 const emit = defineEmits(['close']);
 const store = useSpecsStore();
 
+const activeTab = ref('hardware');
+const savedVideos = ref([]);
+
+onMounted(async () => {
+    try {
+        const videos = await tauriAPI.listCustomVideos();
+        if (videos && Array.isArray(videos)) {
+            savedVideos.value = videos;
+        }
+    } catch(err) {
+        console.error("Error al cargar videos guardados", err);
+    }
+});
+
+// Asegurar que haya 3 slots iniciales al abrir, o mapear los presentes
+const initCustomVideoPaths = () => {
+    let base = store.currentSpecs.customVideoPaths || [];
+    let slots = [...base];
+    while(slots.length < 3) {
+        slots.push({ name: '', path: '' });
+    }
+    return slots.slice(0, 3);
+};
+
 const editableSpecs = reactive({ 
     videoType: 'default',
     landingVideoType: 'default',
-    ...store.currentSpecs 
+    ...store.currentSpecs,
+    customVideoPaths: initCustomVideoPaths()
 });
 
 const formatPath = (fullPath) => {
-    if (!fullPath) return 'Sin archivo';
+    if (!fullPath) return 'Sin archivo seleccionado';
     const fileName = fullPath.split(/[/\\]/).pop();
-    if (fileName.length <= 15) return fileName;
-    return fileName.substring(0, 12) + '...';
+    if (fileName.length <= 25) return fileName;
+    return fileName.substring(0, 22) + '...';
 };
 
 const save = () => {
-    // Validación de seguridad: si seleccionó personalizado pero no hay ruta, volver a default
-    if (editableSpecs.videoType === 'custom' && !editableSpecs.customVideoPath) {
+    // Si la lista no tiene ningun video con path e intentan guardar "custom", se devuelve a default
+    const hasAnyCustomVideo = editableSpecs.customVideoPaths && editableSpecs.customVideoPaths.some(v => v.path);
+    if (editableSpecs.videoType === 'custom' && !hasAnyCustomVideo) {
         editableSpecs.videoType = 'default';
     }
     if (editableSpecs.landingVideoType === 'custom' && !editableSpecs.customLandingVideoPath) {
@@ -37,218 +63,304 @@ const restoreField = (field) => {
     editableSpecs[field] = store.autoDetectedSpecs[field] || '';
 };
 
-const selectVideo = async (type) => {
+const selectVideo = async (type, index = null) => {
+    // Validar nombre obligatorio antes de seleccionar archivo
+    if (type === 'inactivity' && index !== null) {
+        if (!editableSpecs.customVideoPaths[index].name || editableSpecs.customVideoPaths[index].name.trim() === '') {
+            notify('Zenit', 'Por favor, asigna un "Nombre de Referencia" antes de buscar en PC.');
+            return;
+        }
+    }
+
     // Asegurar que el diálogo nativo pueda aparecer sobre la ventana kiosk
     await tauriAPI.setAlwaysOnTop(false);
     const path = await tauriAPI.selectVideo();
     if (path) {
-        const safePath = await tauriAPI.saveCustomVideo(path);
+        let customName = null;
+        if (type === 'inactivity' && index !== null) {
+            customName = editableSpecs.customVideoPaths[index].name;
+        }
+        
+        const safePath = await tauriAPI.saveCustomVideo(path, customName);
         if (safePath) {
-            if (type === 'inactivity') {
-                editableSpecs.customVideoPath = safePath;
+            if (type === 'inactivity' && index !== null) {
+                editableSpecs.customVideoPaths[index].path = safePath;
                 editableSpecs.videoType = 'custom';
-            } else {
+                
+                // Actualizar la lista de videos guardados (Bóveda)
+                const videos = await tauriAPI.listCustomVideos();
+                if (videos) savedVideos.value = videos;
+
+            } else if (type === 'landing') {
                 editableSpecs.customLandingVideoPath = safePath;
                 editableSpecs.landingVideoType = 'custom';
             }
         }
     }
 };
+
+const removeVideo = (index) => {
+    editableSpecs.customVideoPaths[index].path = '';
+};
+
+const deleteSavedVideo = async (path) => {
+    if (confirm(`¿Seguro que deseas eliminar este video de la bóveda permanentemente?\n\nArchivo: ${formatPath(path)}`)) {
+        await tauriAPI.deleteCustomVideo(path);
+        
+        // Actualizar bóveda
+        const videos = await tauriAPI.listCustomVideos();
+        savedVideos.value = videos || [];
+        
+        // Desvincular si algún slot lo estaba usando
+        editableSpecs.customVideoPaths.forEach((slot, idx) => {
+            if (slot.path === path) {
+                removeVideo(idx);
+            }
+        });
+        
+        notify('Zenit', 'Video eliminado del disco exitosamente.');
+    }
+};
 </script>
 
 <template>
   <div id="custom-modal" class="modal active">
-    <div class="modal-content wide-modal">
-        <div class="modal-header-main">
+    <div class="modal-content" style="max-width: 950px; height: 90vh;">
+        <div class="modal-header-main" style="margin-bottom: 20px;">
             <div class="header-title-row">
                 <h2>Personalizar Zenit</h2>
             </div>
+            
+            <div class="tabs-menu" style="margin-top: 20px;">
+               <button class="tab-btn" :class="{ active: activeTab === 'hardware' }" @click="activeTab = 'hardware'">Hardware</button>
+               <button class="tab-btn" :class="{ active: activeTab === 'visual' }" @click="activeTab = 'visual'">Visual (Videos y Fondos)</button>
+               <button class="tab-btn" :class="{ active: activeTab === 'precios' }" @click="activeTab = 'precios'">Precios</button>
+            </div>
         </div>
 
-        <div class="modal-body-scroll">
-            <div class="settings-grid">
-                <!-- Column 1: Hardware -->
-                <div class="modal-pane-left">
-                    <section class="settings-section">
-                        <h3 class="section-title">Configuración de Hardware</h3>
-                        <div class="hardware-grid">
-                            <div class="input-group">
-                                <label for="brand-input">Modelo</label>
+        <div class="modal-body-scroll" style="padding-right: 15px;">
+            
+            <!-- CONTENIDO TAB HARDWARE -->
+            <div v-if="activeTab === 'hardware'" class="tab-content">
+                <section class="settings-section">
+                    <div class="hardware-grid">
+                        <div class="input-group">
+                            <label for="brand-input">Modelo</label>
                             <div class="input-with-action">
-                                    <input id="brand-input" name="brand" type="text" v-model="editableSpecs.brand">
-                                    <button class="restore-btn" @click="restoreField('brand')" title="Restaurar">↺</button>
-                                </div>
-                            </div>
-                            <div class="input-group">
-                                <label for="sku-input">SKU</label>
-                                <div class="input-with-action">
-                                    <input 
-                                        id="sku-input" 
-                                        name="sku" 
-                                        type="text" 
-                                        v-model="editableSpecs.sku" 
-                                        placeholder="inserte SKU"
-                                        @input="editableSpecs.sku = editableSpecs.sku.replace(/\D/g, '')"
-                                    >
-                                </div>
-                            </div>
-                            <div class="input-group">
-                                <label for="processor-input">Procesador</label>
-                                <div class="input-with-action">
-                                    <input id="processor-input" name="processor" type="text" v-model="editableSpecs.processor">
-                                    <button class="restore-btn" @click="restoreField('processor')" title="Restaurar">↺</button>
-                                </div>
-                            </div>
-                            <div class="input-group">
-                                <label for="ram-input">RAM (Capacidad)</label>
-                                <div class="input-with-action">
-                                    <input id="ram-input" name="ram" type="text" v-model="editableSpecs.ram">
-                                    <button class="restore-btn" @click="restoreField('ram')" title="Restaurar">↺</button>
-                                </div>
-                            </div>
-                            <div class="input-group">
-                                <label for="ram-type-input">Tipo RAM (DDR4/5)</label>
-                                <div class="input-with-action">
-                                    <input id="ram-type-input" name="ramType" type="text" v-model="editableSpecs.ramType">
-                                    <button class="restore-btn" @click="restoreField('ramType')" title="Restaurar">↺</button>
-                                </div>
-                            </div>
-                            <div class="input-group">
-                                <label for="storage-input">Almacenamiento</label>
-                                <div class="input-with-action">
-                                    <input id="storage-input" name="storage" type="text" v-model="editableSpecs.storage">
-                                    <button class="restore-btn" @click="restoreField('storage')" title="Restaurar">↺</button>
-                                </div>
-                            </div>
-                            <div class="input-group">
-                                <label for="gpu-input">Gráficos</label>
-                                <div class="input-with-action">
-                                    <input id="gpu-input" name="gpu" type="text" v-model="editableSpecs.gpu">
-                                    <button class="restore-btn" @click="restoreField('gpu')" title="Restaurar">↺</button>
-                                </div>
-                            </div>
-                            <div class="input-group">
-                                <label for="display-input">Pantalla</label>
-                                <div class="input-with-action">
-                                    <input id="display-input" name="display" type="text" v-model="editableSpecs.display">
-                                    <button class="restore-btn" @click="restoreField('display')" title="Restaurar">↺</button>
-                                </div>
-                            </div>
-                            <div class="input-group">
-                                <label for="os-input">Sistema Operativo</label>
-                                <div class="input-with-action">
-                                    <input id="os-input" name="os" type="text" v-model="editableSpecs.os">
-                                    <button class="restore-btn" @click="restoreField('os')" title="Restaurar">↺</button>
-                                </div>
-                            </div>
-                             <div class="store-config">
-                                <div class="input-group">
-                                    <label for="store-select">Retail / Tienda</label>
-                                    <select id="store-select" name="store" v-model="editableSpecs.store" class="custom-select">
-                                        <option value="none">Otras</option>
-                                        <option value="falabella">Falabella</option>
-                                        <option value="paris">Paris</option>
-                                        <option value="ripley">Ripley</option>
-                                    </select>
-                                </div>
-                            </div>
-                            <div class="background-config">
-                                <label>Configurar fondo</label>
-                                <div class="input-group checkbox-group fixed-bg-group">
-                                    <label for="fixed-bg-checkbox" class="checkbox-container">
-                                        <input id="fixed-bg-checkbox" name="fixedBackground" type="checkbox" v-model="editableSpecs.fixedBackground">
-                                        <span class="checkmark"></span>
-                                        Fondo Fijo
-                                    </label>
-                                </div>
+                                <input id="brand-input" name="brand" type="text" v-model="editableSpecs.brand">
+                                <button class="restore-btn" @click="restoreField('brand')" title="Restaurar">↺</button>
                             </div>
                         </div>
-                    </section>
-                </div>
-
-                <div class="modal-pane-divider"></div>
-
-                <!-- Column 2: Video & Prices -->
-                <div class="modal-pane-right">
-                  <section class="settings-section">
-                        <h3 class="section-title">Contenido Visual</h3>
-                        <div class="video-settings-grid">
-                            <div class="video-section">
-                                <h4 class="video-section-title">Video Inactividad (Ad)</h4>
-                                <div class="video-control-row">
-                                    <div class="video-control-toggle">
-                                        <label class="video-option-pill" for="video-type-default">
-                                            <input id="video-type-default" name="videoType" type="radio" value="default" v-model="editableSpecs.videoType">
-                                            <span class="pill-label">Original</span>
-                                        </label>
-                                        <label class="video-option-pill" for="video-type-custom">
-                                            <input id="video-type-custom" name="videoType" type="radio" value="custom" v-model="editableSpecs.videoType">
-                                            <span class="pill-label">Personalizado</span>
-                                        </label>
-                                    </div>
-                                    <button 
-                                        v-if="editableSpecs.videoType === 'custom'" 
-                                        class="btn btn-secondary btn-mini select-file-btn" 
-                                        @click="selectVideo('inactivity')"
-                                    >Subir Video</button>
-                                </div>
-                                <div class="video-path-badge">
-                                    {{ editableSpecs.videoType === 'custom' ? formatPath(editableSpecs.customVideoPath) : (store.isAsus ? 'promo-asus.mp4' : 'promo-generic.mp4') }}
-                                </div>
-                            </div>
-
-                            <div class="video-section">
-                                <h4 class="video-section-title">Video Home (App)</h4>
-                                <div class="video-control-row">
-                                    <div class="video-control-toggle">
-                                        <label class="video-option-pill" for="landing-video-type-default">
-                                            <input id="landing-video-type-default" name="landingVideoType" type="radio" value="default" v-model="editableSpecs.landingVideoType">
-                                            <span class="pill-label">Original</span>
-                                        </label>
-                                        <label class="video-option-pill" for="landing-video-type-custom">
-                                            <input id="landing-video-type-custom" name="landingVideoType" type="radio" value="custom" v-model="editableSpecs.landingVideoType">
-                                            <span class="pill-label">Personalizado</span>
-                                        </label>
-                                    </div>
-                                    <button 
-                                        v-if="editableSpecs.landingVideoType === 'custom'" 
-                                        class="btn btn-secondary btn-mini select-file-btn" 
-                                        @click="selectVideo('landing')"
-                                    >Subir Video</button>
-                                </div>
-                                <div class="video-path-badge">
-                                    {{ editableSpecs.landingVideoType === 'custom' ? formatPath(editableSpecs.customLandingVideoPath) : (store.isAsus ? 'landing-asus.mp4' : 'landing-generic.mp4') }}
-                                </div>
+                        <div class="input-group">
+                            <label for="sku-input">SKU</label>
+                            <div class="input-with-action">
+                                <input 
+                                    id="sku-input" 
+                                    name="sku" 
+                                    type="text" 
+                                    v-model="editableSpecs.sku" 
+                                    placeholder="inserte SKU"
+                                    @input="editableSpecs.sku = editableSpecs.sku.replace(/\D/g, '')"
+                                >
                             </div>
                         </div>
-                    </section>
+                        <div class="input-group">
+                            <label for="processor-input">Procesador</label>
+                            <div class="input-with-action">
+                                <input id="processor-input" name="processor" type="text" v-model="editableSpecs.processor">
+                                <button class="restore-btn" @click="restoreField('processor')" title="Restaurar">↺</button>
+                            </div>
+                        </div>
+                        <div class="input-group">
+                            <label for="ram-input">RAM (Capacidad)</label>
+                            <div class="input-with-action">
+                                <input id="ram-input" name="ram" type="text" v-model="editableSpecs.ram">
+                                <button class="restore-btn" @click="restoreField('ram')" title="Restaurar">↺</button>
+                            </div>
+                        </div>
+                        <div class="input-group">
+                            <label for="ram-type-input">Tipo RAM (DDR4/5)</label>
+                            <div class="input-with-action">
+                                <input id="ram-type-input" name="ramType" type="text" v-model="editableSpecs.ramType">
+                                <button class="restore-btn" @click="restoreField('ramType')" title="Restaurar">↺</button>
+                            </div>
+                        </div>
+                        <div class="input-group">
+                            <label for="storage-input">Almacenamiento</label>
+                            <div class="input-with-action">
+                                <input id="storage-input" name="storage" type="text" v-model="editableSpecs.storage">
+                                <button class="restore-btn" @click="restoreField('storage')" title="Restaurar">↺</button>
+                            </div>
+                        </div>
+                        <div class="input-group">
+                            <label for="gpu-input">Gráficos</label>
+                            <div class="input-with-action">
+                                <input id="gpu-input" name="gpu" type="text" v-model="editableSpecs.gpu">
+                                <button class="restore-btn" @click="restoreField('gpu')" title="Restaurar">↺</button>
+                            </div>
+                        </div>
+                        <div class="input-group">
+                            <label for="display-input">Pantalla</label>
+                            <div class="input-with-action">
+                                <input id="display-input" name="display" type="text" v-model="editableSpecs.display">
+                                <button class="restore-btn" @click="restoreField('display')" title="Restaurar">↺</button>
+                            </div>
+                        </div>
+                        <div class="input-group">
+                            <label for="os-input">Sistema Operativo</label>
+                            <div class="input-with-action">
+                                <input id="os-input" name="os" type="text" v-model="editableSpecs.os">
+                                <button class="restore-btn" @click="restoreField('os')" title="Restaurar">↺</button>
+                            </div>
+                        </div>
+                    </div>
+                </section>
+            </div>
 
-                    <section class="settings-section mt-lg">
-                        <h3 class="section-title">Configuración de Precios</h3>
-                        <div class="price-settings-zone">
-                            <div class="input-group">
-                                <label for="price-primary">Precio Primario (Oferta)</label>
-                                <div class="input-with-action">
-                                    <input id="price-primary" name="pricePrimary" type="text" v-model="editableSpecs.pricePrimary" placeholder="Ej: $899.990">
-                                </div>
-                            </div>
-                            <div class="input-group">
-                                <label for="price-secondary">Precio Secundario (Normal)</label>
-                                <div class="input-with-action">
-                                    <input id="price-secondary" name="priceSecondary" type="text" v-model="editableSpecs.priceSecondary" placeholder="Ej: $1.099.990">
-                                </div>
-                            </div>
-                            <div class="input-group checkbox-group no-label">
-                                <label for="price-strike-checkbox" class="checkbox-container">
-                                    <input id="price-strike-checkbox" name="priceStrike" type="checkbox" v-model="editableSpecs.priceStrike">
+            <!-- CONTENIDO TAB VISUAL -->
+            <div v-if="activeTab === 'visual'" class="tab-content visual-tab-grid">
+                
+                <section class="settings-section">
+                    <h3 class="section-title">Marca y Entorno Relacional</h3>
+                    <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 30px;">
+                        <div class="store-config input-group">
+                            <label for="store-select">Retail / Tienda</label>
+                            <select id="store-select" name="store" v-model="editableSpecs.store" class="custom-select" style="max-width: 350px;">
+                                <option value="none">Otras</option>
+                                <option value="falabella">Falabella</option>
+                                <option value="paris">Paris</option>
+                                <option value="ripley">Ripley</option>
+                            </select>
+                        </div>
+                        <div class="background-config">
+                            <label>Configuración de Pantalla</label>
+                            <div class="input-group checkbox-group fixed-bg-group" style="padding-top: 5px;">
+                                <label for="fixed-bg-checkbox" class="checkbox-container">
+                                    <input id="fixed-bg-checkbox" name="fixedBackground" type="checkbox" v-model="editableSpecs.fixedBackground">
                                     <span class="checkmark"></span>
-                                    Tachar precio secundario
+                                    Fondo Fijo Uniforme (Imagen Estática)
                                 </label>
                             </div>
                         </div>
-                    </section>
-                </div>
+                    </div>
+                </section>
+
+                <section class="settings-section mt-lg">
+                    <h3 class="section-title">Video Home (App)</h3>
+                    <div class="video-section">
+                        <div class="video-control-row">
+                            <div class="video-control-toggle">
+                                <label class="video-option-pill" for="landing-video-type-default">
+                                    <input id="landing-video-type-default" name="landingVideoType" type="radio" value="default" v-model="editableSpecs.landingVideoType">
+                                    <span class="pill-label">Original</span>
+                                </label>
+                                <label class="video-option-pill" for="landing-video-type-custom">
+                                    <input id="landing-video-type-custom" name="landingVideoType" type="radio" value="custom" v-model="editableSpecs.landingVideoType">
+                                    <span class="pill-label">Personalizado</span>
+                                </label>
+                            </div>
+                            <button 
+                                v-if="editableSpecs.landingVideoType === 'custom'" 
+                                class="btn btn-secondary btn-mini select-file-btn" 
+                                @click="selectVideo('landing')"
+                            >Subir Video</button>
+                        </div>
+                        <div class="video-path-badge" style="margin-top: 10px; max-width: 600px;">
+                            {{ editableSpecs.landingVideoType === 'custom' ? formatPath(editableSpecs.customLandingVideoPath) : (store.isAsus ? 'landing-asus.mp4' : 'landing-generic.mp4') }}
+                        </div>
+                    </div>
+                </section>
+
+                <section class="settings-section mt-lg">
+                    <h3 class="section-title">Videos de Inactividad (Ad Múltiple)</h3>
+                    
+                    <div style="display: flex; align-items: center; gap: 15px; margin-bottom: 25px;">
+                        <div class="video-control-toggle" style="display: inline-flex;">
+                            <label class="video-option-pill" for="video-type-default">
+                                <input id="video-type-default" name="videoType" type="radio" value="default" v-model="editableSpecs.videoType">
+                                <span class="pill-label">Original</span>
+                            </label>
+                            <label class="video-option-pill" for="video-type-custom">
+                                <input id="video-type-custom" name="videoType" type="radio" value="custom" v-model="editableSpecs.videoType">
+                                <span class="pill-label">Personalizado (Carrusel Opcional)</span>
+                            </label>
+                        </div>
+                        <span v-if="editableSpecs.videoType === 'custom'" style="color: var(--primary, #ab47bc); font-size: 0.85rem; font-style: italic; opacity: 0.8;">
+                            👉 Primero asigna el nombre, luego busca el video
+                        </span>
+                    </div>
+
+                    <div v-if="editableSpecs.videoType === 'custom'" class="video-slots-container">
+                        <div class="video-slot" v-for="(slot, index) in editableSpecs.customVideoPaths" :key="index">
+                            <div class="video-slot-header">SLOT DE VIDEO {{ index + 1 }}</div>
+                            <div class="video-slot-body">
+                                
+                                <div class="input-group no-margin">
+                                    <label>Nombre de Referencia</label>
+                                    <div class="input-with-action">
+                                        <input type="text" v-model="slot.name" placeholder="Inserta el nombre del video" style="flex: 1;">
+                                    </div>
+                                </div>
+                                
+                                <div class="path-container" style="display: flex; gap: 10px; align-items: center; justify-content: flex-start; flex-wrap: wrap;">
+                                    
+                                    <select v-if="savedVideos.length > 0" class="custom-select" v-model="slot.path" style="flex: 1; max-width: 320px; font-size: 0.85rem; margin: 0; padding: 10px 35px 10px 10px;">
+                                        <option value="">-- Bóveda (Subidos previamente) --</option>
+                                        <option v-for="v in savedVideos" :key="v" :value="v">{{ formatPath(v) }}</option>
+                                    </select>
+                                    <div v-else class="video-path-badge" style="flex: 1; max-width: 320px; margin: 0; padding: 12px; font-size: 0.9rem;">
+                                        {{ formatPath(slot.path) }}
+                                    </div>
+                                    
+                                    <!-- Badge showing current active file visually -->
+                                    <div v-if="savedVideos.length > 0 && slot.path" class="video-path-badge" style="background: rgba(0, 242, 255, 0.1); border-color: rgba(0, 242, 255, 0.3); padding: 10px; flex-shrink: 0; max-width: 150px;" :title="slot.path">
+                                        👉 {{ formatPath(slot.path) }}
+                                    </div>
+
+                                    <button class="btn btn-secondary select-file-btn" @click="selectVideo('inactivity', index)">Buscar PC Local</button>
+                                    
+                                    <div style="display: flex; gap: 5px;">
+                                        <button v-if="slot.path" class="btn btn-danger select-file-btn danger-btn" title="Quitar del slot" @click="removeVideo(index)">X</button>
+                                        <button v-if="slot.path && savedVideos.includes(slot.path)" class="btn btn-danger select-file-btn danger-btn" title="Eliminar permanentemente de la Bóveda" style="padding: 0 10px !important; width: auto;" @click="deleteSavedVideo(slot.path)">🗑️</button>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                    <div v-else class="video-path-badge" style="max-width: 600px;">
+                        {{ store.isAsus ? 'promo-asus.mp4' : 'promo-generic.mp4' }}
+                    </div>
+
+                </section>
             </div>
+
+            <!-- CONTENIDO TAB PRECIOS -->
+            <div v-if="activeTab === 'precios'" class="tab-content">
+                <section class="settings-section">
+                    <div class="price-settings-zone">
+                        <div class="input-group">
+                            <label for="price-primary">Precio Primario (Oferta Principal)</label>
+                            <div class="input-with-action">
+                                <input id="price-primary" name="pricePrimary" type="text" v-model="editableSpecs.pricePrimary" placeholder="Ej: $899.990">
+                            </div>
+                        </div>
+                        <div class="input-group">
+                            <label for="price-secondary">Precio Secundario (Normal)</label>
+                            <div class="input-with-action">
+                                <input id="price-secondary" name="priceSecondary" type="text" v-model="editableSpecs.priceSecondary" placeholder="Ej: $1.099.990">
+                            </div>
+                        </div>
+                        <div class="input-group checkbox-group no-label" style="margin-top: 25px;">
+                            <label for="price-strike-checkbox" class="checkbox-container">
+                                <input id="price-strike-checkbox" name="priceStrike" type="checkbox" v-model="editableSpecs.priceStrike">
+                                <span class="checkmark"></span>
+                                Tachar el precio secundario visualmente
+                            </label>
+                        </div>
+                    </div>
+                </section>
+            </div>
+
         </div>
 
         <div class="modal-actions">
@@ -258,3 +370,100 @@ const selectVideo = async (type) => {
     </div>
   </div>
 </template>
+
+<style scoped>
+.tabs-menu {
+  display: flex;
+  gap: 15px;
+  border-bottom: 2px solid rgba(255, 255, 255, 0.05);
+}
+.tab-btn {
+  background: transparent;
+  color: var(--text-muted, #888);
+  border: none;
+  font-size: 1.05rem;
+  font-weight: 600;
+  padding: 12px 25px;
+  cursor: pointer;
+  position: relative;
+  transition: color 0.3s ease;
+}
+.tab-btn:hover {
+  color: white;
+}
+.tab-btn.active {
+  color: var(--primary);
+}
+.tab-btn.active::after {
+  content: "";
+  position: absolute;
+  bottom: -2px;
+  left: 0;
+  width: 100%;
+  height: 2px;
+  background-color: var(--primary);
+  border-radius: 2px;
+}
+.tab-content {
+  width: 100%;
+  animation: fadeIn 0.3s ease;
+}
+
+@keyframes fadeIn {
+  from { opacity: 0; transform: translateY(5px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+
+.video-slots-container {
+    display: flex;
+    flex-direction: column;
+    gap: 20px;
+}
+
+.video-slot {
+  background: rgba(255, 255, 255, 0.02);
+  border: 1px solid rgba(255, 255, 255, 0.05);
+  border-radius: 16px;
+  padding: 20px;
+}
+.video-slot-header {
+  font-size: 0.85rem;
+  color: var(--primary);
+  margin-bottom: 15px;
+  font-weight: 700;
+  letter-spacing: 1px;
+}
+.video-slot-body {
+  display: flex;
+  flex-direction: column;
+  gap: 15px;
+}
+
+.no-margin {
+    margin: 0 !important;
+}
+
+.path-container {
+  display: flex;
+  gap: 15px;
+  align-items: center;
+}
+.path-container .video-path-badge {
+    flex: 1;
+    margin: 0;
+    padding: 12px 15px;
+    font-size: 0.9rem;
+}
+
+.danger-btn {
+    background-color: transparent !important;
+    border: 1px solid rgba(244, 67, 54, 0.5) !important;
+    color: #f44336 !important;
+    width: auto !important;
+    padding: 0 20px !important;
+}
+.danger-btn:hover {
+    background-color: rgba(244, 67, 54, 0.1) !important;
+    border-color: #f44336 !important;
+}
+</style>

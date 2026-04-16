@@ -172,23 +172,8 @@ watch(showAdminModal, (isOpen) => {
 });
 
 const isInternalFocusHack = ref(false);
-const globalRestoreTimer = ref(null);
-
 let lastReset = 0;
 
-const autoRestore = () => {
-  console.log('Global Auto-Restore triggered');
-  // Close all modals
-  showPasswordModal.value = false;
-  showAdminModal.value = false;
-  showSpecsModal.value = false;
-  
-  // Ensure we return to info-view
-  if (store.isVideoMode) store.isVideoMode = false;
-  
-  // The system will naturally restart the 2-min screensaver timer
-  resetTimer();
-};
 
 const resetTimer = (event) => {
   // Ignorar eventos generados por el sistema durante el hack de foco
@@ -201,10 +186,6 @@ const resetTimer = (event) => {
 
   // 1. Reiniciar timer de Video (2 min)
   clearTimeout(inactivityTimer.value);
-
-  // 2. Reiniciar timer de Restauración Global (5 min)
-  clearTimeout(globalRestoreTimer.value);
-  globalRestoreTimer.value = setTimeout(autoRestore, 300000);
 
   if (store.isVideoMode) store.isVideoMode = false;
   

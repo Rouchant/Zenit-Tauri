@@ -5,12 +5,24 @@ import { useSpecsStore } from '../store/specs';
 const store = useSpecsStore();
 const videoRef = ref(null);
 
-const videoUrl = computed(() => {
-  if (store.currentSpecs.videoType === 'custom' && store.currentSpecs.customVideoPath) {
-    return store.getVideoUrl(store.currentSpecs.customVideoPath);
+const currentIndex = ref(0);
+
+const videoUrls = computed(() => {
+  if (store.currentSpecs.videoType === 'custom' && store.currentSpecs.customVideoPaths && store.currentSpecs.customVideoPaths.length > 0) {
+    const validPaths = store.currentSpecs.customVideoPaths.filter(v => v.path).map(v => store.getVideoUrl(v.path));
+    if (validPaths.length > 0) {
+      return validPaths;
+    }
   }
   // Use leading slash for root resolution
-  return store.isAsus ? '/assets/videos/promo-asus.mp4' : '/assets/videos/promo-generic.mp4';
+  return [store.isAsus ? '/assets/videos/promo-asus.mp4' : '/assets/videos/promo-generic.mp4'];
+});
+
+const currentUrl = computed(() => {
+  if (currentIndex.value >= videoUrls.value.length) {
+    currentIndex.value = 0;
+  }
+  return videoUrls.value[currentIndex.value];
 });
 
 const playVideo = () => {
@@ -27,9 +39,15 @@ const playVideo = () => {
   }
 };
 
-watch(videoUrl, () => {
+watch(currentUrl, () => {
   playVideo();
 });
+
+const onVideoEnded = () => {
+  if (videoUrls.value.length > 1) {
+    currentIndex.value = (currentIndex.value + 1) % videoUrls.value.length;
+  }
+};
 
 onMounted(() => {
   playVideo();
@@ -42,10 +60,11 @@ onMounted(() => {
       ref="videoRef"
       id="promo-video" 
       autoplay
-      loop 
+      :loop="videoUrls.length === 1"
       muted 
       playsinline
-      :src="videoUrl"
+      :src="currentUrl"
+      @ended="onVideoEnded"
     ></video>
     <div class="video-overlay">
       <div class="video-caption"></div>
