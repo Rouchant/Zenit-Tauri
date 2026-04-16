@@ -17,6 +17,10 @@ jobs:
   release:
     runs-on: windows-latest
 
+    outputs:
+      version: ${{ steps.release_meta.outputs.version }}
+      should_release: ${{ steps.release_meta.outputs.should_release }}
+
     steps:
       - name: Checkout repository
         uses: actions/checkout@v4
@@ -64,3 +68,18 @@ jobs:
       - name: Skip release when tag already exists
         if: steps.release_meta.outputs.should_release != 'true'
         run: echo "Release v${{ steps.release_meta.outputs.version }} ya existe. No se generará una nueva."
+
+  publish-winget:
+    needs: release
+    if: needs.release.outputs.should_release == 'true'
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Publish to WinGet
+        uses: vedantmgoyal9/winget-releaser@v2
+        with:
+          identifier: Rouchant.Zenit
+          version: ${{ needs.release.outputs.version }}
+          release-tag: v${{ needs.release.outputs.version }}
+          installers-regex: '_x64-setup\.exe$'
+          token: ${{ secrets.WINGET_GITHUB_TOKEN }}

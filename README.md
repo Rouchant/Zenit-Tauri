@@ -75,6 +75,25 @@ npm run tauri:build
   - `src-tauri/Cargo.toml`
 - El tag se crea como `v<version>` y solo se publica si aún no existe.
 
+### 📦 Publicación automática en WinGet
+Tras crear el GitHub Release, el job `publish-winget` abre automáticamente un Pull Request en [`microsoft/winget-pkgs`](https://github.com/microsoft/winget-pkgs) con los manifiestos actualizados para el paquete `Rouchant.Zenit`.
+
+**Flujo completo:**
+```
+push a main → build NSIS (.exe) → GitHub Release → PR automático a winget-pkgs
+```
+
+**Requisito: Secret `WINGET_GITHUB_TOKEN`**
+
+El job necesita un Personal Access Token (PAT) con permisos para abrir PRs en `microsoft/winget-pkgs`:
+
+1. Ve a [GitHub → Settings → Developer settings → Personal access tokens (classic)](https://github.com/settings/tokens).
+2. Crea un token con el scope **`public_repo`**.
+3. En el repositorio, ve a **Settings → Secrets and variables → Actions**.
+4. Agrega un nuevo secret llamado **`WINGET_GITHUB_TOKEN`** con el valor del PAT.
+
+> **Nota:** El `GITHUB_TOKEN` predeterminado de Actions **no** tiene permisos para crear PRs en repos externos, por eso se requiere el PAT.
+
 ---
 
 ## 📁 Estructura del Proyecto
