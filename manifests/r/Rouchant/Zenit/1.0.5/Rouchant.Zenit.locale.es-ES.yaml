@@ -2,7 +2,7 @@
 # yaml-language-server: $schema=https://aka.ms/winget-manifest.defaultLocale.1.12.0.schema.json
 
 PackageIdentifier: Rouchant.Zenit
-PackageVersion: 1.0.3
+PackageVersion: 1.0.5
 PackageLocale: es-ES
 Publisher: Rouchant
 PublisherUrl: https://github.com/Rouchant
@@ -20,7 +20,7 @@ Tags:
 - specs
 - tauri
 - asus
-ReleaseNotesUrl: https://github.com/Rouchant/Zenit-Tauri/releases/tag/1.0.3
+ReleaseNotesUrl: https://github.com/Rouchant/Zenit-Tauri/releases/tag/v1.0.5
 Documentations:
 - DocumentLabel: Wiki
   DocumentUrl: https://github.com/Rouchant/Zenit-Tauri/wiki
