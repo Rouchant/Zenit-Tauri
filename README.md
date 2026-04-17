@@ -2,7 +2,7 @@
 
 <img src="public/assets/logo.png" alt="Zenit Logo" width="200">
 
-![Version](https://img.shields.io/badge/version-1.0.6-blue.svg)
+![Version](https://img.shields.io/badge/version-1.0.7-blue.svg)
 ![Tauri](https://img.shields.io/badge/framework-Tauri%20v2-FFC131.svg)
 ![Vue 3](https://img.shields.io/badge/frontend-Vue%203-42b883.svg)
 ![Vite](https://img.shields.io/badge/build-Vite%206-646cff.svg)
