@@ -2,12 +2,12 @@
 # yaml-language-server: $schema=https://aka.ms/winget-manifest.installer.1.12.0.schema.json
 
 PackageIdentifier: Rouchant.Zenit
-PackageVersion: 1.0.5
+PackageVersion: 1.0.6
 InstallerType: nullsoft
 Installers:
 - Architecture: x64
-  InstallerUrl: https://github.com/Rouchant/Zenit-Tauri/releases/download/v1.0.5/Zenit_1.0.5_x64-setup.exe
-  InstallerSha256: 98CFEE8C07EA83CA6502D70CBA5DF6AD2FA626AE23FC98EC48AE0EDAB82174C0
+  InstallerUrl: https://github.com/Rouchant/Zenit-Tauri/releases/download/v1.0.6/Zenit_1.0.6_x64-setup.exe
+  InstallerSha256: 7202c79eaa3548eb1779287a60cfce93bfe9816f04fb82b02e81235e6936fff6
 ManifestType: installer
 ManifestVersion: 1.12.0
 ReleaseDate: 2026-04-16
