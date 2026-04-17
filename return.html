@@ -61,11 +61,11 @@
             background: linear-gradient(135deg, var(--secondary), var(--primary));
             color: #000;
             border: none;
-            padding: 16px 40px; /* Increased padding */
+            padding: 18px 32px;
             border-radius: 12px;
             font-weight: 800;
-            font-size: 1rem;
-            text-transform: uppercase; /* All caps */
+            font-size: 1.05rem;
+            text-transform: uppercase;
             cursor: pointer;
             transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
             -webkit-app-region: no-drag; 
@@ -73,7 +73,7 @@
             display: flex;
             flex-direction: column;
             align-items: center;
-            gap: 8px;
+            gap: 10px;
             box-shadow: 0 4px 15px rgba(0,0,0,0.3);
             position: relative;
             z-index: 100;
@@ -85,6 +85,7 @@
         }
         .btn-icon {
             opacity: 0.9;
+            margin-top: 4px;
         }
         .btn-text {
             line-height: 1.2;
@@ -95,7 +96,7 @@
     <button id="restore-btn" class="return-btn">
         <span class="btn-text">Volver a características</span>
         <div class="btn-icon">
-            <svg xmlns="http://www.w3.org/2000/svg" width="36" height="36" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+            <svg xmlns="http://www.w3.org/2000/svg" width="38" height="38" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
                 <path d="M12 17v4"/>
                 <path d="M22 13v2a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h7"/>
                 <path d="M8 21h8"/>

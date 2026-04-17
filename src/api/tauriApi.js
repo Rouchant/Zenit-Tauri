@@ -30,6 +30,7 @@ export const tauriAPI = {
   saveCustomVideo: (sourcePath, customName = null) => safeInvoke('save_custom_video', { sourcePath, customName }),
   listCustomVideos: () => safeInvoke('list_custom_videos'),
   deleteCustomVideo: (path) => safeInvoke('delete_custom_video', { path }),
+  renameCustomVideo: (path, newName) => safeInvoke('rename_custom_video', { path, newName }),
   checkFileExists: (filePath) => safeInvoke('check_file_exists', { filePath }),
   setupAutostart: () => safeInvoke('setup_autostart'),
   removeAutostart: () => safeInvoke('remove_autostart'),

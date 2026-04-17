@@ -148,9 +148,14 @@
 }
 
 .custom-select {
+    position: relative;
     width: 100%;
-    padding: 12px 20px;
-    background: #202024;
+}
+
+.custom-select select {
+    width: 100%;
+    padding: 12px 40px 12px 20px;
+    background-color: #202024;
     border: 1px solid #303034;
     border-radius: 12px;
     color: white;
@@ -158,9 +163,26 @@
     cursor: pointer;
     outline: none;
     appearance: none;
-    background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='24' height='24' viewBox='0 0 24 24' fill='none' stroke='white' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='m6 9 6 6 6-6'/%3E%3C/svg%3E");
-    background-repeat: no-repeat;
-    background-position: right 15px center;
+    -webkit-appearance: none;
+}
+
+.custom-select::after {
+    content: "";
+    position: absolute;
+    right: 18px;
+    top: 50%;
+    width: 8px;
+    height: 8px;
+    border-right: 2px solid white;
+    border-bottom: 2px solid white;
+    transform: translateY(-70%) rotate(45deg);
+    pointer-events: none;
+    opacity: 0.8;
+}
+
+.custom-select select:hover {
+    border-color: var(--primary);
+    background-color: #2a2a2e;
 }
 
 .store-config {

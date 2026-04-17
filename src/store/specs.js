@@ -17,7 +17,7 @@ export const useSpecsStore = defineStore('specs', () => {
   const theme = ref('default');
   
   const CONFIG = {
-    INACTIVITY_LIMIT: 120000,
+    INACTIVITY_LIMIT: 180000,
     PASSWORD: 'demo',
     THEMES: ['falabella', 'paris', 'ripley', 'default']
   };
@@ -40,10 +40,10 @@ export const useSpecsStore = defineStore('specs', () => {
     };
 
     const inferGen = (name) => {
-      const n = (name || '').toLowerCase();
+      const n = (name || '').toLowerCase().replace(/\(r\)/g, '').replace(/\(tm\)/g, '');
       if (n.includes('ultra')) return 'Core Ultra';
       
-      const coreMatch = n.match(/core\s+[357]\s+(\d)/);
+      const coreMatch = n.match(/core\s+[3579]\s+(\d)/);
       if (coreMatch) return `Serie ${coreMatch[1]}`;
       
       const intelMatch = n.match(/i[3579]-(\d{1,2})/);

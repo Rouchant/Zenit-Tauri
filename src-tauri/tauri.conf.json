@@ -1,7 +1,7 @@
 {
   "$schema": "../node_modules/@tauri-apps/cli/config.schema.json",
   "productName": "Zenit",
-  "version": "1.0.5",
+  "version": "1.0.6",
   "identifier": "com.zenit.app",
   "build": {
     "frontendDist": "../dist_app",
@@ -30,8 +30,8 @@
         "label": "return",
         "title": "Zenit Return",
         "url": "/return.html",
-        "width": 440,
-        "height": 160,
+        "width": 320,
+        "height": 140,
         "resizable": false,
         "fullscreen": false,
         "decorations": false,

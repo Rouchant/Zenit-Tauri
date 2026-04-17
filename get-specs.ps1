@@ -4,11 +4,13 @@ $ErrorActionPreference = "SilentlyContinue"
 
 try {
     $proc = Get-CimInstance -ClassName Win32_Processor | Select-Object -First 1
-    $procName = $proc.Name.Trim()
+    $rawName = $proc.Name.Trim()
+    $procName = $rawName -replace "\(R\)", "" -replace "\(TM\)", "" -replace "\s+", " "
+    $procName = $procName.Trim()
 
     $gen = "Desconocida"
     if ($procName -match "i[3579]-(\d+)") { $gen = "$($Matches[1])a Gen" }
-    elseif ($procName -match "Core\s+[357]\s+(\d)") { $gen = "Serie $($Matches[1])" }
+    elseif ($procName -match "Core\s+[3579]\s+(\d)") { $gen = "Serie $($Matches[1])" }
     elseif ($procName -match "Ultra") { $gen = "Core Ultra" }
     elseif ($procName -match "Ryzen.*AI") { $gen = "Ryzen AI" }
     elseif ($procName -match "Ryzen\s+[3579]\s+(\d)(\d{2,3})") {
@@ -46,14 +48,22 @@ try {
     if (-not $video) { $video = $allVideos | Select-Object -First 1 }
     $gpu = $video.Name.Trim()
 
-    # Resolution detection
-    $h = $video.CurrentHorizontalResolution
-    $v = $video.CurrentVerticalResolution
-    
-    # Try more reliable way for native/current resolution
-    if ($video.VideoModeDescription -match "(\d{3,4})\s*x\s*(\d{3,4})") {
-        $h = [int]$Matches[1]
-        $v = [int]$Matches[2]
+    # Resolution detection via Monitor (Most reliable for Native/Max res)
+    $monitor = Get-CimInstance -Namespace root\wmi -ClassName WmiMonitorListedSupportedSourceModes -ErrorAction SilentlyContinue |
+        ForEach-Object {
+            $_.MonitorSourceModes | Select-Object HorizontalActivePixels, VerticalActivePixels
+        } | Sort-Object HorizontalActivePixels, VerticalActivePixels -Descending | Select-Object -First 1
+
+    if ($monitor -and $monitor.HorizontalActivePixels -and $monitor.VerticalActivePixels) {
+        $h = $monitor.HorizontalActivePixels
+        $v = $monitor.VerticalActivePixels
+    } else {
+        $h = $video.CurrentHorizontalResolution
+        $v = $video.CurrentVerticalResolution
+        if ($video.VideoModeDescription -match "(\d{3,4})\s*x\s*(\d{3,4})") {
+            $h = [int]$Matches[1]
+            $v = [int]$Matches[2]
+        }
     }
 
     $resName = switch ($h) {

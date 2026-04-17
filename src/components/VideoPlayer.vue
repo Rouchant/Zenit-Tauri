@@ -77,6 +77,7 @@ onMounted(() => {
   width: 100%;
   height: 100%;
   background: black;
+  cursor: none;
 }
 video {
   width: 100%;

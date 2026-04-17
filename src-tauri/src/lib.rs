@@ -123,6 +123,28 @@ async fn select_video<R: Runtime>(window: WebviewWindow<R>) -> Result<Option<Str
     }
 }
 
+#[derive(serde::Serialize, serde::Deserialize, Clone)]
+struct VideoMeta {
+    path: String,
+    name: String,
+}
+
+fn load_video_meta(app: &AppHandle) -> Vec<VideoMeta> {
+    let meta_path = get_user_data_dir(app).join("custom-videos").join("meta.json");
+    if let Ok(data) = fs::read_to_string(&meta_path) {
+        serde_json::from_str(&data).unwrap_or_default()
+    } else {
+        Vec::new()
+    }
+}
+
+fn save_video_meta(app: &AppHandle, meta: &Vec<VideoMeta>) {
+    let meta_path = get_user_data_dir(app).join("custom-videos").join("meta.json");
+    if let Ok(data) = serde_json::to_string_pretty(meta) {
+        let _ = fs::write(&meta_path, data);
+    }
+}
+
 /// Equivalente a: ipcMain.handle('save-custom-video')
 /// Copia el video a la carpeta userData/custom_videos
 #[tauri::command]
@@ -137,8 +159,10 @@ async fn save_custom_video(app: AppHandle, source_path: String, custom_name: Opt
 
     let file_ext = src.extension().and_then(|s| s.to_str()).unwrap_or("mp4");
 
-    let new_name = if let Some(name) = custom_name.as_deref().filter(|n| !n.trim().is_empty()) {
-        let safe_name = name.replace(|c: char| !c.is_alphanumeric() && c != ' ' && c != '-', "_");
+    let clean_name = if let Some(n) = &custom_name { n.clone() } else { src.file_stem().unwrap_or_default().to_string_lossy().into_owned() };
+    
+    let new_name = if custom_name.is_some() {
+        let safe_name = clean_name.replace(|c: char| !c.is_alphanumeric() && c != ' ' && c != '-', "_");
         format!("{}_{}.{}", safe_name, chrono_millis() % 10000, file_ext) 
     } else {
         let file_name = src.file_name().unwrap_or_default().to_string_lossy();
@@ -148,22 +172,34 @@ async fn save_custom_video(app: AppHandle, source_path: String, custom_name: Opt
     let dest = custom_dir.join(&new_name);
 
     fs::copy(&src, &dest).map_err(|e| format!("Error copiando video: {}", e))?;
-    Ok(Some(dest.to_string_lossy().into_owned()))
+    
+    let dest_str = dest.to_string_lossy().into_owned();
+    let mut meta = load_video_meta(&app);
+    meta.push(VideoMeta { path: dest_str.clone(), name: clean_name });
+    save_video_meta(&app, &meta);
+
+    Ok(Some(dest_str))
 }
 
 #[tauri::command]
-async fn list_custom_videos(app: AppHandle) -> Result<Vec<String>, String> {
+async fn list_custom_videos(app: AppHandle) -> Result<Vec<VideoMeta>, String> {
     let custom_dir = get_user_data_dir(&app).join("custom-videos");
     if !custom_dir.exists() {
         return Ok(Vec::new());
     }
 
     let mut videos = Vec::new();
+    let meta = load_video_meta(&app);
+    
     if let Ok(entries) = fs::read_dir(custom_dir) {
         for entry in entries.flatten() {
             if let Ok(file_type) = entry.file_type() {
-                if file_type.is_file() {
-                    videos.push(entry.path().to_string_lossy().into_owned());
+                if file_type.is_file() && entry.file_name() != "meta.json" {
+                    let path = entry.path().to_string_lossy().into_owned();
+                    let name = meta.iter().find(|m| m.path == path).map(|m| m.name.clone()).unwrap_or_else(|| {
+                        entry.path().file_stem().unwrap_or_default().to_string_lossy().into_owned()
+                    });
+                    videos.push(VideoMeta { path, name });
                 }
             }
         }
@@ -172,11 +208,28 @@ async fn list_custom_videos(app: AppHandle) -> Result<Vec<String>, String> {
 }
 
 #[tauri::command]
-async fn delete_custom_video(path: String) -> Result<(), String> {
+async fn delete_custom_video(app: AppHandle, path: String) -> Result<(), String> {
     let file = PathBuf::from(&path);
     if file.exists() {
         fs::remove_file(file).map_err(|e| format!("Error eliminando video: {}", e))?;
     }
+    
+    let mut meta = load_video_meta(&app);
+    meta.retain(|m| m.path != path);
+    save_video_meta(&app, &meta);
+    
+    Ok(())
+}
+
+#[tauri::command]
+async fn rename_custom_video(app: AppHandle, path: String, new_name: String) -> Result<(), String> {
+    let mut meta = load_video_meta(&app);
+    if let Some(m) = meta.iter_mut().find(|m| m.path == path) {
+        m.name = new_name;
+    } else {
+        meta.push(VideoMeta { path, name: new_name });
+    }
+    save_video_meta(&app, &meta);
     Ok(())
 }
 
@@ -205,7 +258,7 @@ async fn minimize_app(app: AppHandle, state: tauri::State<'_, AppState>, store: 
     // 2. Posicionar y mostrar la ventana de retorno
     if let Ok(Some(monitor)) = main_window.primary_monitor() {
         let monitor_size = monitor.size().to_logical::<f64>(monitor.scale_factor());
-        let window_size = return_window.outer_size().map(|s| s.to_logical::<f64>(monitor.scale_factor())).unwrap_or(LogicalSize::new(400.0, 160.0));
+        let window_size = return_window.outer_size().map(|s| s.to_logical::<f64>(monitor.scale_factor())).unwrap_or(LogicalSize::new(320.0, 140.0));
         
         // Esquina superior derecha (con margen de 40px)
         let x = monitor_size.width - window_size.width - 20.0;
@@ -232,9 +285,29 @@ async fn minimize_app(app: AppHandle, state: tauri::State<'_, AppState>, store: 
     }
 
     let handle: JoinHandle<()> = tauri::async_runtime::spawn(async move {
-        // En producción son 300,000ms (5 min). Para desarrollo podemos bajarlo o dejarlo así.
-        tokio::time::sleep(tokio::time::Duration::from_millis(300_000)).await;
-        let _ = restore_app_logic(&app_clone).await;
+        // Monitoreo activo de inactividad del sistema global (5 minutos = 300,000ms)
+        let idle_limit_ms = 180_000;
+        
+        loop {
+            tokio::time::sleep(tokio::time::Duration::from_secs(5)).await;
+            
+            let idle_time_ms = unsafe {
+                let mut lii = windows_sys::Win32::UI::Input::KeyboardAndMouse::LASTINPUTINFO {
+                    cbSize: std::mem::size_of::<windows_sys::Win32::UI::Input::KeyboardAndMouse::LASTINPUTINFO>() as u32,
+                    dwTime: 0,
+                };
+                if windows_sys::Win32::UI::Input::KeyboardAndMouse::GetLastInputInfo(&mut lii) != 0 {
+                    windows_sys::Win32::System::SystemInformation::GetTickCount() - lii.dwTime
+                } else {
+                    0
+                }
+            };
+            
+            if idle_time_ms >= idle_limit_ms {
+                let _ = restore_app_logic(&app_clone).await;
+                break;
+            }
+        }
     });
 
     *timer_guard = Some(handle);
@@ -468,6 +541,7 @@ pub fn run() {
             save_custom_video,
             list_custom_videos,
             delete_custom_video,
+            rename_custom_video,
             check_file_exists,
             minimize_app,
             restore_app,

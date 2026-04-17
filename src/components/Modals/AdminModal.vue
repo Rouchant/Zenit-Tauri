@@ -64,14 +64,6 @@ const restoreField = (field) => {
 };
 
 const selectVideo = async (type, index = null) => {
-    // Validar nombre obligatorio antes de seleccionar archivo
-    if (type === 'inactivity' && index !== null) {
-        if (!editableSpecs.customVideoPaths[index].name || editableSpecs.customVideoPaths[index].name.trim() === '') {
-            notify('Zenit', 'Por favor, asigna un "Nombre de Referencia" antes de buscar en PC.');
-            return;
-        }
-    }
-
     // Asegurar que el diálogo nativo pueda aparecer sobre la ventana kiosk
     await tauriAPI.setAlwaysOnTop(false);
     const path = await tauriAPI.selectVideo();
@@ -84,6 +76,15 @@ const selectVideo = async (type, index = null) => {
         const safePath = await tauriAPI.saveCustomVideo(path, customName);
         if (safePath) {
             if (type === 'inactivity' && index !== null) {
+                // Capturar el nombre del documento sin la terminación .mp4 inmediatamente
+                const fileNameMatch = path.match(/[^\\/]+$/);
+                let initialName = fileNameMatch ? fileNameMatch[0] : 'Video';
+                initialName = initialName.replace(/\.[^/.]+$/, "");
+                editableSpecs.customVideoPaths[index].name = initialName;
+                
+                // Actualizar en el catálogo de Rust inmediatamente después de guardar si es nuevo
+                await tauriAPI.renameCustomVideo(safePath, initialName);
+                
                 editableSpecs.customVideoPaths[index].path = safePath;
                 editableSpecs.videoType = 'custom';
                 
@@ -99,12 +100,30 @@ const selectVideo = async (type, index = null) => {
     }
 };
 
+const onVaultSelectionChange = (slot) => {
+    const matched = savedVideos.value.find(v => v.path === slot.path);
+    if (matched) {
+        slot.name = matched.name;
+    }
+};
+
+const renameInVault = async (slot) => {
+    if (slot.path && slot.name) {
+        await tauriAPI.renameCustomVideo(slot.path, slot.name);
+        notify('Zenit', 'Nombre actualizado en la Bóveda ✓');
+        const videos = await tauriAPI.listCustomVideos();
+        if (videos) savedVideos.value = videos;
+    }
+};
+
 const removeVideo = (index) => {
     editableSpecs.customVideoPaths[index].path = '';
 };
 
 const deleteSavedVideo = async (path) => {
-    if (confirm(`¿Seguro que deseas eliminar este video de la bóveda permanentemente?\n\nArchivo: ${formatPath(path)}`)) {
+    const matched = savedVideos.value.find(v => v.path === path);
+    const alias = matched ? matched.name : formatPath(path);
+    if (confirm(`¿Seguro que deseas eliminar el video "${alias}" de la bóveda permanentemente?`)) {
         await tauriAPI.deleteCustomVideo(path);
         
         // Actualizar bóveda
@@ -225,12 +244,14 @@ const deleteSavedVideo = async (path) => {
                     <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 30px;">
                         <div class="store-config input-group">
                             <label for="store-select">Retail / Tienda</label>
-                            <select id="store-select" name="store" v-model="editableSpecs.store" class="custom-select" style="max-width: 350px;">
-                                <option value="none">Otras</option>
-                                <option value="falabella">Falabella</option>
-                                <option value="paris">Paris</option>
-                                <option value="ripley">Ripley</option>
-                            </select>
+                            <div class="custom-select" style="max-width: 350px;">
+                                <select id="store-select" name="store" v-model="editableSpecs.store">
+                                    <option value="none">Otras</option>
+                                    <option value="falabella">Falabella</option>
+                                    <option value="paris">Paris</option>
+                                    <option value="ripley">Ripley</option>
+                                </select>
+                            </div>
                         </div>
                         <div class="background-config">
                             <label>Configuración de Pantalla</label>
@@ -285,9 +306,6 @@ const deleteSavedVideo = async (path) => {
                                 <span class="pill-label">Personalizado (Carrusel Opcional)</span>
                             </label>
                         </div>
-                        <span v-if="editableSpecs.videoType === 'custom'" style="color: var(--primary, #ab47bc); font-size: 0.85rem; font-style: italic; opacity: 0.8;">
-                            👉 Primero asigna el nombre, luego busca el video
-                        </span>
                     </div>
 
                     <div v-if="editableSpecs.videoType === 'custom'" class="video-slots-container">
@@ -295,35 +313,43 @@ const deleteSavedVideo = async (path) => {
                             <div class="video-slot-header">SLOT DE VIDEO {{ index + 1 }}</div>
                             <div class="video-slot-body">
                                 
-                                <div class="input-group no-margin">
-                                    <label>Nombre de Referencia</label>
-                                    <div class="input-with-action">
-                                        <input type="text" v-model="slot.name" placeholder="Inserta el nombre del video" style="flex: 1;">
+                                <div class="path-container" style="display: flex; align-items: flex-start; justify-content: flex-start;">
+                                    
+                                    <!-- Opcion 1: Bóveda -->
+                                    <div style="flex: 1; display: flex; flex-direction: column; gap: 12px; border-right: 1px solid rgba(255,255,255,0.1); padding-right: 15px;">
+                                        <strong style="font-size: 0.85rem; color: #fff;">Opcion 1: Desde la Bóveda</strong>
+                                        <div v-if="savedVideos.length > 0" class="custom-select">
+                                            <select v-model="slot.path" @change="onVaultSelectionChange(slot)">
+                                                <option value="">-- Catálogo de Kiosco --</option>
+                                                <option v-for="v in savedVideos" :key="v.path" :value="v.path">{{ v.name }}</option>
+                                            </select>
+                                        </div>
+                                        <div v-else class="video-path-badge" style="font-size: 0.85rem; margin:0;">Catálogo vacío</div>
+                                        
+                                        <button v-if="slot.path && savedVideos.some(v => v.path === slot.path)" class="btn btn-danger select-file-btn danger-btn" style="align-self: flex-start; padding: 5px 15px !important;" @click="deleteSavedVideo(slot.path)">🗑️ Eliminar archivo</button>
                                     </div>
+                                    
+                                    <!-- Opcion 2: PC Local -->
+                                    <div style="flex: 1; display: flex; flex-direction: column; gap: 12px; padding-left: 15px;">
+                                        <strong style="font-size: 0.85rem; color: #fff;">Opcion 2: Desde PC Local</strong>
+                                        <button class="btn btn-secondary select-file-btn" style="align-self: flex-start;" @click="selectVideo('inactivity', index)">Subir Video</button>
+                                    </div>
+                                    
+                                </div>
+
+                                <!-- Metadata Overlay del Slot -->
+                                <div v-if="slot.path" class="input-group no-margin mt-lg" style="background: rgba(0,0,0,0.25); padding: 15px; border-radius: 8px; border: 1px solid rgba(255,255,255,0.05);">
+                                    <label style="color: var(--primary);">Video Activo en Visualización</label>
+                                    <div style="display: flex; gap: 10px; align-items: center; margin-top: 5px;">
+                                        <input type="text" v-model="slot.name" placeholder="Alias de Marketing" class="alias-input" title="Renombrar temporalmente">
+                                        
+                                        <button v-if="savedVideos.some(v => v.path === slot.path)" class="btn btn-secondary select-file-btn" @click="renameInVault(slot)" title="Guardar este nombre en el catálogo para el futuro">✏️ Renombrar</button>
+                                        
+                                        <button class="btn btn-danger select-file-btn danger-btn" title="Quitar de Slot" @click="removeVideo(index)">Quitar (X)</button>
+                                    </div>
+                                    <div style="font-size: 0.75rem; margin-top: 8px; opacity: 0.5; word-break: break-all; font-family: monospace;">Fuente: {{ formatPath(slot.path) }}</div>
                                 </div>
                                 
-                                <div class="path-container" style="display: flex; gap: 10px; align-items: center; justify-content: flex-start; flex-wrap: wrap;">
-                                    
-                                    <select v-if="savedVideos.length > 0" class="custom-select" v-model="slot.path" style="flex: 1; max-width: 320px; font-size: 0.85rem; margin: 0; padding: 10px 35px 10px 10px;">
-                                        <option value="">-- Bóveda (Subidos previamente) --</option>
-                                        <option v-for="v in savedVideos" :key="v" :value="v">{{ formatPath(v) }}</option>
-                                    </select>
-                                    <div v-else class="video-path-badge" style="flex: 1; max-width: 320px; margin: 0; padding: 12px; font-size: 0.9rem;">
-                                        {{ formatPath(slot.path) }}
-                                    </div>
-                                    
-                                    <!-- Badge showing current active file visually -->
-                                    <div v-if="savedVideos.length > 0 && slot.path" class="video-path-badge" style="background: rgba(0, 242, 255, 0.1); border-color: rgba(0, 242, 255, 0.3); padding: 10px; flex-shrink: 0; max-width: 150px;" :title="slot.path">
-                                        👉 {{ formatPath(slot.path) }}
-                                    </div>
-
-                                    <button class="btn btn-secondary select-file-btn" @click="selectVideo('inactivity', index)">Buscar PC Local</button>
-                                    
-                                    <div style="display: flex; gap: 5px;">
-                                        <button v-if="slot.path" class="btn btn-danger select-file-btn danger-btn" title="Quitar del slot" @click="removeVideo(index)">X</button>
-                                        <button v-if="slot.path && savedVideos.includes(slot.path)" class="btn btn-danger select-file-btn danger-btn" title="Eliminar permanentemente de la Bóveda" style="padding: 0 10px !important; width: auto;" @click="deleteSavedVideo(slot.path)">🗑️</button>
-                                    </div>
-                                </div>
                             </div>
                         </div>
                     </div>
@@ -418,6 +444,7 @@ const deleteSavedVideo = async (path) => {
     display: flex;
     flex-direction: column;
     gap: 20px;
+    margin-bottom: 25px;
 }
 
 .video-slot {
@@ -465,5 +492,23 @@ const deleteSavedVideo = async (path) => {
 .danger-btn:hover {
     background-color: rgba(244, 67, 54, 0.1) !important;
     border-color: #f44336 !important;
+}
+
+.alias-input {
+    flex: 1;
+    background: rgba(255, 255, 255, 0.03);
+    border: 1px solid rgba(255, 255, 255, 0.1);
+    padding: 4px 14px;
+    border-radius: 10px;
+    color: white;
+    font-size: 0.95rem;
+    outline: none;
+    transition: all 0.2s ease;
+    margin: 0;
+}
+
+.alias-input:focus {
+    border-color: var(--primary);
+    background: rgba(255, 255, 255, 0.05);
 }
 </style>
