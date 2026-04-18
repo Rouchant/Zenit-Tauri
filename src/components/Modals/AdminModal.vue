@@ -1,6 +1,6 @@
 <script setup>
 import { ref, reactive, onMounted } from 'vue';
-import { useSpecsStore } from '../../store/specs';
+import { useSpecsStore, INTERNAL_VIDEOS } from '../../store/specs';
 import { tauriAPI, notify } from '../../api/tauriApi';
 
 const emit = defineEmits(['close']);
@@ -20,6 +20,24 @@ onMounted(async () => {
     }
 });
 
+const SYSTEM_VIDEOS_CATALOG = [
+    { name: '🏠 Original Asus (Home)', path: INTERNAL_VIDEOS.ASUS_LANDING },
+    { name: '🏢 Original Genérico (Home)', path: INTERNAL_VIDEOS.GENERIC_LANDING },
+    { name: '🤖 Asus Vivobook Copilot', path: INTERNAL_VIDEOS.ASUS_COPILOT },
+    { name: '✨ Introducing Copilot PCs', path: INTERNAL_VIDEOS.INTRO_COPILOT },
+    { name: '🔥 Original Asus (Promo)', path: INTERNAL_VIDEOS.ASUS_PROMO },
+    { name: '❄️ Original Genérico (Promo)', path: INTERNAL_VIDEOS.GENERIC_PROMO },
+    { name: '🎮 Xbox Game Pass (Gaming)', path: INTERNAL_VIDEOS.GAMING_XBOX },
+    { name: '💻 Windows: Home of Gaming', path: INTERNAL_VIDEOS.WINDOWS_GAMING },
+    { name: '✨ Asus: Calidad y Durabilidad', path: INTERNAL_VIDEOS.QUALITY_DURABILITY },
+    { name: '🛡️ TUF Gaming: Duratibilidad', path: INTERNAL_VIDEOS.TUF_DURABILITY },
+    { name: '🎨 Create with ASUS', path: INTERNAL_VIDEOS.CREATE_ASUS },
+    { name: '🚀 Asus Vivobook S', path: INTERNAL_VIDEOS.ASUS_VIVOBOOK_S }
+];
+
+const INTERNAL_OPTIONS = SYSTEM_VIDEOS_CATALOG;
+const LANDING_INTERNAL_OPTIONS = SYSTEM_VIDEOS_CATALOG;
+
 // Asegurar que haya 3 slots iniciales al abrir, o mapear los presentes
 const initCustomVideoPaths = () => {
     let base = store.currentSpecs.customVideoPaths || [];
@@ -37,11 +55,19 @@ const editableSpecs = reactive({
     customVideoPaths: initCustomVideoPaths()
 });
 
+const isProcessing = ref(false);
+const slotErrorIndex = ref(null);
+const uploadError = ref({ type: null, index: null, msg: '' });
+
 const formatPath = (fullPath) => {
     if (!fullPath) return 'Sin archivo seleccionado';
-    const fileName = fullPath.split(/[/\\]/).pop();
-    if (fileName.length <= 25) return fileName;
-    return fileName.substring(0, 22) + '...';
+    let fileName = fullPath.split(/[/\\]/).pop();
+    
+    // Eliminar prefijo de timestamp generado por el backend (ej: 1716480938325_)
+    fileName = fileName.replace(/^\d{10,}_/, '');
+
+    if (fileName.length <= 35) return fileName;
+    return fileName.substring(0, 32) + '...';
 };
 
 const save = () => {
@@ -64,80 +90,181 @@ const restoreField = (field) => {
 };
 
 const selectVideo = async (type, index = null) => {
+    if (isProcessing.value) return;
+    uploadError.value = { type: null, index: null, msg: '' };
+
     // Asegurar que el diálogo nativo pueda aparecer sobre la ventana kiosk
     await tauriAPI.setAlwaysOnTop(false);
-    const path = await tauriAPI.selectVideo();
-    if (path) {
-        let customName = null;
-        if (type === 'inactivity' && index !== null) {
-            customName = editableSpecs.customVideoPaths[index].name;
-        }
-        
-        const safePath = await tauriAPI.saveCustomVideo(path, customName);
-        if (safePath) {
-            if (type === 'inactivity' && index !== null) {
-                // Capturar el nombre del documento sin la terminación .mp4 inmediatamente
-                const fileNameMatch = path.match(/[^\\/]+$/);
-                let initialName = fileNameMatch ? fileNameMatch[0] : 'Video';
-                initialName = initialName.replace(/\.[^/.]+$/, "");
-                editableSpecs.customVideoPaths[index].name = initialName;
-                
-                // Actualizar en el catálogo de Rust inmediatamente después de guardar si es nuevo
-                await tauriAPI.renameCustomVideo(safePath, initialName);
-                
-                editableSpecs.customVideoPaths[index].path = safePath;
-                editableSpecs.videoType = 'custom';
+    
+    const res = await tauriAPI.selectVideo();
+    if (res) {
+        isProcessing.value = true;
+        try {
+            const safePath = await tauriAPI.saveCustomVideo(res);
+            if (safePath) {
+                if (type === 'inactivity' && index !== null) {
+                    const slot = editableSpecs.customVideoPaths[index];
+                    slot.path = safePath;
+                    onVaultSelectionChange(slot, 'inactivity');
+                    editableSpecs.videoType = 'custom';
+                } else if (type === 'landing') {
+                    editableSpecs.customLandingVideoPath = safePath;
+                    editableSpecs.landingVideoType = 'custom';
+                    onVaultSelectionChange(null, 'landing');
+                }
                 
                 // Actualizar la lista de videos guardados (Bóveda)
                 const videos = await tauriAPI.listCustomVideos();
                 if (videos) savedVideos.value = videos;
-
-            } else if (type === 'landing') {
-                editableSpecs.customLandingVideoPath = safePath;
-                editableSpecs.landingVideoType = 'custom';
+                
+                notify('Zenit', 'Video guardado correctamente en la Bóveda ✓');
             }
+        } catch (err) {
+            uploadError.value = { type, index, msg: err };
+            setTimeout(() => {
+                uploadError.value = { type: null, index: null, msg: '' };
+            }, 5000);
+        } finally {
+            isProcessing.value = false;
         }
     }
 };
 
-const onVaultSelectionChange = (slot) => {
+const onVaultSelectionChange = (slot, type = 'inactivity') => {
+    if (type === 'landing') {
+        if (!editableSpecs.customLandingVideoPath) {
+            editableSpecs.customLandingVideoName = '';
+            return;
+        }
+        // Buscar primero en internos
+        const internal = LANDING_INTERNAL_OPTIONS.find(v => v.path === editableSpecs.customLandingVideoPath);
+        if (internal) {
+            editableSpecs.customLandingVideoName = internal.name;
+            return;
+        }
+        // Buscar en la bóveda
+        const matched = savedVideos.value.find(v => v.path === editableSpecs.customLandingVideoPath);
+        if (matched) {
+            editableSpecs.customLandingVideoName = matched.name;
+        }
+        return;
+    }
+
+    if (!slot.path) {
+        slot.name = '';
+        return;
+    }
+
+    // Buscar primero en internos
+    const options = type === 'landing' ? LANDING_INTERNAL_OPTIONS : INTERNAL_OPTIONS;
+    const internal = options.find(v => v.path === slot.path);
+    if (internal) {
+        slot.name = internal.name;
+        return;
+    }
+
+    // Buscar en la bóveda
     const matched = savedVideos.value.find(v => v.path === slot.path);
     if (matched) {
         slot.name = matched.name;
+    } else {
+        slot.name = '';
     }
 };
 
-const renameInVault = async (slot) => {
-    if (slot.path && slot.name) {
-        await tauriAPI.renameCustomVideo(slot.path, slot.name);
-        notify('Zenit', 'Nombre actualizado en la Bóveda ✓');
-        const videos = await tauriAPI.listCustomVideos();
-        if (videos) savedVideos.value = videos;
+const renameInVault = async (slot, type = 'inactivity') => {
+    const path = type === 'landing' ? editableSpecs.customLandingVideoPath : slot.path;
+    const name = type === 'landing' ? editableSpecs.customLandingVideoName : slot.name;
+
+    if (path && name) {
+        // No permitir renombrar videos internos en el catálogo físico
+        if (Object.values(INTERNAL_VIDEOS).includes(path)) return;
+
+        isProcessing.value = true;
+        try {
+            await tauriAPI.renameCustomVideo(path, name);
+            notify('Zenit', 'Nombre actualizado en la Bóveda ✓');
+            const videos = await tauriAPI.listCustomVideos();
+            if (videos) savedVideos.value = videos;
+        } catch (err) {
+            notify('Error', err);
+        } finally {
+            isProcessing.value = false;
+        }
     }
 };
 
 const removeVideo = (index) => {
+    // Protección: Al menos un video debe estar activo
+    const activeSlotsCount = editableSpecs.customVideoPaths.filter(s => s.path).length;
+    if (activeSlotsCount <= 1 && editableSpecs.customVideoPaths[index].path) {
+        slotErrorIndex.value = index;
+        setTimeout(() => {
+            if (slotErrorIndex.value === index) slotErrorIndex.value = null;
+        }, 4000);
+        return;
+    }
+
     editableSpecs.customVideoPaths[index].path = '';
+    editableSpecs.customVideoPaths[index].name = '';
 };
 
 const deleteSavedVideo = async (path) => {
+    if (isProcessing.value) return;
+
     const matched = savedVideos.value.find(v => v.path === path);
     const alias = matched ? matched.name : formatPath(path);
-    if (confirm(`¿Seguro que deseas eliminar el video "${alias}" de la bóveda permanentemente?`)) {
-        await tauriAPI.deleteCustomVideo(path);
-        
-        // Actualizar bóveda
-        const videos = await tauriAPI.listCustomVideos();
-        savedVideos.value = videos || [];
-        
-        // Desvincular si algún slot lo estaba usando
-        editableSpecs.customVideoPaths.forEach((slot, idx) => {
-            if (slot.path === path) {
-                removeVideo(idx);
+    
+    if (confirm(`¿Estás seguro de que quieres eliminar físicamente '${alias}'? Se borrarán todas las referencias.`)) {
+        isProcessing.value = true;
+        try {
+            // Lógica de SUCESIÓN: Intentar encontrar un video para reemplazar en los slots ativos
+            const currentIndex = savedVideos.value.findIndex(v => v.path === path);
+            let successor = null;
+            if (savedVideos.value.length > 1) {
+                // Elegir el de arriba, o el de abajo si es el primero
+                const targetIdx = currentIndex > 0 ? currentIndex - 1 : currentIndex + 1;
+                successor = savedVideos.value[targetIdx];
             }
-        });
-        
-        notify('Zenit', 'Video eliminado del disco exitosamente.');
+
+            await tauriAPI.deleteCustomVideo(path);
+            
+            // Actualizar referencias si el video estaba en uso
+            if (editableSpecs.customLandingVideoPath === path) {
+                if (successor) {
+                    editableSpecs.customLandingVideoPath = successor.path;
+                    editableSpecs.customLandingVideoName = successor.name;
+                } else {
+                    // Fallback Inteligente (Asus vs Genérico)
+                    const isAsus = store.isAsus;
+                    editableSpecs.customLandingVideoPath = isAsus ? INTERNAL_VIDEOS.ASUS_LANDING : INTERNAL_VIDEOS.GENERIC_LANDING;
+                    onVaultSelectionChange(null, 'landing');
+                    editableSpecs.landingVideoType = 'default';
+                }
+            }
+
+            editableSpecs.customVideoPaths.forEach(slot => {
+                if (slot.path === path) {
+                    if (successor) {
+                        slot.path = successor.path;
+                        slot.name = successor.name;
+                    } else {
+                        // Fallback Inteligente (Asus vs Genérico)
+                        const isAsus = store.isAsus;
+                        slot.path = isAsus ? INTERNAL_VIDEOS.ASUS_PROMO : INTERNAL_VIDEOS.GENERIC_PROMO;
+                        onVaultSelectionChange(slot, 'inactivity');
+                    }
+                }
+            });
+
+            const videos = await tauriAPI.listCustomVideos();
+            if (videos) savedVideos.value = videos;
+            notify('Zenit', 'Video eliminado. Se han restaurado los valores por defecto según hardware.');
+        } catch (err) {
+            notify('Error', 'No se pudo eliminar el video.');
+        } finally {
+            isProcessing.value = false;
+        }
     }
 };
 </script>
@@ -267,72 +394,99 @@ const deleteSavedVideo = async (path) => {
                 </section>
 
                 <section class="settings-section mt-lg">
-                    <h3 class="section-title">Video Home (App)</h3>
+                    <h3 class="section-title" style="display: flex; align-items: center; gap: 10px;">
+                        <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="lucide lucide-panel-left" style="color: var(--primary);"><rect width="18" height="18" x="3" y="3" rx="2"/><path d="M9 3v18"/></svg>
+                        Video Home (App)
+                    </h3>
                     <div class="video-section">
-                        <div class="video-control-row">
-                            <div class="video-control-toggle">
-                                <label class="video-option-pill" for="landing-video-type-default">
-                                    <input id="landing-video-type-default" name="landingVideoType" type="radio" value="default" v-model="editableSpecs.landingVideoType">
-                                    <span class="pill-label">Original</span>
-                                </label>
-                                <label class="video-option-pill" for="landing-video-type-custom">
-                                    <input id="landing-video-type-custom" name="landingVideoType" type="radio" value="custom" v-model="editableSpecs.landingVideoType">
-                                    <span class="pill-label">Personalizado</span>
-                                </label>
+                        <div class="video-slot-body no-padding" style="background: transparent; border: none;">
+                            <div class="path-container" style="display: flex; align-items: flex-start; justify-content: flex-start;">
+                                <div style="flex: 1; display: flex; flex-direction: column; gap: 12px; border-right: 1px solid rgba(255,255,255,0.1); padding-right: 15px;">
+                                    <strong style="font-size: 0.85rem; color: #fff;">Opcion 1: Internos / Bóveda</strong>
+                                    <div class="custom-select">
+                                        <select v-model="editableSpecs.customLandingVideoPath" @change="onVaultSelectionChange(editableSpecs, 'landing')">
+                                            <optgroup label="Videos del Sistema">
+                                                <option v-for="v in LANDING_INTERNAL_OPTIONS" :key="v.path" :value="v.path">{{ v.name }}</option>
+                                            </optgroup>
+                                            <optgroup label="Bóveda (Subidos)" v-if="savedVideos.length > 0">
+                                                <option v-for="v in savedVideos" :key="v.path" :value="v.path">{{ v.name }}</option>
+                                            </optgroup>
+                                        </select>
+                                    </div>
+                                    <div v-if="Object.values(INTERNAL_VIDEOS).includes(editableSpecs.customLandingVideoPath)" class="video-path-badge" style="font-size: 0.85rem; margin:0; opacity: 0.6;">Asset interno del sistema</div>
+                                    <button v-else-if="editableSpecs.customLandingVideoPath" class="btn btn-danger select-file-btn danger-btn" style="align-self: flex-start; padding: 5px 15px !important;" @click="deleteSavedVideo(editableSpecs.customLandingVideoPath)">🗑️ Eliminar físicamente</button>
+                                </div>
+                                <div style="flex: 1; display: flex; flex-direction: column; gap: 12px; padding-left: 15px;">
+                                    <strong style="font-size: 0.85rem; color: #fff;">Opcion 2: Desde PC Local</strong>
+                                    <button class="btn btn-secondary select-file-btn" style="align-self: flex-start;" @click="selectVideo('landing')">Subir Nuevo Video</button>
+                                    <div v-if="uploadError.type === 'landing'" class="slot-error-msg" style="margin: 0; font-size: 0.7rem;">
+                                        ⚠️ {{ uploadError.msg }}
+                                    </div>
+                                </div>
                             </div>
-                            <button 
-                                v-if="editableSpecs.landingVideoType === 'custom'" 
-                                class="btn btn-secondary btn-mini select-file-btn" 
-                                @click="selectVideo('landing')"
-                            >Subir Video</button>
-                        </div>
-                        <div class="video-path-badge" style="margin-top: 10px; max-width: 600px;">
-                            {{ editableSpecs.landingVideoType === 'custom' ? formatPath(editableSpecs.customLandingVideoPath) : (store.isAsus ? 'landing-asus.mp4' : 'landing-generic.mp4') }}
+
+                            <!-- Metadata Overlay del Home (Ancho completo) -->
+                            <div v-if="editableSpecs.customLandingVideoPath" class="input-group no-margin mt-lg" style="background: rgba(0,0,0,0.25); padding: 15px; border-radius: 8px; border: 1px solid rgba(255,255,255,0.05);">
+                                <label style="color: var(--primary);">Video Activo en Visualización (Home)</label>
+                                <div style="display: flex; gap: 10px; align-items: center; margin-top: 5px;">
+                                    <input 
+                                        type="text" 
+                                        v-model="editableSpecs.customLandingVideoName" 
+                                        placeholder="Alias de Home" 
+                                        class="alias-input"
+                                        :disabled="Object.values(INTERNAL_VIDEOS).includes(editableSpecs.customLandingVideoPath)"
+                                    >
+                                    <button v-if="!Object.values(INTERNAL_VIDEOS).includes(editableSpecs.customLandingVideoPath) && savedVideos.some(v => v.path === editableSpecs.customLandingVideoPath)" class="btn btn-secondary select-file-btn" @click="renameInVault(null, 'landing')" title="Guardar este nombre en el catálogo">✏️ Renombrar</button>
+                                </div>
+                                <div style="font-size: 0.75rem; margin-top: 8px; opacity: 0.5; word-break: break-all; font-family: monospace;">Fuente: {{ formatPath(editableSpecs.customLandingVideoPath) }}</div>
+                            </div>
                         </div>
                     </div>
                 </section>
 
                 <section class="settings-section mt-lg">
-                    <h3 class="section-title">Videos de Inactividad (Ad Múltiple)</h3>
+                    <h3 class="section-title" style="display: flex; align-items: center; gap: 10px;">
+                        <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="lucide lucide-maximize" style="color: var(--primary);"><path d="M8 3H5a2 2 0 0 0-2 2v3"/><path d="M21 8V5a2 2 0 0 0-2-2h-3"/><path d="M3 16v3a2 2 0 0 0 2 2h3"/><path d="M16 21h3a2 2 0 0 0 2-2v-3"/></svg>
+                        Videos de Inactividad (Ad Múltiple)
+                    </h3>
                     
-                    <div style="display: flex; align-items: center; gap: 15px; margin-bottom: 25px;">
-                        <div class="video-control-toggle" style="display: inline-flex;">
-                            <label class="video-option-pill" for="video-type-default">
-                                <input id="video-type-default" name="videoType" type="radio" value="default" v-model="editableSpecs.videoType">
-                                <span class="pill-label">Original</span>
-                            </label>
-                            <label class="video-option-pill" for="video-type-custom">
-                                <input id="video-type-custom" name="videoType" type="radio" value="custom" v-model="editableSpecs.videoType">
-                                <span class="pill-label">Personalizado (Carrusel Opcional)</span>
-                            </label>
-                        </div>
-                    </div>
-
-                    <div v-if="editableSpecs.videoType === 'custom'" class="video-slots-container">
+                    <div class="video-slots-container">
                         <div class="video-slot" v-for="(slot, index) in editableSpecs.customVideoPaths" :key="index">
-                            <div class="video-slot-header">SLOT DE VIDEO {{ index + 1 }}</div>
+                            <div class="video-slot-header" style="display: flex; justify-content: space-between; align-items: center;">
+                                <span>SLOT DE VIDEO {{ index + 1 }}</span>
+                                <span v-if="slotErrorIndex === index" class="slot-error-msg">
+                                    ⚠️ Siempre debe haber seleccionado un video de inactividad
+                                </span>
+                            </div>
                             <div class="video-slot-body">
                                 
                                 <div class="path-container" style="display: flex; align-items: flex-start; justify-content: flex-start;">
                                     
                                     <!-- Opcion 1: Bóveda -->
                                     <div style="flex: 1; display: flex; flex-direction: column; gap: 12px; border-right: 1px solid rgba(255,255,255,0.1); padding-right: 15px;">
-                                        <strong style="font-size: 0.85rem; color: #fff;">Opcion 1: Desde la Bóveda</strong>
-                                        <div v-if="savedVideos.length > 0" class="custom-select">
-                                            <select v-model="slot.path" @change="onVaultSelectionChange(slot)">
-                                                <option value="">-- Catálogo de Kiosco --</option>
-                                                <option v-for="v in savedVideos" :key="v.path" :value="v.path">{{ v.name }}</option>
+                                        <strong style="font-size: 0.85rem; color: #fff;">Opcion 1: Internos / Bóveda</strong>
+                                        <div class="custom-select">
+                                            <select v-model="slot.path" @change="onVaultSelectionChange(slot, 'inactivity')">
+                                                <optgroup label="Videos del Sistema">
+                                                    <option v-for="v in INTERNAL_OPTIONS" :key="v.path" :value="v.path">{{ v.name }}</option>
+                                                </optgroup>
+                                                <optgroup label="Bóveda (Subidos)" v-if="savedVideos.length > 0">
+                                                    <option v-for="v in savedVideos" :key="v.path" :value="v.path">{{ v.name }}</option>
+                                                </optgroup>
                                             </select>
                                         </div>
-                                        <div v-else class="video-path-badge" style="font-size: 0.85rem; margin:0;">Catálogo vacío</div>
                                         
-                                        <button v-if="slot.path && savedVideos.some(v => v.path === slot.path)" class="btn btn-danger select-file-btn danger-btn" style="align-self: flex-start; padding: 5px 15px !important;" @click="deleteSavedVideo(slot.path)">🗑️ Eliminar archivo</button>
+                                        <button v-if="slot.path && !Object.values(INTERNAL_VIDEOS).includes(slot.path) && savedVideos.some(v => v.path === slot.path)" class="btn btn-danger select-file-btn danger-btn" style="align-self: flex-start; padding: 5px 15px !important;" @click="deleteSavedVideo(slot.path)">🗑️ Eliminar físicamente</button>
+                                        <div v-if="Object.values(INTERNAL_VIDEOS).includes(slot.path)" class="video-path-badge" style="font-size: 0.85rem; margin:0; opacity: 0.6;">Asset interno del sistema</div>
                                     </div>
                                     
                                     <!-- Opcion 2: PC Local -->
                                     <div style="flex: 1; display: flex; flex-direction: column; gap: 12px; padding-left: 15px;">
                                         <strong style="font-size: 0.85rem; color: #fff;">Opcion 2: Desde PC Local</strong>
                                         <button class="btn btn-secondary select-file-btn" style="align-self: flex-start;" @click="selectVideo('inactivity', index)">Subir Video</button>
+                                        <div v-if="uploadError.type === 'inactivity' && uploadError.index === index" class="slot-error-msg" style="margin: 0; font-size: 0.7rem;">
+                                            ⚠️ {{ uploadError.msg }}
+                                        </div>
                                     </div>
                                     
                                 </div>
@@ -341,11 +495,18 @@ const deleteSavedVideo = async (path) => {
                                 <div v-if="slot.path" class="input-group no-margin mt-lg" style="background: rgba(0,0,0,0.25); padding: 15px; border-radius: 8px; border: 1px solid rgba(255,255,255,0.05);">
                                     <label style="color: var(--primary);">Video Activo en Visualización</label>
                                     <div style="display: flex; gap: 10px; align-items: center; margin-top: 5px;">
-                                        <input type="text" v-model="slot.name" placeholder="Alias de Marketing" class="alias-input" title="Renombrar temporalmente">
+                                        <input 
+                                            type="text" 
+                                            v-model="slot.name" 
+                                            placeholder="Alias de Marketing" 
+                                            class="alias-input" 
+                                            title="Renombrar temporalmente"
+                                            :disabled="Object.values(INTERNAL_VIDEOS).includes(slot.path)"
+                                        >
                                         
-                                        <button v-if="savedVideos.some(v => v.path === slot.path)" class="btn btn-secondary select-file-btn" @click="renameInVault(slot)" title="Guardar este nombre en el catálogo para el futuro">✏️ Renombrar</button>
+                                        <button v-if="savedVideos.some(v => v.path === slot.path) && !Object.values(INTERNAL_VIDEOS).includes(slot.path)" class="btn btn-secondary select-file-btn" @click="renameInVault(slot)" title="Guardar este nombre en el catálogo para el futuro">✏️ Renombrar</button>
                                         
-                                        <button class="btn btn-danger select-file-btn danger-btn" title="Quitar de Slot" @click="removeVideo(index)">Quitar (X)</button>
+                                        <button class="btn btn-danger select-file-btn danger-btn" title="Quitar de Slot" @click="removeVideo(index)">Limpiar Slot (X)</button>
                                     </div>
                                     <div style="font-size: 0.75rem; margin-top: 8px; opacity: 0.5; word-break: break-all; font-family: monospace;">Fuente: {{ formatPath(slot.path) }}</div>
                                 </div>
@@ -353,10 +514,6 @@ const deleteSavedVideo = async (path) => {
                             </div>
                         </div>
                     </div>
-                    <div v-else class="video-path-badge" style="max-width: 600px;">
-                        {{ store.isAsus ? 'promo-asus.mp4' : 'promo-generic.mp4' }}
-                    </div>
-
                 </section>
             </div>
 
@@ -464,6 +621,19 @@ const deleteSavedVideo = async (path) => {
   display: flex;
   flex-direction: column;
   gap: 15px;
+}
+.slot-error-msg {
+    color: #f44336;
+    font-size: 0.75rem;
+    font-weight: 500;
+    text-transform: none;
+    letter-spacing: 0;
+    animation: shake 0.4s ease;
+}
+@keyframes shake {
+    0%, 100% { transform: translateX(0); }
+    25% { transform: translateX(-4px); }
+    75% { transform: translateX(4px); }
 }
 
 .no-margin {

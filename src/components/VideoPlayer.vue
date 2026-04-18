@@ -8,13 +8,14 @@ const videoRef = ref(null);
 const currentIndex = ref(0);
 
 const videoUrls = computed(() => {
-  if (store.currentSpecs.videoType === 'custom' && store.currentSpecs.customVideoPaths && store.currentSpecs.customVideoPaths.length > 0) {
-    const validPaths = store.currentSpecs.customVideoPaths.filter(v => v.path).map(v => store.getVideoUrl(v.path));
-    if (validPaths.length > 0) {
-      return validPaths;
-    }
+  const customPaths = store.currentSpecs.customVideoPaths || [];
+  const validPaths = customPaths.filter(v => v.path).map(v => store.getVideoUrl(v.path));
+  
+  if (validPaths.length > 0) {
+    return validPaths;
   }
-  // Use leading slash for root resolution
+  
+  // Failsafe: Si no hay nada seleccionado, usar el base según marca detectada
   return [store.isAsus ? '/assets/videos/promo-asus.mp4' : '/assets/videos/promo-generic.mp4'];
 });
 

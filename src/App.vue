@@ -53,7 +53,7 @@
               loop 
               muted 
               playsinline 
-              :src="store.currentSpecs.landingVideoType === 'custom' ? store.getVideoUrl(store.currentSpecs.customLandingVideoPath) : (store.isAsus ? '/assets/videos/landing-asus.mp4' : '/assets/videos/landing-generic.mp4')"
+              :src="store.getVideoUrl(store.currentSpecs.customLandingVideoPath) || (store.isAsus ? '/assets/videos/landing-asus.mp4' : '/assets/videos/landing-generic.mp4')"
               ref="landingVideo"
             >
             </video>
