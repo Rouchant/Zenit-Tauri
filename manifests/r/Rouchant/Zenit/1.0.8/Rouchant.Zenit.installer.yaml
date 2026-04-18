@@ -4,10 +4,20 @@
 PackageIdentifier: Rouchant.Zenit
 PackageVersion: 1.0.8
 InstallerType: nullsoft
+Scope: machine
+InstallerLocale: es-ES
 Installers:
 - Architecture: x64
   InstallerUrl: https://github.com/Rouchant/Zenit-Tauri/releases/download/v1.0.8/Zenit_1.0.8_x64-setup.exe
-  InstallerSha256: 2057ED96E54E2532A842BC06F85ADB4F38B5FD2F3A3D13D25E73FE035B1D57BA
+  InstallerSha256: 95F2170B5A06AFAAF06A92CF71F4F9B8CDD19904D3F32329F67ED1BA51033CD2
+  AppsAndFeaturesEntries:
+  - DisplayName: Zenit
+    DisplayVersion: 1.0.8
+    Publisher: Rouchant
+Dependencies:
+  PackageDependencies:
+    - PackageIdentifier: Microsoft.Edge.WebView2Runtime
+    - PackageIdentifier: Microsoft.VCRedist.2015+.x64
 ManifestType: installer
 ManifestVersion: 1.12.0
 ReleaseDate: 2026-04-18
