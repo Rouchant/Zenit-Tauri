@@ -23,18 +23,23 @@ export const INTERNAL_VIDEOS = {
 };
 
 const INTERNAL_PATHS = {
-  [INTERNAL_VIDEOS.ASUS_PROMO]: '/assets/videos/promo-asus.mp4',
-  [INTERNAL_VIDEOS.GENERIC_PROMO]: '/assets/videos/promo-generic.mp4',
-  [INTERNAL_VIDEOS.ASUS_LANDING]: '/assets/videos/landing-asus.mp4',
-  [INTERNAL_VIDEOS.GENERIC_LANDING]: '/assets/videos/landing-generic.mp4',
-  [INTERNAL_VIDEOS.GAMING_XBOX]: '/assets/videos/gaming_xbox_game_pass.mp4',
-  [INTERNAL_VIDEOS.WINDOWS_GAMING]: '/assets/videos/windows_the_home_of_gaming.mp4',
-  [INTERNAL_VIDEOS.QUALITY_DURABILITY]: '/assets/videos/BUILT-TO-LAST-Quality-and-Durability.mp4',
-  [INTERNAL_VIDEOS.ASUS_COPILOT]: '/assets/videos/Asus_Vivobook-Copilot-PC.mp4',
-  [INTERNAL_VIDEOS.INTRO_COPILOT]: '/assets/videos/Introducing-Copilot-PCs.mp4',
-  [INTERNAL_VIDEOS.CREATE_ASUS]: '/assets/videos/Create-with-ASUS-Best-ASUS.mp4',
-  [INTERNAL_VIDEOS.TUF_DURABILITY]: '/assets/videos/Quality_and_Durability_TUF_Gaming.mp4',
-  [INTERNAL_VIDEOS.ASUS_VIVOBOOK_S]: '/assets/videos/asus_vivobook_series_s.mp4'
+  [INTERNAL_VIDEOS.ASUS_PROMO]: 'promo-asus.mp4',
+  [INTERNAL_VIDEOS.GENERIC_PROMO]: 'promo-generic.mp4',
+  [INTERNAL_VIDEOS.ASUS_LANDING]: 'landing-asus.mp4',
+  [INTERNAL_VIDEOS.GENERIC_LANDING]: 'landing-generic.mp4',
+  [INTERNAL_VIDEOS.GAMING_XBOX]: 'gaming_xbox_game_pass.mp4',
+  [INTERNAL_VIDEOS.WINDOWS_GAMING]: 'windows_the_home_of_gaming.mp4',
+  [INTERNAL_VIDEOS.QUALITY_DURABILITY]: 'BUILT-TO-LAST-Quality-and-Durability.mp4',
+  [INTERNAL_VIDEOS.ASUS_COPILOT]: 'Asus_Vivobook-Copilot-PC.mp4',
+  [INTERNAL_VIDEOS.INTRO_COPILOT]: 'Introducing-Copilot-PCs.mp4',
+  [INTERNAL_VIDEOS.CREATE_ASUS]: 'Create-with-ASUS-Best-ASUS.mp4',
+  [INTERNAL_VIDEOS.TUF_DURABILITY]: 'Quality_and_Durability_TUF_Gaming.mp4',
+  [INTERNAL_VIDEOS.ASUS_VIVOBOOK_S]: 'asus_vivobook_series_s.mp4'
+};
+
+const BACKGROUND_VIDEOS = {
+  ASUS: 'background-asus.mp4',
+  GENERIC: 'background-generic.mp4'
 };
 
 export const useSpecsStore = defineStore('specs', () => {
@@ -45,6 +50,7 @@ export const useSpecsStore = defineStore('specs', () => {
   const isModalOpen = ref(false);
   const isLoading = ref(true);
   const theme = ref('default');
+  const resolvedPaths = ref({});
   
   const CONFIG = {
     INACTIVITY_LIMIT: 180000,
@@ -121,6 +127,25 @@ export const useSpecsStore = defineStore('specs', () => {
   const loadSpecs = async () => {
     isLoading.value = true;
     try {
+      // 0. Resolver rutas de recursos internos (videos en src-tauri/resources)
+      if (window.__TAURI_INTERNALS__) {
+        const resDir = await tauriAPI.getVideoPath();
+        if (resDir) {
+          // Normalizar separadores de ruta para Windows
+          const base = resDir.replace(/\\/g, '/');
+          
+          const internalEntries = Object.entries(INTERNAL_PATHS);
+          const bgEntries = Object.entries(BACKGROUND_VIDEOS);
+          
+          const newResolved = { ...resolvedPaths.value };
+          for (const [key, fileName] of [...internalEntries, ...bgEntries]) {
+            const absPath = `${base}/${fileName}`;
+            newResolved[key] = convertFileSrc(absPath);
+          }
+          resolvedPaths.value = newResolved;
+        }
+      }
+
       // 1. Cargar specs del store persistente (reemplaza config.json y localStorage)
       let storedSpecs = null;
       if (tauriStore) {
@@ -234,15 +259,30 @@ export const useSpecsStore = defineStore('specs', () => {
   const getVideoUrl = (filePath) => {
     if (!filePath) return '';
     
-    // Si es un video interno (virtual path)
-    if (INTERNAL_PATHS[filePath]) {
-      return INTERNAL_PATHS[filePath];
+    // 1. Si ya está resuelto (Bóveda o Interno ya procesado)
+    if (resolvedPaths.value[filePath]) {
+      return resolvedPaths.value[filePath];
     }
 
-    // Normalizar barras para evitar problemas en WebView de Windows
-    const normalizedPath = filePath.replace(/\\/g, '/');
-    const url = convertFileSrc(normalizedPath);
-    return url;
+    // 2. Si es una clave interna de INTERNAL_VIDEOS o BACKGROUND_VIDEOS pero aún no se ha resuelto
+    if (INTERNAL_PATHS[filePath] || BACKGROUND_VIDEOS[filePath]) {
+      // Intentar una ruta relativa como último recurso si no estamos en Tauri
+      return window.__TAURI_INTERNALS__ ? '' : `/resources/assets/${INTERNAL_PATHS[filePath] || BACKGROUND_VIDEOS[filePath]}`;
+    }
+
+    // 3. Para rutas de archivos externos (Bóveda) o fallbacks
+    // Solo usamos convertFileSrc si estamos en entorno Tauri
+    if (!window.__TAURI_INTERNALS__) {
+      return filePath;
+    }
+
+    try {
+      const normalizedPath = filePath.replace(/\\/g, '/');
+      return convertFileSrc(normalizedPath);
+    } catch (e) {
+      console.error("Error in convertFileSrc:", e);
+      return filePath;
+    }
   };
 
   return {

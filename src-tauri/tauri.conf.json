@@ -1,7 +1,7 @@
 {
   "$schema": "../node_modules/@tauri-apps/cli/config.schema.json",
   "productName": "Zenit",
-  "version": "1.0.8",
+  "version": "1.0.9",
   "identifier": "com.zenit.app",
   "build": {
     "frontendDist": "../dist_app",
@@ -74,7 +74,8 @@
       }
     },
     "resources": {
-      "../get-specs.ps1": "get-specs.ps1"
+      "../get-specs.ps1": "get-specs.ps1",
+      "resources/assets/*": ""
     }
   }
 }

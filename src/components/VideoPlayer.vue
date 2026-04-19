@@ -16,7 +16,7 @@ const videoUrls = computed(() => {
   }
   
   // Failsafe: Si no hay nada seleccionado, usar el base según marca detectada
-  return [store.isAsus ? '/assets/videos/promo-asus.mp4' : '/assets/videos/promo-generic.mp4'];
+  return [store.getVideoUrl(store.isAsus ? '__ASUS_PROMO__' : '__GENERIC_PROMO__')];
 });
 
 const currentUrl = computed(() => {

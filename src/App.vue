@@ -24,8 +24,8 @@
       ref="bgVideo"
       class="background-media"
       :key="store.isAsus ? 'asus' : 'generic'"
+      :src="store.getVideoUrl(store.isAsus ? 'ASUS' : 'GENERIC')"
     >
-      <source :src="store.isAsus ? '/assets/videos/background-asus.mp4' : '/assets/videos/background-generic.mp4'" type="video/mp4">
     </video>
     <img 
       v-else
@@ -53,7 +53,7 @@
               loop 
               muted 
               playsinline 
-              :src="store.getVideoUrl(store.currentSpecs.customLandingVideoPath) || (store.isAsus ? '/assets/videos/landing-asus.mp4' : '/assets/videos/landing-generic.mp4')"
+              :src="store.getVideoUrl(store.currentSpecs.customLandingVideoPath || (store.isAsus ? '__ASUS_LANDING__' : '__GENERIC_LANDING__'))"
               ref="landingVideo"
             >
             </video>

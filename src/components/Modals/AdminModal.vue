@@ -25,11 +25,11 @@ const SYSTEM_VIDEOS_CATALOG = [
     { name: '🏢 Original Genérico (Home)', path: INTERNAL_VIDEOS.GENERIC_LANDING },
     { name: '🤖 Asus Vivobook Copilot', path: INTERNAL_VIDEOS.ASUS_COPILOT },
     { name: '✨ Introducing Copilot PCs', path: INTERNAL_VIDEOS.INTRO_COPILOT },
-    { name: '🔥 Original Asus (Promo)', path: INTERNAL_VIDEOS.ASUS_PROMO },
+    { name: '🔥 Original Asus Durabilidad (Promo)', path: INTERNAL_VIDEOS.ASUS_PROMO },
     { name: '❄️ Original Genérico (Promo)', path: INTERNAL_VIDEOS.GENERIC_PROMO },
     { name: '🎮 Xbox Game Pass (Gaming)', path: INTERNAL_VIDEOS.GAMING_XBOX },
     { name: '💻 Windows: Home of Gaming', path: INTERNAL_VIDEOS.WINDOWS_GAMING },
-    { name: '✨ Asus: Calidad y Durabilidad', path: INTERNAL_VIDEOS.QUALITY_DURABILITY },
+    { name: '✨ ROG Calidad y Durabilidad', path: INTERNAL_VIDEOS.QUALITY_DURABILITY },
     { name: '🛡️ TUF Gaming: Duratibilidad', path: INTERNAL_VIDEOS.TUF_DURABILITY },
     { name: '🎨 Create with ASUS', path: INTERNAL_VIDEOS.CREATE_ASUS },
     { name: '🚀 Asus Vivobook S', path: INTERNAL_VIDEOS.ASUS_VIVOBOOK_S }
@@ -601,7 +601,7 @@ const deleteSavedVideo = async (path) => {
     display: flex;
     flex-direction: column;
     gap: 20px;
-    margin-bottom: 25px;
+    margin-bottom: 35px;
 }
 
 .video-slot {

@@ -29,6 +29,8 @@
     "autostart:default",
     "store:default",
     "window-state:default",
-    "notification:default"
+    "notification:default",
+    "core:path:default",
+    "fs:default"
   ]
 }
