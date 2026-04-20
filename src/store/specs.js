@@ -15,11 +15,7 @@ export const INTERNAL_VIDEOS = {
   GAMING_XBOX: '__GAMING_XBOX__',
   WINDOWS_GAMING: '__WINDOWS_GAMING__',
   QUALITY_DURABILITY: '__QUALITY_DURABILITY__',
-  ASUS_COPILOT: '__ASUS_COPILOT__',
-  INTRO_COPILOT: '__INTRO_COPILOT__',
-  CREATE_ASUS: '__CREATE_ASUS__',
-  TUF_DURABILITY: '__TUF_DURABILITY__',
-  ASUS_VIVOBOOK_S: '__ASUS_VIVOBOOK_S__'
+  TUF_DURABILITY: '__TUF_DURABILITY__'
 };
 
 const INTERNAL_PATHS = {
@@ -30,11 +26,7 @@ const INTERNAL_PATHS = {
   [INTERNAL_VIDEOS.GAMING_XBOX]: 'gaming_xbox_game_pass.mp4',
   [INTERNAL_VIDEOS.WINDOWS_GAMING]: 'windows_the_home_of_gaming.mp4',
   [INTERNAL_VIDEOS.QUALITY_DURABILITY]: 'BUILT-TO-LAST-Quality-and-Durability.mp4',
-  [INTERNAL_VIDEOS.ASUS_COPILOT]: 'Asus_Vivobook-Copilot-PC.mp4',
-  [INTERNAL_VIDEOS.INTRO_COPILOT]: 'Introducing-Copilot-PCs.mp4',
-  [INTERNAL_VIDEOS.CREATE_ASUS]: 'Create-with-ASUS-Best-ASUS.mp4',
-  [INTERNAL_VIDEOS.TUF_DURABILITY]: 'Quality_and_Durability_TUF_Gaming.mp4',
-  [INTERNAL_VIDEOS.ASUS_VIVOBOOK_S]: 'asus_vivobook_series_s.mp4'
+  [INTERNAL_VIDEOS.TUF_DURABILITY]: 'Quality_and_Durability_TUF_Gaming.mp4'
 };
 
 const BACKGROUND_VIDEOS = {
@@ -221,8 +213,6 @@ export const useSpecsStore = defineStore('specs', () => {
           const allOptions = [
             { name: '🏠 Original Asus (Home)', path: INTERNAL_VIDEOS.ASUS_LANDING },
             { name: '🏢 Original Genérico (Home)', path: INTERNAL_VIDEOS.GENERIC_LANDING },
-            { name: '🤖 Asus Vivobook Copilot', path: INTERNAL_VIDEOS.ASUS_COPILOT },
-            { name: '✨ Introducing Copilot PCs', path: INTERNAL_VIDEOS.INTRO_COPILOT },
             { name: '🎮 Xbox Game Pass (Gaming)', path: INTERNAL_VIDEOS.GAMING_XBOX }
           ];
           const matched = allOptions.find(o => o.path === currentSpecs.value.customLandingVideoPath);
@@ -231,19 +221,19 @@ export const useSpecsStore = defineStore('specs', () => {
           }
       }
 
-      // Pre-selección de Inactividad (Slot 0)
+      // Pre-selección de Inactividad (Slots)
       const hasAnyCustomSet = currentSpecs.value.customVideoPaths && currentSpecs.value.customVideoPaths.some(p => p.path);
       if (!hasAnyCustomSet) {
-          if (isRTXGpu) {
-              currentSpecs.value.customVideoPaths[0] = { 
-                  name: isAsusBrand ? 'Calidad y Durabilidad (Gaming)' : 'Windows Gaming', 
-                  path: isAsusBrand ? INTERNAL_VIDEOS.QUALITY_DURABILITY : INTERNAL_VIDEOS.WINDOWS_GAMING 
-              };
+          if (isRTXGpu && isAsusBrand) {
+              currentSpecs.value.customVideoPaths[0] = { name: 'TUF Gaming: Durabilidad', path: INTERNAL_VIDEOS.TUF_DURABILITY };
+              currentSpecs.value.customVideoPaths[1] = { name: 'Promo Asus', path: INTERNAL_VIDEOS.ASUS_PROMO };
+          } else if (isRTXGpu) {
+              currentSpecs.value.customVideoPaths[0] = { name: 'Windows Gaming', path: INTERNAL_VIDEOS.WINDOWS_GAMING };
+          } else if (isAsusBrand) {
+              currentSpecs.value.customVideoPaths[0] = { name: 'Promo Genérica', path: INTERNAL_VIDEOS.GENERIC_PROMO };
+              currentSpecs.value.customVideoPaths[1] = { name: 'Promo Asus', path: INTERNAL_VIDEOS.ASUS_PROMO };
           } else {
-              currentSpecs.value.customVideoPaths[0] = { 
-                  name: isAsusBrand ? 'Promo Asus' : 'Promo Generica', 
-                  path: isAsusBrand ? INTERNAL_VIDEOS.ASUS_PROMO : INTERNAL_VIDEOS.GENERIC_PROMO 
-              };
+              currentSpecs.value.customVideoPaths[0] = { name: 'Promo Genérica', path: INTERNAL_VIDEOS.GENERIC_PROMO };
           }
       }
 

@@ -10,7 +10,7 @@ use tauri_plugin_store::StoreExt;
 use tauri_plugin_global_shortcut::GlobalShortcutExt;
 
 use crate::state::AppState;
-use crate::setup::{run_system_setup, internal_setup_autostart};
+use crate::setup::run_system_setup;
 use crate::commands::{system, vault, window};
 
 #[cfg_attr(mobile, tauri::mobile_entry_point)]
@@ -88,7 +88,11 @@ pub fn run() {
                 }
             }
 
-            let _ = internal_setup_autostart(app.handle());
+            // Habilitar autostart automaticamente al iniciar la app
+            {
+                use tauri_plugin_autostart::ManagerExt;
+                let _ = app.autolaunch().enable();
+            }
 
             // Limpiar archivos huérfanos de la bóveda
             vault::cleanup_orphan_videos(app.handle());
@@ -98,8 +102,7 @@ pub fn run() {
         .invoke_handler(tauri::generate_handler![
             system::get_system_specs,
             system::get_video_path,
-            system::setup_autostart,
-            system::remove_autostart,
+            system::set_max_brightness,
             vault::select_video,
             vault::save_custom_video,
             vault::list_custom_videos,

@@ -32,10 +32,9 @@ export const tauriAPI = {
   deleteCustomVideo: (path) => safeInvoke('delete_custom_video', { path }),
   renameCustomVideo: (path, newName) => safeInvoke('rename_custom_video', { path, newName }),
   checkFileExists: (filePath) => safeInvoke('check_file_exists', { filePath }),
-  setupAutostart: () => safeInvoke('setup_autostart'),
-  removeAutostart: () => safeInvoke('remove_autostart'),
   quitApp: () => safeInvoke('quit_app'),
   setAlwaysOnTop: (onTop) => safeInvoke('set_always_on_top', { onTop }),
+  setMaxBrightness: () => safeInvoke('set_max_brightness'),
 };
 
 /**

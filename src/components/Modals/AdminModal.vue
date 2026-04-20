@@ -21,18 +21,14 @@ onMounted(async () => {
 });
 
 const SYSTEM_VIDEOS_CATALOG = [
-    { name: '🏠 Original Asus (Home)', path: INTERNAL_VIDEOS.ASUS_LANDING },
-    { name: '🏢 Original Genérico (Home)', path: INTERNAL_VIDEOS.GENERIC_LANDING },
-    { name: '🤖 Asus Vivobook Copilot', path: INTERNAL_VIDEOS.ASUS_COPILOT },
-    { name: '✨ Introducing Copilot PCs', path: INTERNAL_VIDEOS.INTRO_COPILOT },
+    { name: '🏠 Original Asus AI (Home)', path: INTERNAL_VIDEOS.ASUS_LANDING },
+    { name: '🏢 Original Genérico Win 11 (Home)', path: INTERNAL_VIDEOS.GENERIC_LANDING },
     { name: '🔥 Original Asus Durabilidad (Promo)', path: INTERNAL_VIDEOS.ASUS_PROMO },
-    { name: '❄️ Original Genérico (Promo)', path: INTERNAL_VIDEOS.GENERIC_PROMO },
+    { name: '🪟 Original Genérico (Promo) Move to Win 11', path: INTERNAL_VIDEOS.GENERIC_PROMO },
     { name: '🎮 Xbox Game Pass (Gaming)', path: INTERNAL_VIDEOS.GAMING_XBOX },
     { name: '💻 Windows: Home of Gaming', path: INTERNAL_VIDEOS.WINDOWS_GAMING },
     { name: '✨ ROG Calidad y Durabilidad', path: INTERNAL_VIDEOS.QUALITY_DURABILITY },
-    { name: '🛡️ TUF Gaming: Duratibilidad', path: INTERNAL_VIDEOS.TUF_DURABILITY },
-    { name: '🎨 Create with ASUS', path: INTERNAL_VIDEOS.CREATE_ASUS },
-    { name: '🚀 Asus Vivobook S', path: INTERNAL_VIDEOS.ASUS_VIVOBOOK_S }
+    { name: '🛡️ TUF Gaming: Durabilidad', path: INTERNAL_VIDEOS.TUF_DURABILITY }
 ];
 
 const INTERNAL_OPTIONS = SYSTEM_VIDEOS_CATALOG;

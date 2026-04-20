@@ -18,17 +18,6 @@ pub fn get_resource_dir(app: &AppHandle) -> PathBuf {
     app.path().resource_dir().expect("No se pudo obtener resource_dir")
 }
 
-/// Obtiene la ruta al acceso directo en la carpeta de Inicio de Windows
-pub fn get_autostart_shortcut_path() -> Result<PathBuf, String> {
-    let appdata = std::env::var("APPDATA").map_err(|e| e.to_string())?;
-    Ok(PathBuf::from(appdata)
-        .join("Microsoft")
-        .join("Windows")
-        .join("Start Menu")
-        .join("Programs")
-        .join("Startup")
-        .join("Zenit.lnk"))
-}
 
 pub fn chrono_millis() -> u128 {
     std::time::SystemTime::now()

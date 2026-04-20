@@ -207,6 +207,9 @@ watch(() => store.isModalOpen, (isOpen) => {
 // Force window focus and on-top status when screensaver starts
 watch(() => store.isVideoMode, (isVideo) => {
   if (isVideo) {
+    // Intentar forzar brillo al 100% antes de mostrar el video
+    tauriAPI.setMaxBrightness();
+
     isInternalFocusHack.value = true;
     tauriAPI.restoreApp().finally(() => {
       // Dejar una ventana de 1s para que los eventos de teclado/foco del sistema se procesen e ignoren
