@@ -110,6 +110,8 @@ pub async fn minimize_app(app: AppHandle, state: tauri::State<'_, AppState>, sto
             
             if idle_time_ms >= idle_limit_ms {
                 let _ = restore_app_logic(&app_clone).await;
+                // Notificar al frontend para que active el attract loop (video mode)
+                let _ = app_clone.emit("trigger-inactivity-video", ());
                 break;
             }
         }

@@ -105,6 +105,7 @@
 import { onMounted, onUnmounted, ref, watch, reactive, computed } from 'vue';
 import { useSpecsStore } from './store/specs';
 import { tauriAPI } from './api/tauriApi';
+import { listen } from '@tauri-apps/api/event';
 
 // Components
 import Header from './components/Header.vue';
@@ -241,6 +242,14 @@ onMounted(async () => {
   window.addEventListener('mousemove', resetTimer);
   window.addEventListener('keydown', resetTimer);
   window.addEventListener('mousedown', resetTimer);
+
+  // Escuchar evento de inactividad global desde Rust (cuando la app estaba minimizada)
+  if (window.__TAURI_INTERNALS__) {
+    listen('trigger-inactivity-video', () => {
+      console.log('Restored via global inactivity, forcing video mode');
+      store.isVideoMode = true;
+    });
+  }
 });
 
 onUnmounted(() => {
