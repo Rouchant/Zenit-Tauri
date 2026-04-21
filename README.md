@@ -2,55 +2,53 @@
 
 <img src="public/assets/logo.png" alt="Zenit Logo" width="200">
 
-![Version](https://img.shields.io/badge/version-1.0.7-blue.svg)
+![Version](https://img.shields.io/badge/version-1.1.1-blue.svg)
 ![Tauri](https://img.shields.io/badge/framework-Tauri%20v2-FFC131.svg)
+![Rust](https://img.shields.io/badge/backend-Rust-orange.svg)
 ![Vue 3](https://img.shields.io/badge/frontend-Vue%203-42b883.svg)
-![Vite](https://img.shields.io/badge/build-Vite%206-646cff.svg)
 ![Windows](https://img.shields.io/badge/OS-Windows%2010%2F11-0078D4.svg)
 
 ---
 
 ## 💡 ¿Alguna vez te ha pasado que en tu tienda de venta de computadores no encuentras una forma de mostrar de forma resumida el hardware de tu equipo?
 
-**Zenit lo hace automático.** 
+**Zenit lo hace automático y nativo.** 
 
-Zenit es una solución de nivel empresarial para **Showcase Terminals**, diseñada específicamente para equipos de exhibición en puntos de venta (Retail). Olvídate de configurar manualmente las specs de cada equipo; Zenit detecta el hardware y lo presenta de una forma visualmente impactante y profesional.
+Zenit es una solución de nivel empresarial para **Showcase Terminals**, diseñada específicamente para equipos de exhibición en puntos de venta (Retail). Olvídate de configurar manualmente las specs de cada equipo; Zenit detecta el hardware en tiempo real y lo presenta de una forma visualmente impactante y profesional.
 
 ---
 
 ## ✨ Características Principales
 
-### 🖥️ Detección de Hardware Inteligente (Powered by PowerShell & WMI)
-Zenit utiliza un potente motor de telemetría basado en Rust y PowerShell para extraer y mostrar de forma resumida:
-- **Procesador (CPU)**: Identificación exacta y limpia (ej. Intel Core 5, Ryzen AI, Core Ultra). Limpieza automática de marcas registradas ((R), (TM)).
-- **Generaciones Modernas**: Soporte para Intel Core Series 1, Series 2 y Ultra.
-- **Gráficos (GPU)**: Detección inteligente de modelos integrados y dedicados.
-- **Resolución Nativa**: Detección via `WmiMonitorListedSupportedSourceModes` para obtener la resolución real máxima ignorando el escalado de Windows.
+### 🖥️ Detección de Hardware Nativa (100% Rust & WMI)
+Zenit ha migrado su motor de telemetría a Rust nativo para una velocidad y fiabilidad sin precedentes:
+- **Procesador (CPU)**: Identificación exacta con limpieza automática de marcas registradas. Soporte para Intel Core Ultra, Series 1/2 y Ryzen AI.
+- **Gráficos (GPU)**: Identificación de modelos dedicados (RTX, RX) e integrados con prioridad inteligente.
+- **Almacenamiento Comercial**: Suma automática de discos con redondeo comercial inteligente (ej. >872GB -> 1TB).
+- **Resolución Real**: Detección nativa del monitor ignorando el escalado de Windows (Full HD, 2K, 4K).
+- **SO Detallado**: Muestra la versión exacta de Windows (Home, Pro, Single Language).
 
 ### 🏷️ Personalización Comercial (E-Commerce Ready)
-- **Precios Dinámicos**: Configura y muestra el precio actual del equipo directamente en pantalla.
-- **Gestión de SKU**: Incluye el código de producto para facilitar la búsqueda en bodega o sistema de ventas.
-- **Branding de Retail**: Soporte para logos de retails (**Falabella, Paris, Ripley**) y marcas líderes (**Asus, Acer, HP, Lenovo**, etc.).
+- **Precios Dinámicos**: Configura y muestra precios actuales directamente en pantalla.
+- **Gestión de SKU**: Código de producto integrado para facilitar la búsqueda en bodega.
+- **Branding de Retail**: Soporte para logos de retails (**Falabella, Paris, Ripley**) y marcas líderes.
 
 ### 🎥 Gestión Multimedia "Premium"
-- **Bóveda de Videos**: Gestor inteligente de videos con almacenamiento local persistente.
-- **Alias de Marketing**: Asignación de nombres estéticos a archivos de video (ej. "Campaña Navidad" en lugar de `video_1.mp4`).
-- **Autocompletado**: Captura automática del nombre del archivo al subir nuevos clips.
-- **Inactividad Visual**: Ocultamiento automático del cursor durante la reproducción de videos de pantalla completa.
+- **Bóveda de Videos**: Gestor inteligente con almacenamiento local persistente.
+- **Alias de Marketing**: Asignación de nombres estéticos a archivos de video.
+- **Inactividad Visual**: Ocultamiento automático del cursor y forzado de brillo al 100% durante la reproducción.
 
 ---
 
 ## 🔒 Seguridad y Kiosko Inteligente
 
 ### ⏱️ Monitoreo de Inactividad Global
-A diferencia de otros protectores de pantalla, Zenit no usa un temporizador "ciego".
-- **Hardware polling**: Utiliza la API nativa de Windows `GetLastInputInfo` para monitorear mouse y teclado en todo el sistema.
-- **Uso Respetuoso**: Si estás mostrando algo al cliente o usando otra app, Zenit se mantendrá oculto. Solo regresará a pantalla completa tras 3 minutos de inactividad **total** del equipo.
+- **Hardware Polling**: Utiliza APIs nativas de Windows para monitorear mouse y teclado en todo el sistema.
+- **Salvapantallas Inteligente**: Regresa al video promocional tras el tiempo configurado de inactividad total.
 
 ### 🛡️ Modo Kiosko Robusto
 - **Anti-Focus Theft**: Mantiene la aplicación siempre al frente, bloqueando intentos de minimizarla.
-- **Bloqueo Total de Atajos**: Inhabilita `Alt+Tab`, `Win+D`, `Alt+F4`, etc.
-- **Ventana de Retorno Compacta**: Mini-interfaz elegante para volver a Zenit rápidamente después de probar el equipo.
+- **Ventana de Retorno Compacta**: Interfaz flotante para volver a Zenit rápidamente después de probar el equipo.
 
 ---
 
@@ -67,25 +65,24 @@ A diferencia de otros protectores de pantalla, Zenit no usa un temporizador "cie
 npm install
 
 # Modo Desarrollo (HMR)
-npm run tauri:dev
+npm run tauri dev
 
 # Compilar para Producción (Crea instalador NSIS)
-npm run tauri:build
+npm run tauri build
 ```
 
 ---
 
 ## 📁 Estructura del Proyecto
 
-- **`src-tauri/`**: Backend en Rust (Seguridad, Store, PowerShell Bridge, APIs de sistema, Metadatos JSON).
+- **`src-tauri/`**: Backend en Rust (Detección de Hardware, Seguridad, APIs de Sistema).
 - **`src/`**: Aplicación Frontend (Vue 3, Pinia).
-- **`public/assets/logos/`**: Catálogo de logos integrados.
-- **`*.ps1`**: Scripts de telemetría personalizados.
+- **`public/assets/`**: Catálogo de logos y recursos estáticos.
 
 ---
 
 ## 🔑 Acceso Administrativo
-Ajusta los precios, SKU, videos y logos mediante el **panel oculto**. Para acceder, utiliza el **Hotspot invisible** en la esquina superior izquierda e introduce la clave maestra (**"demo"**). Existe otro Hotspot en la esquina inferior derecha para cerrar Zenit.
+Ajusta los precios, SKU, videos y logos mediante el **panel oculto**. Para acceder, utiliza el **Hotspot invisible** en la esquina superior derecha e introduce la clave maestra (**"demo"**). Existe otro Hotspot en la esquina inferior derecha para cerrar la aplicación.
 
 ---
 
