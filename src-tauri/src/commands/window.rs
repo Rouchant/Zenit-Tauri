@@ -1,4 +1,4 @@
-use tauri::{AppHandle, Manager, LogicalPosition, LogicalSize};
+use tauri::{AppHandle, Manager, LogicalPosition, LogicalSize, Emitter};
 use std::sync::Arc;
 use tokio::sync::Mutex;
 use tauri::async_runtime::JoinHandle;
