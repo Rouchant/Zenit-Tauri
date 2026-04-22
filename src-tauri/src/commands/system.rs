@@ -171,27 +171,38 @@ async fn get_wmi_details() -> Result<(String, String, String, String, String, St
     };
 
     // --- 2. GPU y Resolución (fallback) ---
-    let mut gpu = "Gráficos Integrados".to_string();
-    let mut v_h = 0;
-    let mut v_v = 0;
+    let mut puntuacion_actual = 0;
 
-    if let Ok(gpu_results) = wmi_con.raw_query("SELECT Name, CurrentHorizontalResolution, CurrentVerticalResolution FROM Win32_VideoController") {
-        let gpu_results: Vec<HashMap<String, serde_json::Value>> = gpu_results;
-        for res in &gpu_results {
-            if let Some(name) = res.get("Name").and_then(|v| v.as_str()) {
-                let name_up = name.to_uppercase();
-                if name_up.contains("RTX") || name_up.contains("GTX") || name_up.contains("NVIDIA") || name_up.contains("RADEON") || name_up.contains("RX ") { 
-                    gpu = name.to_string(); 
-                    v_h = res.get("CurrentHorizontalResolution").and_then(|v| v.as_u64()).unwrap_or(0);
-                    v_v = res.get("CurrentVerticalResolution").and_then(|v| v.as_u64()).unwrap_or(0);
-                    break; 
-                }
+    for res in &gpu_results {
+        if let Some(name) = res.get("Name").and_then(|v| v.as_str()) {
+            let name_up = name.to_uppercase();
+            let mut puntuacion = 0;
+
+            // 1. PRIORIDAD MÁXIMA: NVIDIA / RTX / GTX
+            if name_up.contains("NVIDIA") || name_up.contains("RTX") || name_up.contains("GTX") {
+                puntuacion = 4;
+            } 
+            // 2. SEGUNDA PRIORIDAD: AMD Radeon RX (Dedicadas)
+            else if name_up.contains("RX ") {
+                puntuacion = 3;
+            } 
+            // 3. TERCERA PRIORIDAD: Intel ARC (Dedicadas)
+            else if name_up.contains("ARC") {
+                puntuacion = 2;
+            } 
+            // 4. CUARTA PRIORIDAD: Integradas (UHD, Radeon Graphics, Iris, etc.)
+            else if name_up.contains("UHD") || name_up.contains("RADEON") || 
+                    name_up.contains("IRIS") || name_up.contains("INTEL") {
+                puntuacion = 1;
             }
-        }
-        if gpu == "Gráficos Integrados" && !gpu_results.is_empty() {
-            gpu = gpu_results[0].get("Name").and_then(|v| v.as_str()).unwrap_or("Gráficos Integrados").to_string();
-            v_h = gpu_results[0].get("CurrentHorizontalResolution").and_then(|v| v.as_u64()).unwrap_or(0);
-            v_v = gpu_results[0].get("CurrentVerticalResolution").and_then(|v| v.as_u64()).unwrap_or(0);
+
+            // Solo actualizamos si esta GPU es "mejor" que la que ya teníamos
+            if puntuacion > puntuacion_actual {
+                puntuacion_actual = puntuacion;
+                gpu = name.to_string();
+                v_h = res.get("CurrentHorizontalResolution").and_then(|v| v.as_u64()).unwrap_or(0);
+                v_v = res.get("CurrentVerticalResolution").and_then(|v| v.as_u64()).unwrap_or(0);
+            }
         }
     }
 
