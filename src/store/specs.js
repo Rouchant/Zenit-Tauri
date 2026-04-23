@@ -205,14 +205,14 @@ export const useSpecsStore = defineStore('specs', () => {
               currentSpecs.value.customLandingVideoPath = INTERNAL_VIDEOS.GAMING_XBOX;
               currentSpecs.value.customLandingVideoName = 'Xbox Game Pass (Gaming)';
           } else {
-              currentSpecs.value.customLandingVideoPath = isAsusBrand ? INTERNAL_VIDEOS.ASUS_LANDING : INTERNAL_VIDEOS.GENERIC_LANDING;
-              currentSpecs.value.customLandingVideoName = isAsusBrand ? 'Original Asus (Home)' : 'Original Genérico (Home)';
+              currentSpecs.value.customLandingVideoPath = INTERNAL_VIDEOS.GENERIC_LANDING;
+              currentSpecs.value.customLandingVideoName = 'Original Windows 11 (Home)';
           }
       } else if (!currentSpecs.value.customLandingVideoName) {
           // Migración: Si tiene path pero no nombre, intentar buscar en internos
           const allOptions = [
             { name: '🏠 Original Asus (Home)', path: INTERNAL_VIDEOS.ASUS_LANDING },
-            { name: '🏢 Original Genérico (Home)', path: INTERNAL_VIDEOS.GENERIC_LANDING },
+            { name: '🏢 Original Windows 11 (Home)', path: INTERNAL_VIDEOS.GENERIC_LANDING },
             { name: '🎮 Xbox Game Pass (Gaming)', path: INTERNAL_VIDEOS.GAMING_XBOX }
           ];
           const matched = allOptions.find(o => o.path === currentSpecs.value.customLandingVideoPath);

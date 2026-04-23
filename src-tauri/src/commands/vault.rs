@@ -80,9 +80,9 @@ pub async fn save_custom_video(app: AppHandle, source_path: String, custom_name:
         return Err("La bóveda está llena (máximo 5 videos). Elimina uno para continuar.".to_string());
     }
 
-    // 3. Validar tamaño (Máximo 40MB = 41,943,040 bytes)
-    if file_size > 41_943_040 {
-        return Err("El video supera el límite de 40MB permitido.".to_string());
+    // 3. Validar tamaño (Máximo 50MB = 52,428,800 bytes)
+    if file_size > 52_428_800 {
+        return Err("El video supera el límite de 50MB permitido.".to_string());
     }
 
     // 4. Validar nombre alfanumérico si se proporciona

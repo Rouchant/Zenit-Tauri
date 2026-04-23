@@ -177,26 +177,26 @@ let lastReset = 0;
 
 
 const resetTimer = (event) => {
-  // Ignorar eventos generados por el sistema durante el hack de foco
+  // Ignorar la tecla Escape (enviada por Rust al restaurar) y el hack de foco interno.
+  if (event && event.key === 'Escape') return;
   if (isInternalFocusHack.value) return;
 
-  const now = Date.now();
-  // Optimization: Throttle events every 300ms to reduce CPU usage
-  if (now - lastReset < 300 && !store.isVideoMode) return;
-  lastReset = now;
-
-  // 1. Reiniciar timer de Video (2 min)
+  // Siempre cancelar el timer anterior ante cualquier actividad
   clearTimeout(inactivityTimer.value);
+  inactivityTimer.value = null;
 
+  // Salir del modo video si estábamos en él
   if (store.isVideoMode) store.isVideoMode = false;
-  
-  // Ensure we only set the inactivity screensaver timer if we are not in a modal
+
+  // No activar el contador si hay un modal abierto
   if (store.isModalOpen) return;
 
+  // Siempre recrear el timer. clearTimeout + setTimeout es casi gratuito en CPU,
+  // no es necesario throttle aquí. Lo importante es que SIEMPRE haya uno activo.
   inactivityTimer.value = setTimeout(() => {
-    console.log('Inactivity limit reached, entering video mode');
+    console.log('[Inactivity] Limit reached, entering video mode.');
     store.isVideoMode = true;
-  }, store.CONFIG.INACTIVITY_LIMIT || 120000);
+  }, store.CONFIG.INACTIVITY_LIMIT);
 };
 
 // Auto-reset timer when modals close
@@ -235,6 +235,10 @@ const onPasswordVerified = () => {
   }
 };
 
+let unlistenInactivity = null;
+let unlistenActivity = null;
+let unlistenMinimized = null;
+
 onMounted(async () => {
   await store.loadSpecs();
   resetTimer();
@@ -243,11 +247,31 @@ onMounted(async () => {
   window.addEventListener('keydown', resetTimer);
   window.addEventListener('mousedown', resetTimer);
 
-  // Escuchar evento de inactividad global desde Rust (cuando la app estaba minimizada)
   if (window.__TAURI_INTERNALS__) {
-    listen('trigger-inactivity-video', () => {
+    // Cuando Rust minimiza la app: PAUSAR el timer de JS.
+    // Rust asume el control de la vigilancia de inactividad.
+    unlistenMinimized = await listen('app-minimized', () => {
+      console.log('App minimized: pausing JS inactivity timer, Rust takes over.');
+      if (inactivityTimer.value) {
+        clearTimeout(inactivityTimer.value);
+        inactivityTimer.value = null;
+      }
+    });
+
+    // Cuando Rust detecta 3 min de inactividad: activar modo video
+    unlistenInactivity = await listen('trigger-inactivity-video', () => {
       console.log('Restored via global inactivity, forcing video mode');
       store.isVideoMode = true;
+    });
+
+    // Cuando el usuario hace algo en el PC (detectado por Rust): quitar video y reanudar timer JS
+    unlistenActivity = await listen('system-activity-detected', () => {
+      console.log('System activity detected via Rust, exiting video mode');
+      if (store.isVideoMode) {
+        store.isVideoMode = false;
+      }
+      // Reanudar el timer de JS ahora que la app está de vuelta
+      resetTimer();
     });
   }
 });
@@ -256,6 +280,11 @@ onUnmounted(() => {
   window.removeEventListener('mousemove', resetTimer);
   window.removeEventListener('keydown', resetTimer);
   window.removeEventListener('mousedown', resetTimer);
+  
+  if (unlistenMinimized) unlistenMinimized();
+  if (unlistenInactivity) unlistenInactivity();
+  if (unlistenActivity) unlistenActivity();
+  
   clearTimeout(inactivityTimer.value);
 });
 </script>

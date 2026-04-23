@@ -65,6 +65,10 @@ pub async fn minimize_app(app: AppHandle, state: tauri::State<'_, AppState>, sto
     let return_window = app.get_webview_window("return").ok_or("Return window not found")?;
 
     main_window.minimize().map_err(|e| e.to_string())?;
+    
+    // Notificar al frontend para que CANCELE su timer JS.
+    // A partir de ahora, Rust es el encargado de vigilar la inactividad.
+    let _ = app.emit("app-minimized", ());
 
     if let Ok(Some(monitor)) = main_window.primary_monitor() {
         let monitor_size = monitor.size().to_logical::<f64>(monitor.scale_factor());
@@ -91,27 +95,51 @@ pub async fn minimize_app(app: AppHandle, state: tauri::State<'_, AppState>, sto
     }
 
     let handle = tauri::async_runtime::spawn(async move {
-        let idle_limit_ms = 180_000;
+        // --- Constantes de tiempo (todas en ms o s según el contexto) ---
+        const IDLE_LIMIT_MS: u32          = 180_000; // 3 minutos de inactividad para activar video
+        const POLL_INTERVAL_SECS: u64     = 2;       // Cada cuánto revisamos la inactividad
+        const GRACE_PERIOD_SECS: u64      = 6;       // Espera post-restauración (para ignorar el Esc de Rust)
+        const ACTIVITY_THRESHOLD_MS: u32  = 3_000;   // Si idle < esto, el usuario está activo
+
+        let start_time = unsafe { windows_sys::Win32::System::SystemInformation::GetTickCount() };
+        let mut is_restored = false;
         
         loop {
-            tokio::time::sleep(tokio::time::Duration::from_secs(5)).await;
+            tokio::time::sleep(tokio::time::Duration::from_secs(POLL_INTERVAL_SECS)).await;
             
-            let idle_time_ms = unsafe {
+            let current_time = unsafe { windows_sys::Win32::System::SystemInformation::GetTickCount() };
+            let last_input_time = unsafe {
                 let mut lii = windows_sys::Win32::UI::Input::KeyboardAndMouse::LASTINPUTINFO {
                     cbSize: std::mem::size_of::<windows_sys::Win32::UI::Input::KeyboardAndMouse::LASTINPUTINFO>() as u32,
                     dwTime: 0,
                 };
                 if windows_sys::Win32::UI::Input::KeyboardAndMouse::GetLastInputInfo(&mut lii) != 0 {
-                    windows_sys::Win32::System::SystemInformation::GetTickCount() - lii.dwTime
+                    lii.dwTime
                 } else {
-                    0
+                    current_time
                 }
             };
             
-            if idle_time_ms >= idle_limit_ms {
+            // Inactividad real DESDE que se minimizó la app (ignora el idle previo)
+            let effective_idle_time = if last_input_time < start_time {
+                current_time.wrapping_sub(start_time)
+            } else {
+                current_time.wrapping_sub(last_input_time)
+            };
+            
+            if !is_restored && effective_idle_time >= IDLE_LIMIT_MS {
                 let _ = restore_app_logic(&app_clone).await;
-                // Notificar al frontend para que active el attract loop (video mode)
                 let _ = app_clone.emit("trigger-inactivity-video", ());
+                is_restored = true;
+                
+                // Período de gracia: el Escape enviado por restore_app_logic actualiza
+                // GetLastInputInfo, así que esperamos antes de volver a revisar.
+                tokio::time::sleep(tokio::time::Duration::from_secs(GRACE_PERIOD_SECS)).await;
+            }
+
+            // Si el usuario hizo algo REAL después del período de gracia, salir del video
+            if is_restored && effective_idle_time < ACTIVITY_THRESHOLD_MS {
+                let _ = app_clone.emit("system-activity-detected", ());
                 break;
             }
         }
