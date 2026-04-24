@@ -210,39 +210,37 @@ async fn get_wmi_details() -> Result<(String, String, String, String, String, St
         }
     }
 
-    // --- LIMPIEZA INTELIGENTE DE REDUNDANCIAS ---
-    // 1. Si el modelo empieza con la marca (ej: ASUS ASUS TUF...), quitar la repetición
+    // --- LIMPIEZA Y FORMATEO DE MODELO ---
+    // 1. Limpiar redundancias iniciales (evitar "ASUS ASUS ...")
     let brand_upper = brand.to_uppercase();
-    let mut model_upper = model.to_uppercase();
-    
-    if model_upper.starts_with(&brand_upper) {
+    while model.to_uppercase().starts_with(&brand_upper) && model.len() > brand.len() {
         model = model[brand.len()..].trim().to_string();
-        // A veces se repite dos veces (ASUS ASUS ...)
-        model_upper = model.to_uppercase();
-        if model_upper.starts_with(&brand_upper) {
-            model = model[brand.len()..].trim().to_string();
-        }
     }
 
-    // 2. Limpiar guiones bajos o códigos duplicados al final (ej: FX607VJ_FX607VJ o E1404GAB_E1404GA)
+    // 2. Limpiar guiones bajos o códigos duplicados (ej: FX607VJ_FX607VJ)
     if let Some(pos) = model.find('_') {
         let (first, second_with_underscore) = model.split_at(pos);
         let second = second_with_underscore[1..].trim();
         let first_trimmed = first.trim();
         
-        // Si la segunda parte está contenida en la primera o viceversa (caso de códigos de variante)
-        if first_trimmed.contains(second) || second.contains(first_trimmed.split_whitespace().last().unwrap_or("")) {
+        if first_trimmed.ends_with(second) || second.contains(first_trimmed.split_whitespace().last().unwrap_or("###")) {
             model = first_trimmed.to_string();
         }
     }
 
-    // 3. Si el modelo quedó vacío o muy corto después de limpiar, usar un fallback razonable
+    // 3. Fallback si el modelo queda vacío
     if model.is_empty() || model.len() < 2 {
-        if brand.to_uppercase().contains("VIRTUALBOX") {
-            model = "Virtual Machine".to_string();
-        } else {
-            model = "Notebook".to_string();
-        }
+        model = if brand.to_uppercase().contains("VIRTUALBOX") { 
+            "Virtual Machine".to_string() 
+        } else { 
+            "PC Desktop".to_string() 
+        };
+    }
+
+    // 4. Construir formato final "Marca Modelo"
+    // Solo concatenamos si la marca no es un genérico y el modelo no contiene ya la marca
+    if !model.to_uppercase().contains(&brand_upper) && brand != "PC Desktop" && brand != "PC Generico" {
+        model = format!("{} {}", brand, model);
     }
 
     // --- 2. GPU y Resolución (fallback) ---
@@ -294,33 +292,54 @@ async fn get_wmi_details() -> Result<(String, String, String, String, String, St
         }
     }
 
-    // --- 3. Resolución Nativa del Monitor ---
+    // --- 3. Resolución Real (Triple Fallback) ---
     let mut max_h = 0;
     let mut max_v = 0;
-    if let Ok(wmi_mon_con) = WMIConnection::with_namespace_path("root\\wmi", COMLibrary::new()?) {
-        if let Ok(monitor_results) = wmi_mon_con.raw_query("SELECT HorizontalActivePixels, VerticalActivePixels FROM WmiMonitorListedSupportedSourceModes") {
-            let monitor_results: Vec<HashMap<String, serde_json::Value>> = monitor_results;
-            for res in &monitor_results {
-                let h = res.get("HorizontalActivePixels").and_then(|v| v.as_u64()).unwrap_or(0);
-                let v = res.get("VerticalActivePixels").and_then(|v| v.as_u64()).unwrap_or(0);
-                if h > max_h { max_h = h; max_v = v; }
+
+    // Fallback 1: Intentar vía Win32_VideoController (Lo más común)
+    // Ya tenemos v_h y v_v del loop anterior, pero el usuario prefiere un loop dedicado o validar el máximo
+    if v_h > 0 {
+        max_h = v_h;
+        max_v = v_v;
+    } else {
+        for res in &gpu_results {
+            let h = res.get("CurrentHorizontalResolution").and_then(|v| v.as_u64()).unwrap_or(0);
+            let v = res.get("CurrentVerticalResolution").and_then(|v| v.as_u64()).unwrap_or(0);
+            if h > max_h { max_h = h; max_v = v; }
+        }
+    }
+
+    // Fallback 2: Si el anterior falló, intentar Win32_DesktopMonitor
+    if max_h == 0 {
+        if let Ok(results) = wmi_con.raw_query("SELECT ScreenWidth, ScreenHeight FROM Win32_DesktopMonitor") {
+            let results: Vec<HashMap<String, serde_json::Value>> = results;
+            if let Some(res) = results.first() {
+                max_h = res.get("ScreenWidth").and_then(|v| v.as_u64()).unwrap_or(0);
+                max_v = res.get("ScreenHeight").and_then(|v| v.as_u64()).unwrap_or(0);
             }
         }
     }
 
-    if max_h == 0 { max_h = v_h; max_v = v_v; }
+    // Fallback 3: Si todo falla, forzar Full HD por defecto
+    if max_h == 0 { max_h = 1920; max_v = 1080; }
 
-    let mut display = if max_h > 0 { format!("{} x {}", max_h, max_v) } else { "1920 x 1080".to_string() };
-    if max_h == 1920 && max_v == 1080 { display.push_str(" (Full HD)"); }
-    else if max_h == 1920 && max_v == 1200 { display.push_str(" (WUXGA)"); }
-    else if max_h == 2560 && max_v == 1440 { display.push_str(" (2K QHD)"); }
-    else if max_h == 2560 && max_v == 1600 { display.push_str(" (QHD+)"); }
-    else if max_h == 2880 && max_v == 1800 { display.push_str(" (2.8K)"); }
-    else if max_h == 3000 && max_v == 2000 { display.push_str(" (3K)"); }
-    else if max_h == 3200 && max_v == 2000 { display.push_str(" (3.2K)"); }
-    else if max_h == 3840 && max_v == 2160 { display.push_str(" (4K UHD)"); }
-    else if max_h == 3840 && max_v == 2400 { display.push_str(" (UHD+)"); }
-    else if max_h == 1366 && max_v == 768 { display.push_str(" (HD)"); }
+    let mut display = format!("{} x {}", max_h, max_v);
+
+    // --- Etiquetas Inteligentes ---
+    let label = match (max_h, max_v) {
+        (1920, 1080) => " (Full HD)",
+        (1920, 1200) => " (WUXGA)",
+        (2560, 1440) => " (2K QHD)",
+        (2560, 1600) => " (QHD+)",
+        (2880, 1800) => " (2.8K)",
+        (3000, 2000) => " (3K)",
+        (3200, 2000) => " (3.2K)",
+        (3840, 2160) => " (4K UHD)",
+        (3840, 2400) => " (UHD+)",
+        (1366, 768)  => " (HD)",
+        _ => ""
+    };
+    display.push_str(label);
 
     // --- 4. Tipo de RAM ---
     let mut ram_type = "DDR4".to_string();
