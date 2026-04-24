@@ -2,7 +2,7 @@
 
 <img src="public/assets/logo.png" alt="Zenit Logo" width="200">
 
-![Version](https://img.shields.io/badge/version-1.1.2-blue.svg)
+![Version](https://img.shields.io/badge/version-1.1.4-blue.svg)
 ![Tauri](https://img.shields.io/badge/framework-Tauri%20v2-FFC131.svg)
 ![Rust](https://img.shields.io/badge/backend-Rust-orange.svg)
 ![Vue 3](https://img.shields.io/badge/frontend-Vue%203-42b883.svg)
@@ -24,13 +24,15 @@ Zenit es una solución de nivel empresarial para **Showcase Terminals**, diseña
 Zenit ha migrado su motor de telemetría a Rust nativo para una velocidad y fiabilidad sin precedentes:
 - **Procesador (CPU)**: Identificación exacta con limpieza automática de marcas registradas. Soporte para Intel Core Ultra, Series 1/2 y Ryzen AI.
 - **Gráficos (GPU)**: Identificación de modelos dedicados (RTX, RX) e integrados con prioridad inteligente.
+- **Placa Base (PC Armados)**: Detección automática de Motherboard (Win32_BaseBoard) cuando el sistema reporta información genérica ("To be filled").
 - **Almacenamiento Comercial**: Suma automática de discos con redondeo comercial inteligente (ej. >872GB -> 1TB).
-- **Resolución Real**: Detección nativa del monitor ignorando el escalado de Windows (Full HD, 2K, 4K).
+- **Resolución Real (Triple Fallback)**: Sistema de detección robusto (VideoController -> DesktopMonitor -> Full HD) con etiquetas inteligentes (2K, 2.8K, 4K, etc.).
 - **SO Detallado**: Muestra la versión exacta de Windows (Home, Pro, Single Language).
 
 ### 🏷️ Personalización Comercial (E-Commerce Ready)
-- **Precios Dinámicos**: Configura y muestra precios actuales directamente en pantalla.
-- **Gestión de SKU**: Código de producto integrado para facilitar la búsqueda en bodega.
+- **Prioridad de Modelo**: Configura un "Nombre Completo" personalizado para sobrescribir la detección automática.
+- **Gestión de SKU**: Código de producto integrado, ahora centralizado en la pestaña "Tienda".
+- **Precios Dinámicos**: Configuración de precios de oferta y normales con jerarquía visual ajustable.
 - **Branding de Retail**: Soporte para logos de retails (**Falabella, Paris, Ripley**) y marcas líderes.
 
 ### 🎥 Gestión Multimedia "Premium"
@@ -82,7 +84,7 @@ npm run tauri build
 ---
 
 ## 🔑 Acceso Administrativo
-Ajusta los precios, SKU, videos y logos mediante el **panel oculto**. Para acceder, utiliza el **Hotspot invisible** en la esquina superior derecha e introduce la clave maestra (**"demo"**). Existe otro Hotspot en la esquina inferior derecha para cerrar la aplicación.
+Ajusta los precios, SKU, videos y logos mediante el **panel oculto**. Para acceder, utiliza el **Hotspot invisible** en la esquina superior derecha (hacer 4 clics rápidos) e introduce la clave maestra (**"demo"**). Existe otro Hotspot en la esquina inferior derecha (4 clics) para cerrar la aplicación.
 
 ---
 
