@@ -187,7 +187,7 @@ async fn get_wmi_details() -> Result<(String, String, String, String, String, St
 
     // Inicializar COM una sola vez
     let com_con = COMLibrary::new()?;
-    let wmi_con = WMIConnection::new(com_con.into())?;
+    let wmi_con = WMIConnection::new(com_con)?;
 
     // --- 1. Marca y Modelo ---
     let mut brand = "PC Generico".to_string();
