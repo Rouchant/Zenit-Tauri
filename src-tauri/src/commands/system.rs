@@ -160,15 +160,24 @@ fn format_storage(total_storage_bytes: u64) -> String {
 #[cfg(windows)]
 /// Normaliza nombres de fabricantes técnicos a sus nombres comerciales.
 fn clean_brand_name(raw: &str) -> String {
-    raw.trim()
-        .replace("ASUSTeK COMPUTER INC.", "ASUS")
-        .replace("Hewlett-Packard", "HP")
-        .replace("SAMSUNG ELECTRONICS CO., LTD.", "Samsung")
-        .replace("Dell Inc.", "Dell")
-        .replace("LENOVO", "Lenovo")
-        .replace("innotek GmbH", "VirtualBox")
-        .replace("System manufacturer", "PC Desktop")
-        .trim().to_string()
+    let raw_upper = raw.to_uppercase();
+    
+    if raw_upper.contains("ASUSTEK") { return "ASUS".to_string(); }
+    if raw_upper.contains("HEWLETT-PACKARD") || raw_upper.contains("HP") { return "HP".to_string(); }
+    if raw_upper.contains("SAMSUNG") { return "Samsung".to_string(); }
+    if raw_upper.contains("DELL") { return "Dell".to_string(); }
+    if raw_upper.contains("LENOVO") { return "Lenovo".to_string(); }
+    if raw_upper.contains("ASROCK") { return "ASRock".to_string(); }
+    if raw_upper.contains("GIGABYTE") { return "Gigabyte".to_string(); }
+    if raw_upper.contains("MSI") || raw_upper.contains("MICRO-STAR") { return "MSI".to_string(); }
+    if raw_upper.contains("VIRTUALBOX") { return "VirtualBox".to_string(); }
+    
+    if raw_upper.contains("TO BE FILLED") || raw_upper.contains("SYSTEM MANUFACTURER") || 
+       raw_upper.contains("O.E.M") || raw_upper.is_empty() {
+        return "PC Desktop".to_string();
+    }
+
+    raw.trim().to_string()
 }
 
 #[cfg(windows)]
@@ -195,16 +204,30 @@ async fn get_wmi_details() -> Result<(String, String, String, String, String, St
     // Limpiar nombres de fabricantes técnicos usando helper compartido
     brand = clean_brand_name(&brand);
 
-    // Fallback a Placa Base si es PC Armado
-    if brand.contains("To be filled") || brand.contains("PC Desktop") || brand.contains("O.E.M.") || brand.is_empty() {
+    // Fallback a Placa Base si es PC Armado o información genérica (insensible a mayúsculas)
+    let b_up = brand.to_uppercase();
+    let m_up = model.to_uppercase();
+    
+    if b_up.contains("TO BE FILLED") || b_up.contains("PC DESKTOP") || b_up.contains("O.E.M") || 
+       brand.is_empty() || m_up.contains("SYSTEM PRODUCT") || m_up.contains("DEFAULT STRING") || m_up == b_up {
+        
         if let Ok(mb_results) = wmi_con.raw_query("SELECT Manufacturer, Product FROM Win32_BaseBoard") {
             let mb_results: Vec<HashMap<String, serde_json::Value>> = mb_results;
             if let Some(res) = mb_results.first() {
                 let mb_brand = res.get("Manufacturer").and_then(|v| v.as_str()).unwrap_or("PC Desktop");
                 brand = clean_brand_name(mb_brand); // Reutilizamos el mismo helper
                 
-                if model == "System Product Name" || model == "Default string" || model == "PC Desktop" || model.contains("B550") {
-                    model = res.get("Product").and_then(|v| v.as_str()).unwrap_or("PC Desktop").trim().to_string();
+                // Forzar el uso del modelo de la placa si el actual es genérico o igual a la marca
+                let current_model_upper = model.to_uppercase();
+                let brand_upper_local = brand.to_uppercase();
+                
+                if model == "System Product Name" || model == "Default string" || model == "PC Desktop" || 
+                   model.len() < 3 || current_model_upper == brand_upper_local {
+                    
+                    let product = res.get("Product").and_then(|v| v.as_str()).unwrap_or("").trim();
+                    if !product.is_empty() && product != "Default string" {
+                        model = product.to_string();
+                    }
                 }
             }
         }

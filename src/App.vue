@@ -59,11 +59,11 @@
             </video>
           </div>
           <div id="display-price" class="price-tag-container" v-if="store.currentSpecs.pricePrimary || store.currentSpecs.priceSecondary">
-             <div v-if="store.currentSpecs.priceSecondary" class="price-secondary" :class="{ strike: store.currentSpecs.priceStrike }">
-               {{ store.currentSpecs.priceSecondary }}
-             </div>
              <div v-if="store.currentSpecs.pricePrimary" class="price-primary">
                {{ store.currentSpecs.pricePrimary }}
+             </div>
+             <div v-if="store.currentSpecs.priceSecondary" class="price-secondary" :class="{ strike: store.currentSpecs.priceStrike }">
+               {{ store.currentSpecs.priceSecondary }}
              </div>
           </div>
         </div>

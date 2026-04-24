@@ -36,7 +36,7 @@ const storeLogo = computed(() => {
     </div>
     <div class="brand-info-container">
       <div class="brand-badge" id="display-brand">
-        {{ store.currentSpecs?.brand || 'Cargando...' }}
+        {{ store.currentSpecs?.model || 'Cargando...' }}
       </div>
       <div v-if="store.currentSpecs?.sku" class="sku-badge">
         SKU: {{ store.currentSpecs.sku }}

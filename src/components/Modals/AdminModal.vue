@@ -276,7 +276,7 @@ const deleteSavedVideo = async (path) => {
             <div class="tabs-menu" style="margin-top: 20px;">
                <button class="tab-btn" :class="{ active: activeTab === 'hardware' }" @click="activeTab = 'hardware'">Hardware</button>
                <button class="tab-btn" :class="{ active: activeTab === 'visual' }" @click="activeTab = 'visual'">Visual (Videos y Fondos)</button>
-               <button class="tab-btn" :class="{ active: activeTab === 'precios' }" @click="activeTab = 'precios'">Precios</button>
+               <button class="tab-btn" :class="{ active: activeTab === 'tienda' }" @click="activeTab = 'tienda'">Tienda</button>
             </div>
         </div>
 
@@ -287,23 +287,16 @@ const deleteSavedVideo = async (path) => {
                 <section class="settings-section">
                     <div class="hardware-grid">
                         <div class="input-group">
-                            <label for="brand-input">Modelo</label>
+                            <label for="brand-input">Marca (Detectada)</label>
                             <div class="input-with-action">
-                                <input id="brand-input" name="brand" type="text" v-model="editableSpecs.brand">
-                                <button class="restore-btn" @click="restoreField('brand')" title="Restaurar">↺</button>
+                                <input id="brand-input" name="brand" type="text" v-model="editableSpecs.brand" disabled style="opacity: 0.6; cursor: not-allowed;">
                             </div>
                         </div>
                         <div class="input-group">
-                            <label for="sku-input">SKU</label>
+                            <label for="model-input">Modelo (Nombre Completo)</label>
                             <div class="input-with-action">
-                                <input 
-                                    id="sku-input" 
-                                    name="sku" 
-                                    type="text" 
-                                    v-model="editableSpecs.sku" 
-                                    placeholder="inserte SKU"
-                                    @input="editableSpecs.sku = editableSpecs.sku.replace(/\D/g, '')"
-                                >
+                                <input id="model-input" name="model" type="text" v-model="editableSpecs.model">
+                                <button class="restore-btn" @click="restoreField('model')" title="Restaurar">↺</button>
                             </div>
                         </div>
                         <div class="input-group">
@@ -513,10 +506,23 @@ const deleteSavedVideo = async (path) => {
                 </section>
             </div>
 
-            <!-- CONTENIDO TAB PRECIOS -->
-            <div v-if="activeTab === 'precios'" class="tab-content">
+            <!-- CONTENIDO TAB TIENDA -->
+            <div v-if="activeTab === 'tienda'" class="tab-content">
                 <section class="settings-section">
                     <div class="price-settings-zone">
+                        <div class="input-group">
+                            <label for="sku-input">SKU del Producto</label>
+                            <div class="input-with-action">
+                                <input 
+                                    id="sku-input" 
+                                    name="sku" 
+                                    type="text" 
+                                    v-model="editableSpecs.sku" 
+                                    placeholder="inserte SKU"
+                                    @input="editableSpecs.sku = editableSpecs.sku.replace(/\D/g, '')"
+                                >
+                            </div>
+                        </div>
                         <div class="input-group">
                             <label for="price-primary">Precio Primario (Oferta Principal)</label>
                             <div class="input-with-action">
