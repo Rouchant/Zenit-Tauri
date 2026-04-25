@@ -234,36 +234,15 @@ async fn get_wmi_details() -> Result<(String, String, String, String, String, St
     }
 
     // --- LIMPIEZA Y FORMATEO DE MODELO ---
-    // 1. Limpiar redundancias iniciales (evitar "ASUS ASUS ...")
-    let brand_upper = brand.to_uppercase();
-    while model.to_uppercase().starts_with(&brand_upper) && model.len() > brand.len() {
-        model = model[brand.len()..].trim().to_string();
-    }
-
-    // 2. Limpiar guiones bajos o códigos duplicados (ej: FX607VJ_FX607VJ)
-    if let Some(pos) = model.find('_') {
-        let (first, second_with_underscore) = model.split_at(pos);
-        let second = second_with_underscore[1..].trim();
-        let first_trimmed = first.trim();
-        
-        if first_trimmed.ends_with(second) || second.contains(first_trimmed.split_whitespace().last().unwrap_or("###")) {
-            model = first_trimmed.to_string();
+    // --- LIMPIEZA Y FORMATEO DE MODELO ---
+    if brand.to_uppercase().contains("VIRTUALBOX") {
+        model = "Virtual Machine".to_string();
+    } else if brand == "PC Generico" || brand == "PC Desktop" || model == "PC Desktop" {
+        if model.is_empty() || model.len() < 2 {
+            model = "PC Desktop".to_string();
         }
-    }
-
-    // 3. Fallback si el modelo queda vacío
-    if model.is_empty() || model.len() < 2 {
-        model = if brand.to_uppercase().contains("VIRTUALBOX") { 
-            "Virtual Machine".to_string() 
-        } else { 
-            "PC Desktop".to_string() 
-        };
-    }
-
-    // 4. Construir formato final "Marca Modelo"
-    // Solo concatenamos si la marca no es un genérico y el modelo no contiene ya la marca
-    if !model.to_uppercase().contains(&brand_upper) && brand != "PC Desktop" && brand != "PC Generico" {
-        model = format!("{} {}", brand, model);
+    } else {
+        model = refine_model_name(&brand, &model);
     }
 
     // --- 2. GPU y Resolución (fallback) ---
@@ -416,4 +395,57 @@ pub fn set_max_brightness() {
         .args(["-ExecutionPolicy", "Bypass", "-Command", script])
         .creation_flags(0x08000000) // CREATE_NO_WINDOW
         .spawn();
+}
+
+/// Limpia y unifica los nombres de modelos (especialmente para Asus, HP, etc.)
+fn refine_model_name(brand: &str, model: &str) -> String {
+    let noise = ["ASUSTEK", "COMPUTER", "INC", "CORP", "CORPORATION", "LTD", "SYSTEMS", "PRODUCT", "NAME", "LAPTOP"];
+    
+    let mut clean = model
+        .replace("_", " ")
+        .replace("ASUSLaptop", " Laptop ")
+        .replace("-", " ")
+        .trim()
+        .to_string();
+
+    while clean.contains("  ") {
+        clean = clean.replace("  ", " ");
+    }
+
+    let words: Vec<&str> = clean.split_whitespace().collect();
+    let mut unique_words: Vec<String> = Vec::new();
+    let brand_up = brand.to_uppercase();
+
+    for &word in &words {
+        let word_up = word.to_uppercase().replace(".", "");
+        
+        if noise.contains(&word_up.as_str()) {
+            continue;
+        }
+
+        if word_up == brand_up || word_up.contains(&brand_up) {
+            continue;
+        }
+
+        if let Some(last) = unique_words.last() {
+            let last_up = last.to_uppercase();
+            if word_up == last_up || word_up.starts_with(&last_up) || last_up.starts_with(&word_up) {
+                if word.len() > last.len() {
+                    unique_words.pop();
+                    unique_words.push(word.to_string());
+                }
+                continue;
+            }
+        }
+        
+        unique_words.push(word.to_string());
+    }
+
+    let result_model = unique_words.join(" ");
+    
+    if result_model.is_empty() {
+        return brand.to_string();
+    }
+
+    format!("{} {}", brand, result_model)
 }
