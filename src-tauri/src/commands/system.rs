@@ -12,6 +12,7 @@ use std::os::windows::process::CommandExt;
 static RE_INTEL: OnceLock<Regex> = OnceLock::new();
 static RE_INTEL_CORE: OnceLock<Regex> = OnceLock::new();
 static RE_RYZEN: OnceLock<Regex> = OnceLock::new();
+static NVIDIA_POWER_LIMIT: OnceLock<Option<String>> = OnceLock::new();
 
 #[derive(Debug, Serialize, Deserialize)]
 pub struct SystemSpecs {
@@ -288,6 +289,31 @@ async fn get_wmi_details() -> Result<(String, String, String, String, String, St
             if puntuacion > puntuacion_actual {
                 puntuacion_actual = puntuacion;
                 gpu = name.to_string();
+                
+                // --- DETECCIÓN DE POWER LIMIT (NVIDIA) ---
+                if name_up.contains("NVIDIA") || name_up.contains("RTX") {
+                    let watts_opt = NVIDIA_POWER_LIMIT.get_or_init(|| {
+                        // Usamos un comando mucho más específico y rápido que solo devuelve el número
+                        if let Ok(output) = Command::new("nvidia-smi")
+                            .args(["--query-gpu=power.limit", "--format=csv,noheader,nounits"])
+                            .creation_flags(0x08000000)
+                            .output() {
+                            
+                            let stdout = String::from_utf8_lossy(&output.stdout).trim().to_string();
+                            
+                            // Intentamos parsear a float y truncar para asegurar que es un número válido
+                            if let Ok(val) = stdout.parse::<f32>() {
+                                return Some(val.trunc().to_string()); 
+                            }
+                        }
+                        None
+                    });
+
+                    if let Some(watts) = watts_opt {
+                        gpu = format!("{} {}W", gpu, watts);
+                    }
+                }
+
                 v_h = res.get("CurrentHorizontalResolution").and_then(|v| v.as_u64()).unwrap_or(0);
                 v_v = res.get("CurrentVerticalResolution").and_then(|v| v.as_u64()).unwrap_or(0);
             }

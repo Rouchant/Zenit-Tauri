@@ -257,8 +257,8 @@
     border-radius: 24px;
     display: flex;
     flex-direction: column;
-    align-items: flex-end;
-    gap: 2px;
+    align-items: flex-start; /* Changed from flex-end */
+    gap: 2px; /* Increased gap between primary and secondary */
     margin-top: clamp(15px, 2vh, 30px);
     align-self: flex-end;
     animation: slideUp 0.6s ease-out;
@@ -290,9 +290,9 @@
 }
 
 .price-secondary {
-    font-size: clamp(1.1rem, 1.4vw, 1.5rem);
-    opacity: 0.8;
-    font-weight: 600;
+    font-size: clamp(1.6rem, 2.3vw, 2.6rem); /* Increased from 1.1-1.5rem */
+    opacity: 0.9;
+    font-weight: 700;
 }
 
 .price-secondary.strike {
@@ -304,6 +304,58 @@
     font-size: clamp(1.8rem, 2.5vw, 2.8rem);
     font-weight: 800;
     line-height: 1;
-    letter-spacing: -1.5px;
+    letter-spacing: -1px;
     color: var(--primary);
+}
+
+/* Price Tag Grouping */
+.price-primary-group, .price-secondary-group {
+    display: flex;
+    flex-direction: column;
+    align-items: flex-start; /* Changed from flex-end */
+    gap: 0;
+}
+
+.price-row {
+    display: flex;
+    align-items: center;
+    gap: 15px;
+    justify-content: flex-start; /* Changed from flex-end */
+}
+
+.retail-badge {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: clamp(0.7rem, 0.8vw, 0.9rem);
+    font-weight: 800;
+    padding: 6px 14px;
+    border-radius: 8px;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+    white-space: nowrap;
+    height: fit-content;
+    line-height: 1;
+}
+
+.badge-card {
+    background: #000;
+    color: #fff;
+    border: 1px solid var(--primary);
+}
+
+.badge-all {
+    background: #555;
+    color: #fff;
+}
+
+.store-logo-inline {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+
+.store-logo-sub {
+    height: 2.2em;
+    width: auto;
 }

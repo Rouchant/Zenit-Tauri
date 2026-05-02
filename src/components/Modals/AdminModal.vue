@@ -2,14 +2,20 @@
 import { ref, reactive, onMounted } from 'vue';
 import { useSpecsStore, INTERNAL_VIDEOS } from '../../store/specs';
 import { tauriAPI, notify } from '../../api/tauriApi';
+import { getVersion } from '@tauri-apps/api/app';
 
 const emit = defineEmits(['close']);
 const store = useSpecsStore();
 
 const activeTab = ref('hardware');
 const savedVideos = ref([]);
+const appVersion = ref('');
 
 onMounted(async () => {
+    if (window.__TAURI_INTERNALS__) {
+        getVersion().then(v => appVersion.value = v);
+    }
+
     try {
         const videos = await tauriAPI.listCustomVideos();
         if (videos && Array.isArray(videos)) {
@@ -270,7 +276,7 @@ const deleteSavedVideo = async (path) => {
     <div class="modal-content" style="max-width: 950px; height: 90vh;">
         <div class="modal-header-main" style="margin-bottom: 20px;">
             <div class="header-title-row">
-                <h2>Personalizar Zenit</h2>
+                <h2>Personalizar Zenit <span style="font-size: 0.8rem; opacity: 0.5; font-weight: normal; margin-left: 10px;">v{{ appVersion }}</span></h2>
             </div>
             
             <div class="tabs-menu" style="margin-top: 20px;">
@@ -524,23 +530,16 @@ const deleteSavedVideo = async (path) => {
                             </div>
                         </div>
                         <div class="input-group">
-                            <label for="price-primary">Precio Primario (Oferta Principal)</label>
+                            <label for="price-primary">Precio con Tarjeta</label>
                             <div class="input-with-action">
                                 <input id="price-primary" name="pricePrimary" type="text" v-model="editableSpecs.pricePrimary" placeholder="Ej: $899.990">
                             </div>
                         </div>
                         <div class="input-group">
-                            <label for="price-secondary">Precio Secundario (Normal)</label>
+                            <label for="price-secondary">Precio Todo Medio de Pago</label>
                             <div class="input-with-action">
                                 <input id="price-secondary" name="priceSecondary" type="text" v-model="editableSpecs.priceSecondary" placeholder="Ej: $1.099.990">
                             </div>
-                        </div>
-                        <div class="input-group checkbox-group no-label" style="margin-top: 25px;">
-                            <label for="price-strike-checkbox" class="checkbox-container">
-                                <input id="price-strike-checkbox" name="priceStrike" type="checkbox" v-model="editableSpecs.priceStrike">
-                                <span class="checkmark"></span>
-                                Tachar el precio secundario visualmente
-                            </label>
                         </div>
                     </div>
                 </section>

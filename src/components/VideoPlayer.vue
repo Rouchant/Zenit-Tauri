@@ -45,8 +45,12 @@ watch(currentUrl, () => {
 });
 
 const onVideoEnded = () => {
-  if (videoUrls.value.length > 1) {
-    currentIndex.value = (currentIndex.value + 1) % videoUrls.value.length;
+  console.log('[VideoPlayer] Video ended, index:', currentIndex.value, 'of', videoUrls.value.length);
+  if (currentIndex.value === videoUrls.value.length - 1) {
+    console.log('[VideoPlayer] Last video reached, returning to specs view.');
+    store.isVideoMode = false;
+  } else {
+    currentIndex.value++;
   }
 };
 
@@ -61,7 +65,6 @@ onMounted(() => {
       ref="videoRef"
       id="promo-video" 
       autoplay
-      :loop="videoUrls.length === 1"
       muted 
       playsinline
       :src="currentUrl"

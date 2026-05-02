@@ -59,11 +59,26 @@
             </video>
           </div>
           <div id="display-price" class="price-tag-container" v-if="store.currentSpecs.pricePrimary || store.currentSpecs.priceSecondary">
-             <div v-if="store.currentSpecs.pricePrimary" class="price-primary">
-               {{ store.currentSpecs.pricePrimary }}
+             <div v-if="store.currentSpecs.pricePrimary" class="price-primary-group">
+                <div class="price-row">
+                  <div class="retail-badge badge-card">EXCLUSIVO TARJETA</div>
+                  <div class="price-primary">
+                    {{ store.currentSpecs.pricePrimary }}
+                  </div>
+                  <div class="store-logo-inline" v-if="['falabella', 'ripley', 'paris'].includes(store.theme)">
+                     <img v-if="store.theme === 'falabella'" src="/assets/images/T-FALABELLA.svg" class="store-logo-sub" />
+                     <img v-if="store.theme === 'ripley'" src="/assets/images/T-RIPLEY.svg" class="store-logo-sub" />
+                     <img v-if="store.theme === 'paris'" src="/assets/images/T-CENCOSUD.svg" class="store-logo-sub" />
+                  </div>
+                </div>
              </div>
-             <div v-if="store.currentSpecs.priceSecondary" class="price-secondary" :class="{ strike: store.currentSpecs.priceStrike }">
-               {{ store.currentSpecs.priceSecondary }}
+             <div v-if="store.currentSpecs.priceSecondary" class="price-secondary-group">
+                <div class="price-row">
+                  <div class="retail-badge badge-all">TODO MEDIO DE PAGO</div>
+                  <div class="price-secondary">
+                    {{ store.currentSpecs.priceSecondary }}
+                  </div>
+                </div>
              </div>
           </div>
         </div>
@@ -218,6 +233,9 @@ watch(() => store.isVideoMode, (isVideo) => {
         isInternalFocusHack.value = false;
       }, 1000);
     });
+  } else {
+    // Si salimos del modo video (ej: por mouse o porque terminó la lista), reiniciar timer
+    resetTimer();
   }
 });
 
