@@ -1,0 +1,59 @@
+name: Windows Store Publish
+
+on:
+  workflow_dispatch:
+  release:
+    types: [published]
+
+permissions:
+  contents: read
+
+jobs:
+  build-and-publish:
+    runs-on: windows-latest
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: npm
+
+      - name: Setup Rust
+        uses: dtolnay/rust-toolchain@stable
+
+      - name: Install frontend dependencies
+        run: npm ci
+
+      - name: Build Tauri app (MSI)
+        uses: tauri-apps/tauri-action@v0
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        with:
+          args: --bundles msi
+
+      - name: Find MSI package
+        id: find_msi
+        shell: pwsh
+        run: |
+          $msiPath = Get-ChildItem -Path "src-tauri/target/release/bundle/msi" -Filter "*.msi" |
+            Select-Object -First 1 -ExpandProperty FullName
+          if (-not $msiPath) {
+            Write-Error "No MSI package found in src-tauri/target/release/bundle/msi"
+            exit 1
+          }
+          Write-Output "Found MSI: $msiPath"
+          "msi_path=$msiPath" >> $env:GITHUB_OUTPUT
+
+      - name: Publish to Windows Store
+        uses: microsoft/store-submission-action@v1
+        with:
+          seller-id: ${{ secrets.STORE_SELLER_ID }}
+          product-id: ${{ secrets.STORE_PRODUCT_ID }}
+          tenant-id: ${{ secrets.STORE_TENANT_ID }}
+          client-id: ${{ secrets.STORE_CLIENT_ID }}
+          client-secret: ${{ secrets.STORE_CLIENT_SECRET }}
+          package-path: ${{ steps.find_msi.outputs.msi_path }}
