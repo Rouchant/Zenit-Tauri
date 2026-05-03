@@ -424,8 +424,18 @@ pub fn get_video_path(app: AppHandle) -> String {
 pub fn set_max_brightness() {
     let script = r#"
         try {
+            # Brillo al 100% y sin adaptativo
             $methods = Get-WmiObject -Namespace root/WMI -Class WmiMonitorBrightnessMethods -ErrorAction Stop
             $methods.WmiSetBrightness(1, 100)
+            powercfg /setacvalueindex SCHEME_CURRENT SUB_VIDEO ADAPTBRIGHT 0
+            powercfg /setdcvalueindex SCHEME_CURRENT SUB_VIDEO ADAPTBRIGHT 0
+
+            # Forzar "Nunca suspender" y "Nunca apagar pantalla" en el plan actual
+            powercfg /x -hibernate-timeout-ac 0
+            powercfg /x -standby-timeout-ac 0
+            powercfg /x -monitor-timeout-ac 0
+            
+            powercfg /s SCHEME_CURRENT
         } catch {}
     "#;
     let _ = Command::new("powershell.exe")
