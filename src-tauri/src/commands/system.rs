@@ -60,8 +60,8 @@ pub async fn get_system_specs() -> Result<SystemSpecs, String> {
     let ram_display = get_ram_display(sys.total_memory());
     let storage_display = get_storage_info();
 
-    // 3. WMI Details (Brand, Model, GPU, Display, etc.)
-    let wmi = get_wmi_details().await.unwrap_or_else(|_| default_wmi_fallback());
+    // 3. WMI Details (Síncrono para evitar errores de Send/Sync con COM)
+    let wmi = get_wmi_details().unwrap_or_else(|_| default_wmi_fallback());
 
     let specs = SystemSpecs {
         brand: wmi.brand,
@@ -105,31 +105,30 @@ fn default_wmi_fallback() -> WmiData {
     }
 }
 
-// --- FUNCIONES DE DETECCIÓN (REFRACTORIZADAS) ---
+// --- FUNCIONES DE DETECCIÓN (Síncronas para evitar errores de hilos) ---
 
 #[cfg(windows)]
-async fn get_wmi_details() -> Result<WmiData, Box<dyn std::error::Error>> {
+fn get_wmi_details() -> Result<WmiData, Box<dyn std::error::Error>> {
     use wmi::{COMLibrary, WMIConnection};
     let com_con = COMLibrary::new()?;
     let wmi_con = WMIConnection::new(com_con)?;
 
-    let (brand, model) = detect_brand_and_model(&wmi_con).await?;
+    let (brand, model) = detect_brand_and_model(&wmi_con)?;
     
-    // Obtenemos todos los datos de video de una vez
     let video_results: Vec<HashMap<String, serde_json::Value>> = wmi_con
         .raw_query("SELECT Name, CurrentHorizontalResolution, CurrentVerticalResolution FROM Win32_VideoController")
         .unwrap_or_default();
 
-    let gpu = detect_best_gpu(&video_results).await;
-    let display = format_display_resolution(&wmi_con, &video_results).await;
-    let ram_type = detect_ram_type(&wmi_con).await;
-    let os = detect_os_version(&wmi_con).await;
+    let gpu = detect_best_gpu(&video_results);
+    let display = format_display_resolution(&wmi_con, &video_results);
+    let ram_type = detect_ram_type(&wmi_con);
+    let os = detect_os_version(&wmi_con);
 
     Ok(WmiData { brand, model, gpu, display, ram_type, os })
 }
 
 #[cfg(windows)]
-async fn detect_brand_and_model(wmi: &wmi::WMIConnection) -> Result<(String, String), Box<dyn std::error::Error>> {
+fn detect_brand_and_model(wmi: &wmi::WMIConnection) -> Result<(String, String), Box<dyn std::error::Error>> {
     let mut brand = "PC Generico".to_string();
     let mut model = "PC Desktop".to_string();
     
@@ -166,7 +165,7 @@ async fn detect_brand_and_model(wmi: &wmi::WMIConnection) -> Result<(String, Str
 }
 
 #[cfg(windows)]
-async fn detect_best_gpu(video_results: &[HashMap<String, serde_json::Value>]) -> String {
+fn detect_best_gpu(video_results: &[HashMap<String, serde_json::Value>]) -> String {
     let mut best_gpu = "Gráficos Integrados".to_string();
     let mut best_score = 0;
 
@@ -214,18 +213,16 @@ fn get_nvidia_watts() -> Option<String> {
 }
 
 #[cfg(windows)]
-async fn format_display_resolution(wmi: &wmi::WMIConnection, video_results: &[HashMap<String, serde_json::Value>]) -> String {
+fn format_display_resolution(wmi: &wmi::WMIConnection, video_results: &[HashMap<String, serde_json::Value>]) -> String {
     let mut max_h = 0;
     let mut max_v = 0;
 
-    // Fallback 1: Buscar la resolución máxima entre todos los controladores de video
     for res in video_results {
         let h = res.get("CurrentHorizontalResolution").and_then(|v| v.as_u64()).unwrap_or(0);
         let v = res.get("CurrentVerticalResolution").and_then(|v| v.as_u64()).unwrap_or(0);
         if h > max_h { max_h = h; max_v = v; }
     }
 
-    // Fallback 2: Intentar vía DesktopMonitor
     if max_h == 0 {
         if let Ok(results) = wmi.raw_query("SELECT ScreenWidth, ScreenHeight FROM Win32_DesktopMonitor") {
             let results: Vec<HashMap<String, serde_json::Value>> = results;
@@ -256,7 +253,7 @@ async fn format_display_resolution(wmi: &wmi::WMIConnection, video_results: &[Ha
 }
 
 #[cfg(windows)]
-async fn detect_ram_type(wmi: &wmi::WMIConnection) -> String {
+fn detect_ram_type(wmi: &wmi::WMIConnection) -> String {
     if let Ok(results) = wmi.raw_query("SELECT SMBIOSMemoryType FROM Win32_PhysicalMemory") {
         let results: Vec<HashMap<String, serde_json::Value>> = results;
         if let Some(res) = results.first() {
@@ -273,18 +270,14 @@ async fn detect_ram_type(wmi: &wmi::WMIConnection) -> String {
 }
 
 #[cfg(windows)]
-async fn detect_os_version(wmi: &wmi::WMIConnection) -> String {
+fn detect_os_version(wmi: &wmi::WMIConnection) -> String {
     if let Ok(results) = wmi.raw_query("SELECT Caption FROM Win32_OperatingSystem") {
         let results: Vec<HashMap<String, serde_json::Value>> = results;
-        if let Some(res) = os_results_first(results) {
+        if let Some(res) = results.into_iter().next() {
             return res.get("Caption").and_then(|v| v.as_str()).unwrap_or("Windows").replace("Microsoft ", "").trim().to_string();
         }
     }
     "Windows".to_string()
-}
-
-fn os_results_first(results: Vec<HashMap<String, serde_json::Value>>) -> Option<HashMap<String, serde_json::Value>> {
-    results.into_iter().next()
 }
 
 // --- UTILIDADES ---
@@ -413,6 +406,6 @@ pub fn set_max_brightness() {
 }
 
 #[cfg(not(windows))]
-async fn get_wmi_details() -> Result<WmiData, Box<dyn std::error::Error>> {
+fn get_wmi_details() -> Result<WmiData, Box<dyn std::error::Error>> {
     Ok(default_wmi_fallback())
 }

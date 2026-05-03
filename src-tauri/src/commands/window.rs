@@ -1,7 +1,5 @@
 use tauri::{AppHandle, Manager, LogicalPosition, LogicalSize, Emitter};
 use std::sync::Arc;
-use tokio::sync::Mutex;
-use tauri::async_runtime::JoinHandle;
 use crate::state::AppState;
 use windows_sys::Win32::UI::WindowsAndMessaging::*;
 use windows_sys::Win32::UI::Input::KeyboardAndMouse::*;
