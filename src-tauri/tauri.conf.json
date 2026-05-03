@@ -73,9 +73,7 @@
         "installerHooks": "nsis/hooks.nsh"
       },
       "wix": {
-        "language": "es-ES",
-        "bannerPath": "icons/nsis/header.bmp",
-        "dialogImagePath": "icons/nsis/sidebar.bmp"
+        "language": "es-ES"
       }
     },
     "resources": {
