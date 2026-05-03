@@ -53,7 +53,7 @@
   "bundle": {
     "active": true,
     "publisher": "Rouchant",
-    "targets": ["nsis"],
+    "targets": ["nsis", "msi"],
     "icon": [
       "icons/32x32.png",
       "icons/128x128.png",
@@ -71,6 +71,11 @@
         "sidebarImage": "icons/nsis/sidebar.bmp",
         "headerImage": "icons/nsis/header.bmp",
         "installerHooks": "nsis/hooks.nsh"
+      },
+      "wix": {
+        "language": "es-ES",
+        "bannerPath": "icons/nsis/header.bmp",
+        "dialogImagePath": "icons/nsis/sidebar.bmp"
       }
     },
     "resources": {
