@@ -96,9 +96,10 @@ pub fn run() {
             window::set_always_on_top,
         ])
         .on_window_event(|window, event| {
-            if let tauri::WindowEvent::CloseRequested { .. } = event {
+            if let tauri::WindowEvent::CloseRequested { api, .. } = event {
                 if window.label() == "main" {
-                    window.app_handle().exit(0);
+                    // Bloquear el cierre desde la barra de tareas o Alt+F4
+                    api.prevent_close();
                 }
             }
         })
