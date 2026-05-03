@@ -188,7 +188,7 @@ watch(showAdminModal, (isOpen) => {
 });
 
 const isInternalFocusHack = ref(false);
-let lastReset = 0;
+let lastMouseMoveTime = 0;
 
 
 const resetTimer = (event) => {
@@ -212,6 +212,13 @@ const resetTimer = (event) => {
     console.log('[Inactivity] Limit reached, entering video mode.');
     store.isVideoMode = true;
   }, store.CONFIG.INACTIVITY_LIMIT);
+};
+
+const throttledResetTimer = (event) => {
+  const now = Date.now();
+  if (now - lastMouseMoveTime < 1000) return; // Throttle 1s
+  lastMouseMoveTime = now;
+  resetTimer(event);
 };
 
 // Auto-reset timer when modals close
@@ -261,7 +268,7 @@ onMounted(async () => {
   await store.loadSpecs();
   resetTimer();
 
-  window.addEventListener('mousemove', resetTimer);
+  window.addEventListener('mousemove', throttledResetTimer);
   window.addEventListener('keydown', resetTimer);
   window.addEventListener('mousedown', resetTimer);
 
@@ -295,7 +302,7 @@ onMounted(async () => {
 });
 
 onUnmounted(() => {
-  window.removeEventListener('mousemove', resetTimer);
+  window.removeEventListener('mousemove', throttledResetTimer);
   window.removeEventListener('keydown', resetTimer);
   window.removeEventListener('mousedown', resetTimer);
   

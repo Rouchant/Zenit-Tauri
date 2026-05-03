@@ -13,8 +13,9 @@ static RE_INTEL: OnceLock<Regex> = OnceLock::new();
 static RE_INTEL_CORE: OnceLock<Regex> = OnceLock::new();
 static RE_RYZEN: OnceLock<Regex> = OnceLock::new();
 static NVIDIA_POWER_LIMIT: OnceLock<Option<String>> = OnceLock::new();
+static CACHED_SPECS: OnceLock<SystemSpecs> = OnceLock::new();
 
-#[derive(Debug, Serialize, Deserialize)]
+#[derive(Debug, Serialize, Deserialize, Clone)]
 pub struct SystemSpecs {
     pub brand: String,
     pub model: String,
@@ -34,6 +35,11 @@ pub struct SystemSpecs {
 
 #[tauri::command]
 pub async fn get_system_specs() -> Result<SystemSpecs, String> {
+    // Si ya tenemos los datos en cache, retornarlos inmediatamente (la HW no cambia)
+    if let Some(cached) = CACHED_SPECS.get() {
+        return Ok(cached.clone());
+    }
+
     // 0. Refresco selectivo para máximo rendimiento (descubriendo componentes primero)
     let sys = System::new_with_specifics(
         RefreshKind::new()
@@ -76,7 +82,7 @@ pub async fn get_system_specs() -> Result<SystemSpecs, String> {
         System::name().unwrap_or_else(|| "Windows".to_string()).replace("Microsoft ", "")
     ));
 
-    Ok(SystemSpecs {
+    let specs = SystemSpecs {
         brand,
         model,
         processor: proc_name,
@@ -90,7 +96,12 @@ pub async fn get_system_specs() -> Result<SystemSpecs, String> {
         storage: storage_display,
         display,
         os: os_name,
-    })
+    };
+
+    // Guardar en cache antes de retornar
+    let _ = CACHED_SPECS.set(specs.clone());
+
+    Ok(specs)
 }
 
 // --- FUNCIONES DE SOPORTE (MODULARIZACIÓN) ---
@@ -235,7 +246,6 @@ async fn get_wmi_details() -> Result<(String, String, String, String, String, St
     }
 
     // --- LIMPIEZA Y FORMATEO DE MODELO ---
-    // --- LIMPIEZA Y FORMATEO DE MODELO ---
     if brand.to_uppercase().contains("VIRTUALBOX") {
         model = "Virtual Machine".to_string();
     } else if brand == "PC Generico" || brand == "PC Desktop" || model == "PC Desktop" {
@@ -289,34 +299,35 @@ async fn get_wmi_details() -> Result<(String, String, String, String, String, St
             if puntuacion > puntuacion_actual {
                 puntuacion_actual = puntuacion;
                 gpu = name.to_string();
-                
-                // --- DETECCIÓN DE POWER LIMIT (NVIDIA) ---
-                if name_up.contains("NVIDIA") || name_up.contains("RTX") {
-                    let watts_opt = NVIDIA_POWER_LIMIT.get_or_init(|| {
-                        // Usamos un comando mucho más específico y rápido que solo devuelve el número
-                        if let Ok(output) = Command::new("nvidia-smi")
-                            .args(["--query-gpu=power.limit", "--format=csv,noheader,nounits"])
-                            .creation_flags(0x08000000)
-                            .output() {
-                            
-                            let stdout = String::from_utf8_lossy(&output.stdout).trim().to_string();
-                            
-                            // Intentamos parsear a float y truncar para asegurar que es un número válido
-                            if let Ok(val) = stdout.parse::<f32>() {
-                                return Some(val.trunc().to_string()); 
-                            }
-                        }
-                        None
-                    });
-
-                    if let Some(watts) = watts_opt {
-                        gpu = format!("{} {}W", gpu, watts);
-                    }
-                }
-
                 v_h = res.get("CurrentHorizontalResolution").and_then(|v| v.as_u64()).unwrap_or(0);
                 v_v = res.get("CurrentVerticalResolution").and_then(|v| v.as_u64()).unwrap_or(0);
             }
+        }
+    }
+
+    // --- DETECCIÓN DE POWER LIMIT (NVIDIA) --- Post-loop: solo si la GPU ganadora es NVIDIA
+    let gpu_up = gpu.to_uppercase();
+    if gpu_up.contains("NVIDIA") || gpu_up.contains("RTX") || gpu_up.contains("GTX") {
+        let watts_opt = NVIDIA_POWER_LIMIT.get_or_init(|| {
+            // Usamos el comando que el usuario confirmó que funciona (Max Power Limit)
+            // Esto evita problemas donde power.limit devuelve N/A en algunos sistemas
+            let script = r#"$val = (nvidia-smi -q -d POWER | Select-String "Max Power Limit" | Where-Object { $_ -notmatch "N/A" }); if ($val) { [int][float]($val.ToString().Split(':')[1].Replace('W','').Trim()) }"#;
+            
+            if let Ok(output) = Command::new("powershell")
+                .args(["-NoProfile", "-Command", script])
+                .creation_flags(0x08000000) // CREATE_NO_WINDOW
+                .output() {
+                
+                let stdout = String::from_utf8_lossy(&output.stdout).trim().to_string();
+                if !stdout.is_empty() && stdout.chars().all(|c| c.is_numeric()) {
+                    return Some(stdout);
+                }
+            }
+            None
+        });
+
+        if let Some(watts) = watts_opt {
+            gpu = format!("{} {}W", gpu, watts);
         }
     }
 

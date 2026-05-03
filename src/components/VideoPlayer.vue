@@ -19,11 +19,15 @@ const videoUrls = computed(() => {
   return [store.getVideoUrl(store.isAsus ? '__ASUS_PROMO__' : '__GENERIC_PROMO__')];
 });
 
-const currentUrl = computed(() => {
-  if (currentIndex.value >= videoUrls.value.length) {
+watch(videoUrls, (urls) => {
+  if (currentIndex.value >= urls.length) {
     currentIndex.value = 0;
   }
-  return videoUrls.value[currentIndex.value];
+});
+
+const currentUrl = computed(() => {
+  const idx = Math.min(currentIndex.value, videoUrls.value.length - 1);
+  return videoUrls.value[idx] || '';
 });
 
 const playVideo = () => {
@@ -44,8 +48,46 @@ watch(currentUrl, () => {
   playVideo();
 });
 
+const safetyTimeout = ref(null);
+
+const onVideoError = (e) => {
+  console.error('[VideoPlayer] Video error detected:', e);
+  // Failsafe: Si el video falla, volver a specs para no dejar pantalla negra
+  store.isVideoMode = false;
+};
+
+const clearSafetyTimer = () => {
+  if (safetyTimeout.value) {
+    clearTimeout(safetyTimeout.value);
+    safetyTimeout.value = null;
+  }
+};
+
+const startSafetyTimer = (durationInSeconds) => {
+  clearSafetyTimer();
+  
+  // Usamos la duración del video + 5 segundos de margen
+  // Si no hay duración (metadata falló), usamos 60s por defecto
+  const timeoutMs = (durationInSeconds ? (durationInSeconds + 5) : 60) * 1000;
+  
+  safetyTimeout.value = setTimeout(() => {
+    console.warn('[VideoPlayer] Safety timeout reached, forcing exit.');
+    store.isVideoMode = false;
+  }, timeoutMs);
+};
+
+const onMetadataLoaded = () => {
+  if (videoRef.value) {
+    const duration = videoRef.value.duration;
+    console.log('[VideoPlayer] Metadata loaded, duration:', duration);
+    startSafetyTimer(duration);
+  }
+};
+
 const onVideoEnded = () => {
   console.log('[VideoPlayer] Video ended, index:', currentIndex.value, 'of', videoUrls.value.length);
+  clearSafetyTimer();
+  
   if (currentIndex.value === videoUrls.value.length - 1) {
     console.log('[VideoPlayer] Last video reached, returning to specs view.');
     store.isVideoMode = false;
@@ -56,6 +98,11 @@ const onVideoEnded = () => {
 
 onMounted(() => {
   playVideo();
+});
+
+import { onUnmounted } from 'vue';
+onUnmounted(() => {
+  clearSafetyTimer();
 });
 </script>
 
@@ -69,6 +116,8 @@ onMounted(() => {
       playsinline
       :src="currentUrl"
       @ended="onVideoEnded"
+      @error="onVideoError"
+      @loadedmetadata="onMetadataLoaded"
     ></video>
     <div class="video-overlay">
       <div class="video-caption"></div>

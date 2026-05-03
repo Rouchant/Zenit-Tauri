@@ -23,8 +23,9 @@ pub async fn restore_app_logic(app: &AppHandle) -> Result<(), String> {
     let hwnd_isize = main_window.hwnd().ok().map(|h| h.0 as isize);
     
     if let Some(hwnd_val_raw) = hwnd_isize {
+        let hwnd_val = hwnd_val_raw as HWND;
+        
         unsafe {
-            let hwnd_val = hwnd_val_raw as HWND;
             let foreground_hwnd = GetForegroundWindow();
             
             if foreground_hwnd != 0 && foreground_hwnd != hwnd_val {
@@ -43,7 +44,6 @@ pub async fn restore_app_logic(app: &AppHandle) -> Result<(), String> {
             
         for _ in 0..2 {
             unsafe {
-                let hwnd_val = hwnd_val_raw as HWND;
                 SetForegroundWindow(hwnd_val);
                 SetFocus(hwnd_val);
                 SetActiveWindow(hwnd_val);

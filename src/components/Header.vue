@@ -45,8 +45,3 @@ const storeLogo = computed(() => {
   </header>
 </template>
 
-<style scoped>
-.zenit-logo {
-  height: 40px;
-}
-</style>

@@ -1,13 +1,13 @@
 mod state;
 mod setup;
 mod commands;
+mod guardian;
 
 use std::fs;
 use std::sync::Arc;
 use tokio::sync::Mutex;
 use tauri::Manager;
 use tauri_plugin_store::StoreExt;
-use tauri_plugin_global_shortcut::GlobalShortcutExt;
 
 use crate::state::AppState;
 use crate::setup::run_system_setup;
@@ -29,46 +29,27 @@ pub fn run() {
                 .build()
         )
         .plugin(tauri_plugin_dialog::init())
-        .plugin(tauri_plugin_fs::init())
-        .plugin(tauri_plugin_process::init())
-        .plugin(tauri_plugin_shell::init())
         .plugin(tauri_plugin_store::Builder::new().build())
         .plugin(tauri_plugin_notification::init())
         .plugin(tauri_plugin_prevent_default::init())
         .plugin(tauri_plugin_autostart::init(tauri_plugin_autostart::MacosLauncher::LaunchAgent, None))
         .plugin(tauri_plugin_single_instance::init(|app, _args, _cwd| {
-            let _ = app.get_webview_window("main").expect("no main window").show();
-            let _ = app.get_webview_window("main").expect("no main window").unminimize();
-            let _ = app.get_webview_window("main").expect("no main window").set_focus();
+            if let Some(win) = app.get_webview_window("main") {
+                let _ = win.show();
+                let _ = win.unminimize();
+                let _ = win.set_focus();
+            }
         }))
-        .plugin(
-            tauri_plugin_global_shortcut::Builder::new()
-                .with_handler(|_app, _shortcut, _event| {
-                })
-                .build(),
-        )
         .setup(|app| {
             app.manage(AppState {
                 maximize_timer: Arc::new(Mutex::new(None)),
             });
 
             run_system_setup();
+            guardian::start_keyboard_guardian();
 
             #[cfg(desktop)]
             let _ = app.handle().plugin(tauri_plugin_window_state::Builder::default().build());
-
-            let shortcuts_to_block: Vec<&str> = vec![
-                "Alt+Tab", "Alt+F4", "Alt+Escape",
-                "Super+D", "Super+R", "Super+E",
-                "Super+L", "Super+X", "Super+I", "Super+S",
-            ];
-
-            let shortcut_manager = app.global_shortcut();
-            for sc in shortcuts_to_block {
-                if let Ok(shortcut) = sc.parse::<tauri_plugin_global_shortcut::Shortcut>() {
-                    let _ = shortcut_manager.register(shortcut);
-                }
-            }
 
             let user_data = app.path().app_data_dir().unwrap_or_default();
             let _ = fs::create_dir_all(&user_data);
