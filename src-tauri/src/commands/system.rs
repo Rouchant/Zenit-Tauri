@@ -38,6 +38,8 @@ pub struct SystemSpecs {
 
 // --- COMANDO PRINCIPAL ---
 
+/// Comando principal invocado por el frontend para obtener todas las especificaciones del sistema.
+/// Utiliza un sistema de caché para que la detección solo ocurra una vez por ejecución.
 #[tauri::command]
 pub async fn get_system_specs() -> Result<SystemSpecs, String> {
     if let Some(cached) = CACHED_SPECS.get() {
@@ -50,17 +52,17 @@ pub async fn get_system_specs() -> Result<SystemSpecs, String> {
             .with_memory(MemoryRefreshKind::everything())
     );
 
-    // 1. CPU
+    // 1. Detección básica de CPU vía sysinfo
     let cpu = sys.cpus().first().ok_or("No se detectó CPU")?;
     let proc_name = cpu.brand().trim().replace("(R)", "").replace("(TM)", "").replace("  ", " ");
     let vendor = if proc_name.contains("Intel") { "Intel" } else if proc_name.contains("AMD") { "AMD" } else { "Generic" };
     let gen = detect_generation(&proc_name);
 
-    // 2. RAM & Storage
+    // 2. RAM & Almacenamiento con formateo comercial
     let ram_display = get_ram_display(sys.total_memory());
     let storage_display = get_storage_info();
 
-    // 3. WMI Details (Síncrono para evitar errores de Send/Sync con COM)
+    // 3. Detalles profundos vía WMI (Marca, Modelo, GPU, Resolución, etc.)
     let wmi = get_wmi_details().unwrap_or_else(|_| default_wmi_fallback());
 
     let specs = SystemSpecs {
@@ -105,9 +107,10 @@ fn default_wmi_fallback() -> WmiData {
     }
 }
 
-// --- FUNCIONES DE DETECCIÓN (Síncronas para evitar errores de hilos) ---
+// --- FUNCIONES DE DETECCIÓN (Síncronas para estabilidad de hilos) ---
 
 #[cfg(windows)]
+/// Orquesta todas las consultas WMI para obtener la información detallada de Windows.
 fn get_wmi_details() -> Result<WmiData, Box<dyn std::error::Error>> {
     use wmi::{COMLibrary, WMIConnection};
     let com_con = COMLibrary::new()?;
@@ -128,6 +131,8 @@ fn get_wmi_details() -> Result<WmiData, Box<dyn std::error::Error>> {
 }
 
 #[cfg(windows)]
+/// Detecta la Marca y el Modelo del equipo. 
+/// Tiene un sistema de fallbacks: si no lo encuentra en ComputerSystem, lo busca en la Placa Base (BaseBoard).
 fn detect_brand_and_model(wmi: &wmi::WMIConnection) -> Result<(String, String), Box<dyn std::error::Error>> {
     let mut brand = "PC Generico".to_string();
     let mut model = "PC Desktop".to_string();
@@ -142,6 +147,7 @@ fn detect_brand_and_model(wmi: &wmi::WMIConnection) -> Result<(String, String), 
 
     brand = clean_brand_name(&brand);
 
+    // Fallback a Placa Base si la info inicial es genérica (típico en PCs armados o VMs)
     if is_generic_info(&brand, &model) {
         if let Ok(mb_results) = wmi.raw_query("SELECT Manufacturer, Product FROM Win32_BaseBoard") {
             let mb_results: Vec<HashMap<String, serde_json::Value>> = mb_results;
@@ -155,6 +161,7 @@ fn detect_brand_and_model(wmi: &wmi::WMIConnection) -> Result<(String, String), 
         }
     }
 
+    // Refinado final del nombre del modelo para quitar ruido técnico
     let model_final = if brand.to_uppercase().contains("VIRTUALBOX") {
         "Virtual Machine".to_string()
     } else {
@@ -165,6 +172,8 @@ fn detect_brand_and_model(wmi: &wmi::WMIConnection) -> Result<(String, String), 
 }
 
 #[cfg(windows)]
+/// Evalúa todas las GPUs instaladas y elige la "mejor" (Dedicada > Integrada).
+/// Si la elegida es NVIDIA, intenta obtener su TGP (Wattage) mediante nvidia-smi.
 fn detect_best_gpu(video_results: &[HashMap<String, serde_json::Value>]) -> String {
     let mut best_gpu = "Gráficos Integrados".to_string();
     let mut best_score = 0;
@@ -190,6 +199,7 @@ fn detect_best_gpu(video_results: &[HashMap<String, serde_json::Value>]) -> Stri
     best_gpu
 }
 
+/// Asigna una puntuación a la GPU según su fabricante y tipo para priorizar dedicadas sobre integradas.
 fn rate_gpu(name: &str) -> i32 {
     let name_up = name.to_uppercase();
     if name_up.contains("NVIDIA") || name_up.contains("RTX") || name_up.contains("GTX") { 10 }
@@ -199,6 +209,7 @@ fn rate_gpu(name: &str) -> i32 {
     else { 1 }
 }
 
+/// Consulta nvidia-smi para obtener el límite máximo de potencia (Wattage) de la tarjeta.
 fn get_nvidia_watts() -> Option<String> {
     NVIDIA_POWER_LIMIT.get_or_init(|| {
         let script = r#"$val = (nvidia-smi -q -d POWER | Select-String "Max Power Limit" | Where-Object { $_ -notmatch "N/A" }); if ($val) { [int][float]($val.ToString().Split(':')[1].Replace('W','').Trim()) }"#;
@@ -213,6 +224,8 @@ fn get_nvidia_watts() -> Option<String> {
 }
 
 #[cfg(windows)]
+/// Determina la resolución de pantalla actual buscando el valor máximo entre todos los controladores.
+/// Incluye etiquetas comerciales como (Full HD), (2K), etc.
 fn format_display_resolution(wmi: &wmi::WMIConnection, video_results: &[HashMap<String, serde_json::Value>]) -> String {
     let mut max_h = 0;
     let mut max_v = 0;
@@ -253,6 +266,7 @@ fn format_display_resolution(wmi: &wmi::WMIConnection, video_results: &[HashMap<
 }
 
 #[cfg(windows)]
+/// Detecta el tipo de tecnología de RAM (DDR4, DDR5, LPDDR5, etc.) usando los códigos SMBIOS.
 fn detect_ram_type(wmi: &wmi::WMIConnection) -> String {
     if let Ok(results) = wmi.raw_query("SELECT SMBIOSMemoryType FROM Win32_PhysicalMemory") {
         let results: Vec<HashMap<String, serde_json::Value>> = results;
@@ -270,6 +284,7 @@ fn detect_ram_type(wmi: &wmi::WMIConnection) -> String {
 }
 
 #[cfg(windows)]
+/// Obtiene el nombre legible de la versión de Windows instalada.
 fn detect_os_version(wmi: &wmi::WMIConnection) -> String {
     if let Ok(results) = wmi.raw_query("SELECT Caption FROM Win32_OperatingSystem") {
         let results: Vec<HashMap<String, serde_json::Value>> = results;
@@ -282,6 +297,7 @@ fn detect_os_version(wmi: &wmi::WMIConnection) -> String {
 
 // --- UTILIDADES ---
 
+/// Calcula el almacenamiento total sumando todos los discos y redondeando a capacidades comerciales (128, 256, 512, 1TB).
 fn get_storage_info() -> String {
     let disks = Disks::new_with_refreshed_list();
     let total_bytes: u64 = disks.iter().map(|d| d.total_space()).sum();
@@ -299,6 +315,7 @@ fn get_storage_info() -> String {
     }
 }
 
+/// Identifica la generación del procesador mediante expresiones regulares aplicadas al nombre del modelo.
 fn detect_generation(name: &str) -> String {
     let re_intel = RE_INTEL.get_or_init(|| Regex::new(r"i[3579]-(\d+)").unwrap());
     let re_intel_core = RE_INTEL_CORE.get_or_init(|| Regex::new(r"Core\s+[3579]\s+(\d)").unwrap());
@@ -318,12 +335,14 @@ fn detect_generation(name: &str) -> String {
     else { "Desconocida".to_string() }
 }
 
+/// Formatea la capacidad de RAM, redondeando para absorber la memoria reservada por hardware.
 fn get_ram_display(total_bytes: u64) -> String {
     let gb = total_bytes as f64 / 1024.0 / 1024.0 / 1024.0;
     let size = (gb / 2.0).round() * 2.0;
     format!("{:.0}GB", if size == 0.0 { gb.round() } else { size })
 }
 
+/// Normaliza nombres técnicos de fabricantes a sus nombres comerciales conocidos.
 fn clean_brand_name(raw: &str) -> String {
     let r = raw.to_uppercase();
     if r.contains("ASUSTEK") { "ASUS" }
@@ -338,12 +357,14 @@ fn clean_brand_name(raw: &str) -> String {
     else { raw.trim() }.to_string()
 }
 
+/// Indica si la información obtenida de marca/modelo es genérica (O.E.M, Default string, etc.) para forzar búsqueda en placa base.
 fn is_generic_info(brand: &str, model: &str) -> bool {
     let b = brand.to_uppercase();
     let m = model.to_uppercase();
     b.contains("TO BE FILLED") || b.contains("O.E.M") || b.is_empty() || m.contains("SYSTEM PRODUCT") || m.contains("DEFAULT STRING") || m == b
 }
 
+/// Refina el nombre del modelo eliminando ruido repetitivo, normalizando espaciados de ASUS y deduplicando palabras.
 fn refine_model_name(brand: &str, model: &str) -> String {
     let noise = ["ASUSTEK", "COMPUTER", "INC", "CORP", "CORPORATION", "LTD", "SYSTEMS", "PRODUCT", "NAME", "LAPTOP"];
     
@@ -384,11 +405,14 @@ fn refine_model_name(brand: &str, model: &str) -> String {
 
 // --- OTROS COMANDOS ---
 
+/// Obtiene la ruta física del directorio de recursos de la aplicación.
 #[tauri::command]
 pub fn get_video_path(app: AppHandle) -> String {
     get_resource_dir(&app).to_string_lossy().into_owned()
 }
 
+/// Forza el brillo al 100% y desactiva el brillo adaptativo y el sueño mediante PowerShell.
+/// Se ejecuta cuando el kiosco entra en modo video/inactividad.
 #[tauri::command]
 pub fn set_max_brightness() {
     let script = r#"

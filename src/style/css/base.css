@@ -9,7 +9,7 @@
     
     /* Price Tag Controls */
     --price-primary-size: clamp(1.8rem, 2.5vw, 2.8rem);
-    --price-logo-size: clamp(1.5rem, 1.6vw, 1.8rem);
+    --price-logo-size: clamp(1.35rem, 1.4vw, 1.6rem);
 }
 
 * {

@@ -74,7 +74,10 @@
     display: flex;
     flex-direction: column;
     align-items: flex-end;
+    justify-content: center; /* Center the group (Video + Price) */
     width: 100%;
+    height: 100%;
+    gap: clamp(10px, 2vh, 20px); /* Fixed distance below the video */
 }
 
 .landing-video-container {
