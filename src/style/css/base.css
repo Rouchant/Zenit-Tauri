@@ -6,6 +6,10 @@
     --glass-border: rgba(255, 255, 255, 0.1);
     --text: #ffffff;
     --text-muted: rgba(255, 255, 255, 0.6);
+    
+    /* Price Tag Controls */
+    --price-primary-size: clamp(1.8rem, 2.5vw, 2.8rem);
+    --price-logo-size: clamp(1.5rem, 1.6vw, 1.8rem);
 }
 
 * {

@@ -66,9 +66,9 @@ const clearSafetyTimer = () => {
 const startSafetyTimer = (durationInSeconds) => {
   clearSafetyTimer();
   
-  // Usamos la duración del video + 5 segundos de margen
+  // Usamos la duración del video + 3 segundos de margen
   // Si no hay duración (metadata falló), usamos 60s por defecto
-  const timeoutMs = (durationInSeconds ? (durationInSeconds + 5) : 60) * 1000;
+  const timeoutMs = (durationInSeconds ? (durationInSeconds + 3) : 60) * 1000;
   
   safetyTimeout.value = setTimeout(() => {
     console.warn('[VideoPlayer] Safety timeout reached, forcing exit.');

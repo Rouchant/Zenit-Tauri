@@ -69,6 +69,8 @@
 .logo-placeholder img {
     height: 100%;
     width: auto;
+    max-width: 250px;
+    object-fit: contain;
     filter: brightness(0) invert(1);
 }
 
@@ -97,6 +99,8 @@
 .store-logo-placeholder img {
     height: 100%;
     width: auto;
+    max-width: 250px;
+    object-fit: contain;
     transform: scale(1.1); /* Subtle boost to size across all stores */
 }
 
@@ -301,7 +305,7 @@
 }
 
 .price-primary {
-    font-size: clamp(1.8rem, 2.5vw, 2.8rem);
+    font-size: var(--price-primary-size);
     font-weight: 800;
     line-height: 1;
     letter-spacing: -1px;
@@ -356,6 +360,8 @@
 }
 
 .store-logo-sub {
-    height: clamp(1.5rem, 1.6vw, 1.8rem);
+    height: var(--price-logo-size);
     width: auto;
+    max-width: 180px; /* Slightly smaller for the price tag */
+    object-fit: contain;
 }
