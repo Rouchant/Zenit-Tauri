@@ -18,19 +18,11 @@
     "core:window:allow-show",
     "core:window:allow-unminimize",
     "dialog:allow-open",
-    "fs:allow-appdata-read",
-    "fs:allow-appdata-write",
-    "fs:allow-resource-read",
     "log:default",
-    "process:allow-exit",
-    "shell:allow-spawn",
-    "shell:allow-execute",
-    "global-shortcut:default",
     "autostart:default",
     "store:default",
     "window-state:default",
     "notification:default",
-    "core:path:default",
-    "fs:default"
+    "core:path:default"
   ]
 }
