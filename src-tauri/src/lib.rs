@@ -95,6 +95,13 @@ pub fn run() {
             window::quit_app,
             window::set_always_on_top,
         ])
+        .on_window_event(|window, event| {
+            if let tauri::WindowEvent::CloseRequested { .. } = event {
+                if window.label() == "main" {
+                    window.app_handle().exit(0);
+                }
+            }
+        })
         .run(tauri::generate_context!())
         .expect("Error al iniciar Zenit");
 }
