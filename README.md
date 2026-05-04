@@ -18,7 +18,7 @@ Zenit es una solución de nivel empresarial para **Showcase Terminals**, diseña
 
 ---
 
-## ✨ Características Principales (v1.1.7)
+## ✨ Características Principales (v1.1.9)
 
 ### 🖥️ Detección de Hardware Nativa (100% Rust & WMI)
 Zenit utiliza un motor de telemetría modularizado en Rust para una velocidad y precisión quirúrgica:
