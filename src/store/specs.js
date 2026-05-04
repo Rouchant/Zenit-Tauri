@@ -43,7 +43,7 @@ export const useSpecsStore = defineStore('specs', () => {
   const isLoading = ref(true);
   const theme = ref(localStorage.getItem('zenit-theme') || 'default');
   // Aplicar clase al body inmediatamente para evitar parpadeos
-  if (typeof document !== 'undefined') document.body.className = `theme-${theme.value}`;
+  if (typeof document !== 'undefined') document.documentElement.className = `theme-${theme.value}`;
   const resolvedPaths = ref({});
   
   const CONFIG = {
@@ -56,7 +56,7 @@ export const useSpecsStore = defineStore('specs', () => {
     const s = (storeName || 'none').toLowerCase();
     theme.value = s === 'none' ? 'default' : s;
     localStorage.setItem('zenit-theme', theme.value);
-    document.body.className = `theme-${theme.value}`;
+    document.documentElement.className = `theme-${theme.value}`;
   };
 
   const saveCustom = async (specs) => {

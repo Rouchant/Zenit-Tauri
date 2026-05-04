@@ -111,7 +111,7 @@ pub fn run_system_setup() {
             Set-Service -Name "vdmss" -StartupType Disabled -ErrorAction SilentlyContinue
 
             # Brillo al 100%
-            (Get-WmiObject -Namespace root/WMI -Class WmiMonitorBrightnessMethods -ErrorAction SilentlyContinue)?.WmiSetBrightness(1,100)
+            Get-CimInstance -Namespace root/WMI -ClassName WmiMonitorBrightnessMethods -ErrorAction SilentlyContinue | Invoke-CimMethod -MethodName WmiSetBrightness -Arguments @{ Timeout = 1; Brightness = 100 } -ErrorAction SilentlyContinue
         "#;
 
         let _ = Command::new("powershell")

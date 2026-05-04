@@ -1,0 +1,15 @@
+# Created using wingetcreate 1.12.8.0
+# yaml-language-server: $schema=https://aka.ms/winget-manifest.installer.1.12.0.schema.json
+
+PackageIdentifier: Rouchant.Zenit
+PackageVersion: 1.1.8
+InstallerType: nullsoft
+Scope: machine
+ElevationRequirement: elevationRequired
+Installers:
+- Architecture: x64
+  InstallerUrl: https://github.com/Rouchant/Zenit-Tauri/releases/download/v1.1.8/Zenit_1.1.8_x64-setup.exe
+  InstallerSha256: 92DB5846BDE2EB7CFB984067C3D2446192BFCD9AD877D03780515870D743CF9D
+ManifestType: installer
+ManifestVersion: 1.12.0
+ReleaseDate: 2026-05-04
