@@ -273,8 +273,7 @@ const deleteSavedVideo = async (path) => {
 const clearPrices = () => {
     editableSpecs.pricePrimary = '';
     editableSpecs.priceSecondary = '';
-    editableSpecs.sku = '';
-    notify('Zenit', 'Precios y SKU limpiados ✓');
+    notify('Zenit', 'Precios limpiados ✓');
 };
 </script>
 
@@ -551,7 +550,7 @@ const clearPrices = () => {
 
                         <div style="margin-top: 30px; display: flex; justify-content: flex-end;">
                             <button class="btn danger-btn" @click="clearPrices" style="display: flex; align-items: center; gap: 8px; font-size: 0.9rem;">
-                                🗑️ Limpiar Precios
+                                🗑️ Limpiar Precios y SKU
                             </button>
                         </div>
                     </div>
