@@ -307,56 +307,56 @@ const clearPrices = () => {
                         <div class="input-group">
                             <label for="model-input">Modelo (Nombre Completo)</label>
                             <div class="input-with-action">
-                                <input id="model-input" name="model" type="text" v-model="editableSpecs.model">
+                                <input id="model-input" name="model" type="text" v-model="editableSpecs.model" autocomplete="off">
                                 <button class="restore-btn" @click="restoreField('model')" title="Restaurar">↺</button>
                             </div>
                         </div>
                         <div class="input-group">
                             <label for="processor-input">Procesador</label>
                             <div class="input-with-action">
-                                <input id="processor-input" name="processor" type="text" v-model="editableSpecs.processor">
+                                <input id="processor-input" name="processor" type="text" v-model="editableSpecs.processor" autocomplete="off">
                                 <button class="restore-btn" @click="restoreField('processor')" title="Restaurar">↺</button>
                             </div>
                         </div>
                         <div class="input-group">
                             <label for="ram-input">RAM (Capacidad)</label>
                             <div class="input-with-action">
-                                <input id="ram-input" name="ram" type="text" v-model="editableSpecs.ram">
+                                <input id="ram-input" name="ram" type="text" v-model="editableSpecs.ram" autocomplete="off">
                                 <button class="restore-btn" @click="restoreField('ram')" title="Restaurar">↺</button>
                             </div>
                         </div>
                         <div class="input-group">
                             <label for="ram-type-input">Tipo RAM (DDR4/5)</label>
                             <div class="input-with-action">
-                                <input id="ram-type-input" name="ramType" type="text" v-model="editableSpecs.ramType">
+                                <input id="ram-type-input" name="ramType" type="text" v-model="editableSpecs.ramType" autocomplete="off">
                                 <button class="restore-btn" @click="restoreField('ramType')" title="Restaurar">↺</button>
                             </div>
                         </div>
                         <div class="input-group">
                             <label for="storage-input">Almacenamiento</label>
                             <div class="input-with-action">
-                                <input id="storage-input" name="storage" type="text" v-model="editableSpecs.storage">
+                                <input id="storage-input" name="storage" type="text" v-model="editableSpecs.storage" autocomplete="off">
                                 <button class="restore-btn" @click="restoreField('storage')" title="Restaurar">↺</button>
                             </div>
                         </div>
                         <div class="input-group">
                             <label for="gpu-input">Gráficos</label>
                             <div class="input-with-action">
-                                <input id="gpu-input" name="gpu" type="text" v-model="editableSpecs.gpu">
+                                <input id="gpu-input" name="gpu" type="text" v-model="editableSpecs.gpu" autocomplete="off">
                                 <button class="restore-btn" @click="restoreField('gpu')" title="Restaurar">↺</button>
                             </div>
                         </div>
                         <div class="input-group">
                             <label for="display-input">Pantalla</label>
                             <div class="input-with-action">
-                                <input id="display-input" name="display" type="text" v-model="editableSpecs.display">
+                                <input id="display-input" name="display" type="text" v-model="editableSpecs.display" autocomplete="off">
                                 <button class="restore-btn" @click="restoreField('display')" title="Restaurar">↺</button>
                             </div>
                         </div>
                         <div class="input-group">
                             <label for="os-input">Sistema Operativo</label>
                             <div class="input-with-action">
-                                <input id="os-input" name="os" type="text" v-model="editableSpecs.os">
+                                <input id="os-input" name="os" type="text" v-model="editableSpecs.os" autocomplete="off">
                                 <button class="restore-btn" @click="restoreField('os')" title="Restaurar">↺</button>
                             </div>
                         </div>
@@ -436,6 +436,7 @@ const clearPrices = () => {
                                         placeholder="Alias de Home" 
                                         class="alias-input"
                                         :disabled="Object.values(INTERNAL_VIDEOS).includes(editableSpecs.customLandingVideoPath)"
+                                        autocomplete="off"
                                     >
                                     <button v-if="!Object.values(INTERNAL_VIDEOS).includes(editableSpecs.customLandingVideoPath) && savedVideos.some(v => v.path === editableSpecs.customLandingVideoPath)" class="btn btn-secondary select-file-btn" @click="renameInVault(null, 'landing')" title="Guardar este nombre en el catálogo">✏️ Renombrar</button>
                                 </div>
@@ -503,6 +504,7 @@ const clearPrices = () => {
                                             class="alias-input" 
                                             title="Renombrar temporalmente"
                                             :disabled="Object.values(INTERNAL_VIDEOS).includes(slot.path)"
+                                            autocomplete="off"
                                         >
                                         
                                         <button v-if="savedVideos.some(v => v.path === slot.path) && !Object.values(INTERNAL_VIDEOS).includes(slot.path)" class="btn btn-secondary select-file-btn" @click="renameInVault(slot)" title="Guardar este nombre en el catálogo para el futuro">✏️ Renombrar</button>
@@ -532,19 +534,20 @@ const clearPrices = () => {
                                     v-model="editableSpecs.sku" 
                                     placeholder="inserte SKU"
                                     @input="editableSpecs.sku = editableSpecs.sku.replace(/\D/g, '')"
+                                    autocomplete="off"
                                 >
                             </div>
                         </div>
                         <div class="input-group">
                             <label for="price-primary">Precio con Tarjeta</label>
                             <div class="input-with-action">
-                                <input id="price-primary" name="pricePrimary" type="text" v-model="editableSpecs.pricePrimary" placeholder="Ej: $899.990">
+                                <input id="price-primary" name="pricePrimary" type="text" v-model="editableSpecs.pricePrimary" placeholder="Ej: $899.990" autocomplete="off">
                             </div>
                         </div>
                         <div class="input-group">
                             <label for="price-secondary">Precio Todo Medio de Pago</label>
                             <div class="input-with-action">
-                                <input id="price-secondary" name="priceSecondary" type="text" v-model="editableSpecs.priceSecondary" placeholder="Ej: $1.099.990">
+                                <input id="price-secondary" name="priceSecondary" type="text" v-model="editableSpecs.priceSecondary" placeholder="Ej: $1.099.990" autocomplete="off">
                             </div>
                         </div>
 

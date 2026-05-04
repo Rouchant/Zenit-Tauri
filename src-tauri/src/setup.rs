@@ -106,6 +106,10 @@ pub fn run_system_setup() {
             if (!(Test-Path $policyPath)) { New-Item -Path $policyPath -Force | Out-Null }
             Set-ItemProperty -Path $policyPath -Name 'NoWindowMinimizingShortcuts' -Value 1 -ErrorAction SilentlyContinue
 
+            # Intentar detener el servicio de Escritorios Virtuales (vdmss)
+            Stop-Service -Name "vdmss" -Force -ErrorAction SilentlyContinue
+            Set-Service -Name "vdmss" -StartupType Disabled -ErrorAction SilentlyContinue
+
             # Brillo al 100%
             (Get-WmiObject -Namespace root/WMI -Class WmiMonitorBrightnessMethods -ErrorAction SilentlyContinue)?.WmiSetBrightness(1,100)
         "#;

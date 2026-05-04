@@ -62,7 +62,9 @@ pub fn run() {
                         if let Ok(store) = app.store("store.json") {
                             store.set("specs", value);
                             let _ = store.save();
-                            let _ = fs::rename(&config_path, user_data.join("config.json.bak"));
+                            let backup_path = user_data.join("config.json.bak");
+                            if backup_path.exists() { let _ = fs::remove_file(&backup_path); }
+                            let _ = fs::rename(&config_path, &backup_path);
                             println!("[Zenit] Migración config.json → store.json completada");
                         }
                     }
@@ -74,6 +76,24 @@ pub fn run() {
                 use tauri_plugin_autostart::ManagerExt;
                 let _ = app.autolaunch().enable();
             }
+
+            // Vigilancia de Foco (Anti-Escritorios Virtuales)
+            let handle = app.handle().clone();
+            tauri::async_runtime::spawn(async move {
+                let mut interval = tokio::time::interval(std::time::Duration::from_secs(2));
+                loop {
+                    interval.tick().await;
+                    if let Some(window) = handle.get_webview_window("main") {
+                        // Solo reclamamos foco si la ventana NO está minimizada Y es visible
+                        let is_minimized = window.is_minimized().unwrap_or(false);
+                        let is_visible = window.is_visible().unwrap_or(true);
+                        
+                        if !is_minimized && is_visible {
+                            let _ = window.set_focus();
+                        }
+                    }
+                }
+            });
 
             // Limpiar archivos huérfanos de la bóveda
             vault::cleanup_orphan_videos(app.handle());

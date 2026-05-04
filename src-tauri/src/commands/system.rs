@@ -246,7 +246,7 @@ fn format_display_resolution(wmi: &wmi::WMIConnection, video_results: &[HashMap<
         }
     }
 
-    if max_h == 0 { (max_h, max_v) = (1920, 1080); }
+    if max_h == 0 { max_h = 1920; max_v = 1080; }
 
     let label = match (max_h, max_v) {
         (1920, 1080) => " (Full HD)",
