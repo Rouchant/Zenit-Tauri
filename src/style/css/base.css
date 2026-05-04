@@ -12,6 +12,10 @@
     --price-logo-size: clamp(1.35rem, 1.4vw, 1.6rem);
 }
 
+.is-loading * {
+    transition: none !important;
+}
+
 * {
     margin: 0;
     padding: 0;

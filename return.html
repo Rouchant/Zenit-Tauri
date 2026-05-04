@@ -3,6 +3,15 @@
 <head>
     <meta charset="UTF-8">
     <link rel="icon" type="image/x-icon" href="/favicon.ico">
+    <script>
+        // Aplicar el tema lo antes posible para evitar parpadeos (FOUC)
+        (function() {
+            const urlParams = new URLSearchParams(window.location.search);
+            const store = urlParams.get('store') || 'none';
+            const theme = store === 'none' ? 'default' : store;
+            document.documentElement.className = 'theme-' + theme;
+        })();
+    </script>
     <style>
         @font-face {
             font-family: 'Outfit';
@@ -36,17 +45,17 @@
         }
 
         /* Themes matching style.css */
-        body.theme-falabella { --primary: #B9D40D; --secondary: #8da10a; }
-        body.theme-paris { --primary: #009DE0; --secondary: #007bb0; }
-        body.theme-ripley { --primary: #9932cc; --secondary: #7928a1; }
-        body.theme-default { --primary: #00f2ff; --secondary: #0072ff; }
+        .theme-falabella { --primary: #B9D40D; --secondary: #8da10a; }
+        .theme-paris { --primary: #009DE0; --secondary: #007bb0; }
+        .theme-ripley { --primary: #9932cc; --secondary: #7928a1; }
+        .theme-default { --primary: #00f2ff; --secondary: #0072ff; }
 
         html {
             background: transparent;
         }
         body {
             margin: 0;
-            padding: 0; /* No padding needed now with smaller window */
+            padding: 0;
             overflow: hidden;
             display: flex;
             justify-content: center;
@@ -93,7 +102,7 @@
         }
     </style>
 </head>
-<body class="theme-default">
+<body>
     <button id="restore-btn" class="return-btn">
         <span class="btn-text">Ver caracteristicas</span>
         <svg xmlns="http://www.w3.org/2000/svg" width="50" height="50" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="lucide lucide-laptop-minimal-check-icon lucide-laptop-minimal-check"><path d="M2 20h20"/><path d="m9 10 2 2 4-4"/><rect x="3" y="4" width="18" height="12" rx="2"/></svg>
@@ -101,17 +110,6 @@
 
     <script type="module">
         import { invoke } from '@tauri-apps/api/core';
-
-        // Apply theme from URL parameter
-        const urlParams = new URLSearchParams(window.location.search);
-        const store = urlParams.get('store') || 'none';
-        
-        document.body.classList.remove('theme-falabella', 'theme-paris', 'theme-ripley', 'theme-default');
-        if (store === 'none') {
-            document.body.classList.add('theme-default');
-        } else {
-            document.body.classList.add(`theme-${store}`);
-        }
 
         document.getElementById('restore-btn').addEventListener('click', async () => {
             try {
@@ -122,4 +120,4 @@
         });
     </script>
 </body>
-</html>
+</html>

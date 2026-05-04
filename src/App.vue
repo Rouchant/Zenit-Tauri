@@ -1,5 +1,5 @@
 <template>
-  <div id="app" class="app-container" :style="{ backgroundColor: '#000' }">
+  <div id="app" class="app-container" :class="{ 'is-loading': store.isLoading }" :style="{ backgroundColor: '#000' }">
     <!-- Loading Screen -->
     <Transition name="fade">
       <div v-if="store.isLoading" class="loading-screen">
