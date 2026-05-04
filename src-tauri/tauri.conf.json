@@ -1,7 +1,7 @@
 {
   "$schema": "../node_modules/@tauri-apps/cli/config.schema.json",
   "productName": "Zenit",
-  "version": "1.1.7",
+  "version": "1.1.8",
   "identifier": "com.zenit.app",
   "build": {
     "frontendDist": "../dist_app",
@@ -73,7 +73,9 @@
         "installerHooks": "nsis/hooks.nsh"
       },
       "wix": {
-        "language": "es-ES"
+        "language": "es-ES",
+        "bannerPath": "icons/wix/banner.bmp",
+        "dialogImagePath": "icons/wix/dialogImagePath.bmp"
       }
     },
     "resources": {
