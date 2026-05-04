@@ -548,9 +548,10 @@ const clearPrices = () => {
                             </div>
                         </div>
 
-                        <div style="margin-top: 30px; display: flex; justify-content: flex-end;">
-                            <button class="btn danger-btn" @click="clearPrices" style="display: flex; align-items: center; gap: 8px; font-size: 0.9rem;">
-                                🗑️ Limpiar Precios y SKU
+                        <div style="margin-top: 25px; display: flex; justify-content: flex-end;">
+                            <button class="btn-clean-action" @click="clearPrices">
+                                <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="lucide lucide-eraser"><path d="m7 21-4.3-4.3c-1-1-1-2.5 0-3.4l9.9-9.9c1-1 2.5-1 3.4 0l4.4 4.4c1 1 1 2.5 0 3.4L7 21Z"/><path d="m22 21-5.9-5.9"/><path d="m11 5 9 9"/></svg>
+                                Limpiar Precios
                             </button>
                         </div>
                     </div>
@@ -693,5 +694,34 @@ const clearPrices = () => {
 .alias-input:focus {
     border-color: var(--primary);
     background: rgba(255, 255, 255, 0.05);
+}
+
+.btn-clean-action {
+    background: rgba(244, 67, 54, 0.05);
+    border: 1px solid rgba(244, 67, 54, 0.2);
+    color: #ff6b6b;
+    padding: 10px 20px;
+    border-radius: 12px;
+    font-size: 0.85rem;
+    font-weight: 600;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+}
+
+.btn-clean-action:hover {
+    background: rgba(244, 67, 54, 0.15);
+    border-color: #ff6b6b;
+    color: #ff8787;
+    transform: translateY(-1px);
+    box-shadow: 0 4px 12px rgba(244, 67, 54, 0.1);
+}
+
+.btn-clean-action:active {
+    transform: translateY(0);
 }
 </style>
