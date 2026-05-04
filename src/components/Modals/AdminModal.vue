@@ -269,6 +269,13 @@ const deleteSavedVideo = async (path) => {
         }
     }
 };
+
+const clearPrices = () => {
+    editableSpecs.pricePrimary = '';
+    editableSpecs.priceSecondary = '';
+    editableSpecs.sku = '';
+    notify('Zenit', 'Precios y SKU limpiados ✓');
+};
 </script>
 
 <template>
@@ -540,6 +547,12 @@ const deleteSavedVideo = async (path) => {
                             <div class="input-with-action">
                                 <input id="price-secondary" name="priceSecondary" type="text" v-model="editableSpecs.priceSecondary" placeholder="Ej: $1.099.990">
                             </div>
+                        </div>
+
+                        <div style="margin-top: 30px; display: flex; justify-content: flex-end;">
+                            <button class="btn danger-btn" @click="clearPrices" style="display: flex; align-items: center; gap: 8px; font-size: 0.9rem;">
+                                🗑️ Limpiar Precios
+                            </button>
                         </div>
                     </div>
                 </section>
