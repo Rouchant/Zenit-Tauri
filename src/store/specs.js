@@ -118,6 +118,15 @@ export const useSpecsStore = defineStore('specs', () => {
 
   const loadSpecs = async () => {
     isLoading.value = true;
+    
+    // 1. Cargar el tema lo más rápido posible para evitar parpadeo (FOUC)
+    if (tauriStore) {
+      const stored = await tauriStore.get('specs');
+      if (stored && stored.store) {
+        updateTheme(stored.store);
+      }
+    }
+
     try {
       // 0. Resolver rutas de recursos internos (videos en src-tauri/resources)
       if (window.__TAURI_INTERNALS__) {
