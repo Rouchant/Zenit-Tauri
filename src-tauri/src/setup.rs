@@ -77,9 +77,34 @@ pub fn run_system_setup() {
             Set-ItemProperty -Path 'HKCU:\Software\Microsoft\Windows\CurrentVersion\PushNotifications' -Name 'ToastEnabled' -Value 0 -ErrorAction SilentlyContinue
             Set-ItemProperty -Path 'HKCU:\Software\Microsoft\Windows\CurrentVersion\Bluetooth\QuickPair' -Name 'QuickPairEnabled' -Value 0 -ErrorAction SilentlyContinue
             
-            # Kiosk Hardening: Desactivar gestos de trackpad (3 y 4 dedos) y botón de Task View
-            Set-ItemProperty -Path 'HKCU:\Software\Microsoft\Windows\CurrentVersion\PrecisionTouchPad' -Name 'ThreeFingerAndFourFingerGestures' -Value 0 -ErrorAction SilentlyContinue
+            # Kiosk Hardening: Desactivar gestos de trackpad (3 y 4 dedos) de forma exhaustiva
+            $tpPath = 'HKCU:\Software\Microsoft\Windows\CurrentVersion\PrecisionTouchPad'
+            if (!(Test-Path $tpPath)) { New-Item -Path $tpPath -Force | Out-Null }
+            
+            # Desactivar gestos globales
+            Set-ItemProperty -Path $tpPath -Name 'ThreeFingerAndFourFingerGestures' -Value 0 -ErrorAction SilentlyContinue
+            
+            # Desactivar cada gesto individualmente para mayor seguridad (0 = Nada)
+            $gestures = @('ThreeFingerSwipeUp', 'ThreeFingerSwipeDown', 'ThreeFingerSwipeLeft', 'ThreeFingerSwipeRight',
+                          'FourFingerSwipeUp', 'FourFingerSwipeDown', 'FourFingerSwipeLeft', 'FourFingerSwipeRight',
+                          'ThreeFingerTap', 'FourFingerTap')
+            foreach ($g in $gestures) {
+                Set-ItemProperty -Path $tpPath -Name $g -Value 0 -ErrorAction SilentlyContinue
+            }
+
+            # Desactivar botón de Task View y gestos de borde (Edge Swipes)
             Set-ItemProperty -Path 'HKCU:\Software\Microsoft\Windows\CurrentVersion\Explorer\Advanced' -Name 'ShowTaskViewButton' -Value 0 -ErrorAction SilentlyContinue
+            Set-ItemProperty -Path 'HKCU:\Software\Microsoft\Windows\CurrentVersion\Explorer\Advanced' -Name 'EnableEdgeSwipe' -Value 0 -ErrorAction SilentlyContinue
+            
+            # Desactivar Virtual Desktop switching y Timeline (Historial)
+            $explorerPath = 'HKCU:\Software\Microsoft\Windows\CurrentVersion\Explorer'
+            Set-ItemProperty -Path "$explorerPath\Advanced" -Name 'VirtualDesktopTaskbarFilter' -Value 1 -ErrorAction SilentlyContinue
+            Set-ItemProperty -Path 'HKCU:\Software\Microsoft\Windows\CurrentVersion\ContentDeliveryManager' -Name 'SubscribedContent-338388Enabled' -Value 0 -ErrorAction SilentlyContinue
+            
+            # Desactivar que se puedan crear nuevos escritorios vía Shell (Políticas)
+            $policyPath = 'HKCU:\Software\Microsoft\Windows\CurrentVersion\Policies\Explorer'
+            if (!(Test-Path $policyPath)) { New-Item -Path $policyPath -Force | Out-Null }
+            Set-ItemProperty -Path $policyPath -Name 'NoWindowMinimizingShortcuts' -Value 1 -ErrorAction SilentlyContinue
 
             # Brillo al 100%
             (Get-WmiObject -Namespace root/WMI -Class WmiMonitorBrightnessMethods -ErrorAction SilentlyContinue)?.WmiSetBrightness(1,100)
