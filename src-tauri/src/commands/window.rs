@@ -38,16 +38,30 @@ pub fn quit_app(app: AppHandle) {
 }
 
 #[tauri::command]
-pub fn set_always_on_top(app: AppHandle, on_top: bool) -> Result<(), String> {
+pub async fn set_always_on_top(app: AppHandle, state: tauri::State<'_, AppState>, on_top: bool) -> Result<(), String> {
     let main_window = app.get_webview_window("main").ok_or("Main window not found")?;
+    
+    // Actualizar el flag de persistencia en el estado
+    {
+        let mut guard = state.enforce_always_on_top.lock().await;
+        *guard = on_top;
+    }
+
     main_window.set_always_on_top(on_top).map_err(|e| e.to_string())
 }
 
 // --- LÓGICA INTERNA (ABSTRACCIÓN) ---
 
 pub async fn restore_app_logic(app: &AppHandle) -> Result<(), String> {
+    let state = app.state::<AppState>();
     let main_window = app.get_webview_window("main").ok_or("Main window not found")?;
     let return_window = app.get_webview_window("return").ok_or("Return window not found")?;
+
+    // Reactivar persistencia de "siempre arriba" al restaurar
+    {
+        let mut guard = state.enforce_always_on_top.lock().await;
+        *guard = true;
+    }
 
     main_window.unminimize().map_err(|e| e.to_string())?;
     main_window.show().map_err(|e| e.to_string())?;

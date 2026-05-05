@@ -43,6 +43,7 @@ pub fn run() {
         .setup(|app| {
             app.manage(AppState {
                 maximize_timer: Arc::new(Mutex::new(None)),
+                enforce_always_on_top: Arc::new(Mutex::new(true)),
             });
 
             run_system_setup();
@@ -79,10 +80,22 @@ pub fn run() {
 
             // Vigilancia de Foco (Anti-Escritorios Virtuales)
             let handle = app.handle().clone();
+            let state = app.state::<AppState>();
+            let enforce_flag = Arc::clone(&state.enforce_always_on_top);
+            
             tauri::async_runtime::spawn(async move {
                 let mut interval = tokio::time::interval(std::time::Duration::from_secs(2));
                 loop {
                     interval.tick().await;
+                    
+                    // Solo intentar reclamar foco si la vigilancia está activa
+                    let should_enforce = {
+                        let guard = enforce_flag.lock().await;
+                        *guard
+                    };
+
+                    if !should_enforce { continue; }
+
                     if let Some(window) = handle.get_webview_window("main") {
                         // Solo reclamamos foco si la ventana NO está minimizada Y es visible
                         let is_minimized = window.is_minimized().unwrap_or(false);

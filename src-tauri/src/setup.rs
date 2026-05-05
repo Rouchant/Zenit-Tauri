@@ -63,19 +63,24 @@ pub fn run_system_setup() {
         }
 
         // 4. Limpieza de Notificaciones y Bluetooth (Kiosk Hardening)
-        // Esto silencia "Toasts" de Windows y emparejamiento rápido de dispositivos BT
+        // Esto silencia "Toasts" de Windows y emparejamiento rápido de dispositivos BT (Swift Pair)
         let script = r#"
             $paths = @(
                 "HKCU:\Software\Microsoft\Windows\CurrentVersion\Notifications\Settings",
                 "HKCU:\Software\Microsoft\Windows\CurrentVersion\PushNotifications",
-                "HKCU:\Software\Microsoft\Windows\CurrentVersion\Bluetooth\QuickPair"
+                "HKCU:\Software\Microsoft\Windows\CurrentVersion\Bluetooth\QuickPair",
+                "HKCU:\Software\Microsoft\Windows\CurrentVersion\Bluetooth"
             )
             foreach ($p in $paths) { if (!(Test-Path $p)) { New-Item -Path $p -Force | Out-Null } }
             
+            # Silenciar Notificaciones Globales
             Set-ItemProperty -Path 'HKCU:\Software\Microsoft\Windows\CurrentVersion\Notifications\Settings' -Name 'NOC_GLOBAL_SETTING_TOASTS_ENABLED' -Value 0 -ErrorAction SilentlyContinue
             Set-ItemProperty -Path 'HKCU:\Software\Microsoft\Windows\CurrentVersion\Notifications\Settings' -Name 'FocusAssistState' -Value 2 -ErrorAction SilentlyContinue
             Set-ItemProperty -Path 'HKCU:\Software\Microsoft\Windows\CurrentVersion\PushNotifications' -Name 'ToastEnabled' -Value 0 -ErrorAction SilentlyContinue
+            
+            # Desactivar Bluetooth Swift Pair / Quick Pair (Evita el popup de audífonos cercanos)
             Set-ItemProperty -Path 'HKCU:\Software\Microsoft\Windows\CurrentVersion\Bluetooth\QuickPair' -Name 'QuickPairEnabled' -Value 0 -ErrorAction SilentlyContinue
+            Set-ItemProperty -Path 'HKCU:\Software\Microsoft\Windows\CurrentVersion\Bluetooth' -Name 'SwiftPairDefault' -Value 0 -ErrorAction SilentlyContinue
             
             # Kiosk Hardening: Desactivar gestos de trackpad (3 y 4 dedos) de forma exhaustiva
             $tpPath = 'HKCU:\Software\Microsoft\Windows\CurrentVersion\PrecisionTouchPad'

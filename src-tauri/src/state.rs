@@ -6,6 +6,7 @@ use tauri::{AppHandle, Manager};
 
 pub struct AppState {
     pub maximize_timer: Arc<Mutex<Option<JoinHandle<()>>>>,
+    pub enforce_always_on_top: Arc<Mutex<bool>>,
 }
 
 /// Devuelve la ruta del directorio userData de la app
