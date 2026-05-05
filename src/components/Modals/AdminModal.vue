@@ -34,7 +34,8 @@ const SYSTEM_VIDEOS_CATALOG = [
     { name: '🎮 Xbox Game Pass (Gaming)', path: INTERNAL_VIDEOS.GAMING_XBOX },
     { name: '💻 Windows: Home of Gaming', path: INTERNAL_VIDEOS.WINDOWS_GAMING },
     { name: '✨ ROG Calidad y Durabilidad', path: INTERNAL_VIDEOS.QUALITY_DURABILITY },
-    { name: '🛡️ TUF Gaming: Durabilidad', path: INTERNAL_VIDEOS.TUF_DURABILITY }
+    { name: '🛡️ TUF Gaming: Durabilidad', path: INTERNAL_VIDEOS.TUF_DURABILITY },
+    { name: '✅ Asus Garantía Perfecta', path: INTERNAL_VIDEOS.ASUS_WARRANTY }
 ];
 
 const INTERNAL_OPTIONS = SYSTEM_VIDEOS_CATALOG;
@@ -279,7 +280,7 @@ const clearPrices = () => {
 
 <template>
   <div id="custom-modal" class="modal active">
-    <div class="modal-content" style="max-width: 950px; height: 90vh;">
+    <div class="modal-content admin-modal-content">
         <div class="modal-header-main" style="margin-bottom: 20px;">
             <div class="header-title-row">
                 <h2>Personalizar Zenit <span style="font-size: 0.8rem; opacity: 0.5; font-weight: normal; margin-left: 10px;">v{{ appVersion }}</span></h2>
@@ -581,9 +582,9 @@ const clearPrices = () => {
   background: transparent;
   color: var(--text-muted, #888);
   border: none;
-  font-size: 1.05rem;
+  font-size: 0.95rem;
   font-weight: 600;
-  padding: 12px 25px;
+  padding: 10px 20px;
   cursor: pointer;
   position: relative;
   transition: color 0.3s ease;
@@ -624,13 +625,13 @@ const clearPrices = () => {
 .video-slot {
   background: rgba(255, 255, 255, 0.02);
   border: 1px solid rgba(255, 255, 255, 0.05);
-  border-radius: 16px;
-  padding: 20px;
+  border-radius: 12px;
+  padding: 15px;
 }
 .video-slot-header {
-  font-size: 0.85rem;
+  font-size: 0.8rem;
   color: var(--primary);
-  margin-bottom: 15px;
+  margin-bottom: 12px;
   font-weight: 700;
   letter-spacing: 1px;
 }
@@ -685,10 +686,10 @@ const clearPrices = () => {
     flex: 1;
     background: rgba(255, 255, 255, 0.03);
     border: 1px solid rgba(255, 255, 255, 0.1);
-    padding: 4px 14px;
-    border-radius: 10px;
+    padding: 6px 12px;
+    border-radius: 8px;
     color: white;
-    font-size: 0.95rem;
+    font-size: 0.85rem;
     outline: none;
     transition: all 0.2s ease;
     margin: 0;
@@ -703,9 +704,9 @@ const clearPrices = () => {
     background: rgba(244, 67, 54, 0.05);
     border: 1px solid rgba(244, 67, 54, 0.2);
     color: #ff6b6b;
-    padding: 10px 20px;
-    border-radius: 12px;
-    font-size: 0.85rem;
+    padding: 8px 16px;
+    border-radius: 10px;
+    font-size: 0.8rem;
     font-weight: 600;
     cursor: pointer;
     display: flex;

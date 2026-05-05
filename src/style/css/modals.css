@@ -33,8 +33,8 @@
     box-shadow: 0 10px 40px rgba(0, 0, 0, 0.5);
     width: 95%;
     max-width: 600px;
-    padding: clamp(20px, 4vw, 30px);
-    border-radius: 24px;
+    padding: clamp(15px, 2.5vw, 25px);
+    border-radius: 20px;
     position: relative;
     max-height: 90vh;
     display: flex;
@@ -48,6 +48,11 @@
     max-width: 1400px;
 }
 
+.admin-modal-content {
+    max-width: 950px;
+    height: 90vh;
+}
+
 .modal-header-main {
     margin-bottom: 30px;
     border-bottom: 1px solid rgba(255, 255, 255, 0.1);
@@ -55,7 +60,7 @@
 }
 
 .modal-header-main h2 {
-    font-size: 1.8rem;
+    font-size: clamp(1.3rem, 2vw, 1.6rem);
     color: var(--primary);
     margin: 0;
 }
@@ -97,14 +102,14 @@
 }
 
 .section-title {
-    font-size: 1.1rem;
+    font-size: 1rem;
     font-weight: 700;
     color: var(--primary);
-    margin-bottom: 20px;
-    padding-bottom: 8px;
+    margin-bottom: 15px;
+    padding-bottom: 6px;
     border-bottom: 1px solid rgba(255, 255, 255, 0.05);
     text-transform: uppercase;
-    letter-spacing: 1px;
+    letter-spacing: 0.5px;
 }
 
 .mt-lg {
@@ -118,9 +123,9 @@
 
 .input-group label {
     display: block;
-    margin-bottom: 8px;
+    margin-bottom: 6px;
     color: var(--text-muted);
-    font-size: 0.9rem;
+    font-size: 0.85rem;
     font-weight: 600;
 }
 
@@ -135,10 +140,10 @@
     flex: 1;
     background: #202024;
     border: 1px solid #303034;
-    padding: 12px 20px;
-    border-radius: 12px;
+    padding: 10px 16px;
+    border-radius: 10px;
     color: white;
-    font-size: 1rem;
+    font-size: 0.95rem;
     outline: none;
     transition: border-color 0.2s;
 }
@@ -154,12 +159,12 @@
 
 .custom-select select {
     width: 100%;
-    padding: 12px 40px 12px 20px;
+    padding: 10px 40px 10px 16px;
     background-color: #202024;
     border: 1px solid #303034;
-    border-radius: 12px;
+    border-radius: 10px;
     color: white;
-    font-size: 1rem;
+    font-size: 0.95rem;
     cursor: pointer;
     outline: none;
     appearance: none;
@@ -444,15 +449,23 @@
     background: rgba(255, 255, 255, 0.9);
 }
 
-@media (max-width: 1366px) {
+@media (max-width: 1536px) {
     .modal-content.wide-modal {
-        max-width: 1250px;
-        padding: 20px;
+        max-width: 1200px;
+        padding: 15px;
     }
-    .settings-grid { gap: 30px; }
-    .input-group { margin-bottom: 12px; }
-    .section-title { margin-bottom: 15px; }
-    .hardware-grid { gap: 15px 25px; }
+    .admin-modal-content {
+        max-width: 920px;
+        height: 95vh;
+    }
+    .settings-grid { gap: 20px; }
+    .input-group { margin-bottom: 10px; }
+    .section-title { margin-bottom: 12px; }
+    .hardware-grid { gap: 10px 20px; }
+    .input-with-action input, .custom-select select {
+        padding: 8px 14px;
+        font-size: 0.9rem;
+    }
 }
 
 @media (max-width: 1024px) {

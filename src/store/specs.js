@@ -15,7 +15,8 @@ export const INTERNAL_VIDEOS = {
   GAMING_XBOX: '__GAMING_XBOX__',
   WINDOWS_GAMING: '__WINDOWS_GAMING__',
   QUALITY_DURABILITY: '__QUALITY_DURABILITY__',
-  TUF_DURABILITY: '__TUF_DURABILITY__'
+  TUF_DURABILITY: '__TUF_DURABILITY__',
+  ASUS_WARRANTY: '__ASUS_WARRANTY__'
 };
 
 const INTERNAL_PATHS = {
@@ -26,7 +27,8 @@ const INTERNAL_PATHS = {
   [INTERNAL_VIDEOS.GAMING_XBOX]: 'gaming_xbox_game_pass.mp4',
   [INTERNAL_VIDEOS.WINDOWS_GAMING]: 'windows_the_home_of_gaming.mp4',
   [INTERNAL_VIDEOS.QUALITY_DURABILITY]: 'BUILT-TO-LAST-Quality-and-Durability.mp4',
-  [INTERNAL_VIDEOS.TUF_DURABILITY]: 'Quality_and_Durability_TUF_Gaming.mp4'
+  [INTERNAL_VIDEOS.TUF_DURABILITY]: 'Quality_and_Durability_TUF_Gaming.mp4',
+  [INTERNAL_VIDEOS.ASUS_WARRANTY]: 'Asus_Garantia_Perfecta.mp4'
 };
 
 const BACKGROUND_VIDEOS = {
