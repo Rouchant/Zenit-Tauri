@@ -13,9 +13,12 @@ use crate::state::AppState;
 use crate::setup::run_system_setup;
 use crate::commands::{system, vault, window};
 
+/// Punto de entrada principal de la aplicación Tauri.
+/// Configura plugins, estado global, handlers de comandos y eventos de ventana.
 #[cfg_attr(mobile, tauri::mobile_entry_point)]
 pub fn run() {
     tauri::Builder::default()
+        // Configuración de Logs: Guarda logs en archivo y los muestra en consola/webview
         .plugin(
             tauri_plugin_log::Builder::default()
                 .targets([
@@ -28,11 +31,14 @@ pub fn run() {
                 .max_file_size(1_000_000) // 1MB
                 .build()
         )
-        .plugin(tauri_plugin_dialog::init())
-        .plugin(tauri_plugin_store::Builder::new().build())
-        .plugin(tauri_plugin_notification::init())
-        .plugin(tauri_plugin_prevent_default::init())
-        .plugin(tauri_plugin_autostart::init(tauri_plugin_autostart::MacosLauncher::LaunchAgent, None))
+        // Inicialización de Plugins estándar de Tauri
+        .plugin(tauri_plugin_dialog::init()) // Diálogos nativos
+        .plugin(tauri_plugin_store::Builder::new().build()) // Persistencia de datos simple
+        .plugin(tauri_plugin_notification::init()) // Notificaciones de sistema
+        .plugin(tauri_plugin_prevent_default::init()) // Previene shortcuts de navegador (F5, etc.)
+        .plugin(tauri_plugin_autostart::init(tauri_plugin_autostart::MacosLauncher::LaunchAgent, None)) // Inicio automático con el SO
+        
+        // Manejo de Instancia Única: Si se intenta abrir otra vez, enfoca la ventana existente
         .plugin(tauri_plugin_single_instance::init(|app, _args, _cwd| {
             if let Some(win) = app.get_webview_window("main") {
                 let _ = win.show();
@@ -40,22 +46,30 @@ pub fn run() {
                 let _ = win.set_focus();
             }
         }))
+
+        // Configuración Inicial (Setup)
         .setup(|app| {
+            // 1. Gestionar el Estado Global de la aplicación
             app.manage(AppState {
-                maximize_timer: Arc::new(Mutex::new(None)),
-                enforce_always_on_top: Arc::new(Mutex::new(true)),
+                maximize_timer: Arc::new(Mutex::new(None)), // Timer para auto-restaurar tras inactividad
+                enforce_always_on_top: Arc::new(Mutex::new(true)), // Flag para vigilancia de foco
             });
 
+            // 2. Ejecutar configuraciones de endurecimiento del SO (Registro, servicios, etc.)
             run_system_setup();
+            
+            // 3. Iniciar el "Guardián" de teclado (Bloqueo de shortcuts de sistema)
             guardian::start_keyboard_guardian();
 
             #[cfg(desktop)]
             let _ = app.handle().plugin(tauri_plugin_window_state::Builder::default().build());
 
+            // 4. Asegurar directorios de datos y videos personalizados
             let user_data = app.path().app_data_dir().unwrap_or_default();
             let _ = fs::create_dir_all(&user_data);
             let _ = fs::create_dir_all(user_data.join("custom-videos"));
 
+            // 5. Migración de datos (config.json antiguo a store.json moderno)
             let config_path = user_data.join("config.json");
             if config_path.exists() {
                 if let Ok(data) = fs::read_to_string(&config_path) {
@@ -72,13 +86,13 @@ pub fn run() {
                 }
             }
 
-            // Habilitar autostart automaticamente al iniciar la app
+            // 6. Habilitar el inicio automático (Autostart)
             {
                 use tauri_plugin_autostart::ManagerExt;
                 let _ = app.autolaunch().enable();
             }
 
-            // Vigilancia de Foco (Anti-Escritorios Virtuales)
+            // 7. Vigilancia de Foco (Watchdog): Reclama el foco cada 2s para evitar bypass del modo quiosco.
             let handle = app.handle().clone();
             let state = app.state::<AppState>();
             let enforce_flag = Arc::clone(&state.enforce_always_on_top);
@@ -88,7 +102,7 @@ pub fn run() {
                 loop {
                     interval.tick().await;
                     
-                    // Solo intentar reclamar foco si la vigilancia está activa
+                    // Solo intentar reclamar foco si la vigilancia está activa (no estamos en personalización)
                     let should_enforce = {
                         let guard = enforce_flag.lock().await;
                         *guard
@@ -97,10 +111,10 @@ pub fn run() {
                     if !should_enforce { continue; }
 
                     if let Some(window) = handle.get_webview_window("main") {
-                        // Solo reclamamos foco si la ventana NO está minimizada Y es visible
                         let is_minimized = window.is_minimized().unwrap_or(false);
                         let is_visible = window.is_visible().unwrap_or(true);
                         
+                        // Si la app está en primer plano y no minimizada, reforzamos el foco
                         if !is_minimized && is_visible {
                             let _ = window.set_focus();
                         }
@@ -108,11 +122,13 @@ pub fn run() {
                 }
             });
 
-            // Limpiar archivos huérfanos de la bóveda
+            // 8. Limpiar archivos huérfanos de videos borrados
             vault::cleanup_orphan_videos(app.handle());
 
             Ok(())
         })
+
+        // Registro de Comandos (IPC) disponibles para el Frontend (Vue)
         .invoke_handler(tauri::generate_handler![
             system::get_system_specs,
             system::get_video_path,
@@ -128,10 +144,12 @@ pub fn run() {
             window::quit_app,
             window::set_always_on_top,
         ])
+
+        // Manejo de eventos de ventana
         .on_window_event(|window, event| {
             if let tauri::WindowEvent::CloseRequested { api, .. } = event {
                 if window.label() == "main" {
-                    // Bloquear el cierre desde la barra de tareas o Alt+F4
+                    // Bloquear el cierre de la ventana principal para mantener el modo quiosco
                     api.prevent_close();
                 }
             }
