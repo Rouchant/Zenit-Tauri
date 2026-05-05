@@ -1,5 +1,5 @@
 <script setup>
-import { ref, reactive, onMounted } from 'vue';
+import { ref, reactive, onMounted, computed } from 'vue';
 import { useSpecsStore, INTERNAL_VIDEOS } from '../../store/specs';
 import { tauriAPI, notify } from '../../api/tauriApi';
 import { getVersion } from '@tauri-apps/api/app';
@@ -276,6 +276,11 @@ const clearPrices = () => {
     editableSpecs.priceSecondary = '';
     notify('Zenit', 'Precios limpiados ✓');
 };
+
+const isHardwareLimitReached = computed(() => {
+    const fields = ['model', 'processor', 'ram', 'ramType', 'storage', 'gpu', 'display', 'os'];
+    return fields.some(f => editableSpecs[f] && editableSpecs[f].length >= 80);
+});
 </script>
 
 <template>
@@ -308,59 +313,62 @@ const clearPrices = () => {
                         <div class="input-group">
                             <label for="model-input">Modelo (Nombre Completo)</label>
                             <div class="input-with-action">
-                                <input id="model-input" name="model" type="text" v-model="editableSpecs.model" autocomplete="off">
+                                <input id="model-input" name="model" type="text" v-model="editableSpecs.model" autocomplete="off" maxlength="80">
                                 <button class="restore-btn" @click="restoreField('model')" title="Restaurar">↺</button>
                             </div>
                         </div>
                         <div class="input-group">
                             <label for="processor-input">Procesador</label>
                             <div class="input-with-action">
-                                <input id="processor-input" name="processor" type="text" v-model="editableSpecs.processor" autocomplete="off">
+                                <input id="processor-input" name="processor" type="text" v-model="editableSpecs.processor" autocomplete="off" maxlength="80">
                                 <button class="restore-btn" @click="restoreField('processor')" title="Restaurar">↺</button>
                             </div>
                         </div>
                         <div class="input-group">
                             <label for="ram-input">RAM (Capacidad)</label>
                             <div class="input-with-action">
-                                <input id="ram-input" name="ram" type="text" v-model="editableSpecs.ram" autocomplete="off">
+                                <input id="ram-input" name="ram" type="text" v-model="editableSpecs.ram" autocomplete="off" maxlength="80">
                                 <button class="restore-btn" @click="restoreField('ram')" title="Restaurar">↺</button>
                             </div>
                         </div>
                         <div class="input-group">
                             <label for="ram-type-input">Tipo RAM (DDR4/5)</label>
                             <div class="input-with-action">
-                                <input id="ram-type-input" name="ramType" type="text" v-model="editableSpecs.ramType" autocomplete="off">
+                                <input id="ram-type-input" name="ramType" type="text" v-model="editableSpecs.ramType" autocomplete="off" maxlength="80">
                                 <button class="restore-btn" @click="restoreField('ramType')" title="Restaurar">↺</button>
                             </div>
                         </div>
                         <div class="input-group">
                             <label for="storage-input">Almacenamiento</label>
                             <div class="input-with-action">
-                                <input id="storage-input" name="storage" type="text" v-model="editableSpecs.storage" autocomplete="off">
+                                <input id="storage-input" name="storage" type="text" v-model="editableSpecs.storage" autocomplete="off" maxlength="80">
                                 <button class="restore-btn" @click="restoreField('storage')" title="Restaurar">↺</button>
                             </div>
                         </div>
                         <div class="input-group">
                             <label for="gpu-input">Gráficos</label>
                             <div class="input-with-action">
-                                <input id="gpu-input" name="gpu" type="text" v-model="editableSpecs.gpu" autocomplete="off">
+                                <input id="gpu-input" name="gpu" type="text" v-model="editableSpecs.gpu" autocomplete="off" maxlength="80">
                                 <button class="restore-btn" @click="restoreField('gpu')" title="Restaurar">↺</button>
                             </div>
                         </div>
                         <div class="input-group">
                             <label for="display-input">Pantalla</label>
                             <div class="input-with-action">
-                                <input id="display-input" name="display" type="text" v-model="editableSpecs.display" autocomplete="off">
+                                <input id="display-input" name="display" type="text" v-model="editableSpecs.display" autocomplete="off" maxlength="80">
                                 <button class="restore-btn" @click="restoreField('display')" title="Restaurar">↺</button>
                             </div>
                         </div>
                         <div class="input-group">
                             <label for="os-input">Sistema Operativo</label>
                             <div class="input-with-action">
-                                <input id="os-input" name="os" type="text" v-model="editableSpecs.os" autocomplete="off">
+                                <input id="os-input" name="os" type="text" v-model="editableSpecs.os" autocomplete="off" maxlength="80">
                                 <button class="restore-btn" @click="restoreField('os')" title="Restaurar">↺</button>
                             </div>
                         </div>
+                    </div>
+                    <div v-if="isHardwareLimitReached" class="price-limit-error" style="margin-top: 20px;">
+                        ⚠️ Se ha alcanzado el límite de 80 caracteres en un campo de hardware.
                     </div>
                 </section>
             </div>
@@ -542,14 +550,18 @@ const clearPrices = () => {
                         <div class="input-group">
                             <label for="price-primary">Precio con Tarjeta</label>
                             <div class="input-with-action">
-                                <input id="price-primary" name="pricePrimary" type="text" v-model="editableSpecs.pricePrimary" placeholder="Ej: $899.990" autocomplete="off">
+                                <input id="price-primary" name="pricePrimary" type="text" v-model="editableSpecs.pricePrimary" placeholder="Ej: $899.990" maxlength="21" autocomplete="off">
                             </div>
                         </div>
                         <div class="input-group">
                             <label for="price-secondary">Precio Todo Medio de Pago</label>
                             <div class="input-with-action">
-                                <input id="price-secondary" name="priceSecondary" type="text" v-model="editableSpecs.priceSecondary" placeholder="Ej: $1.099.990" autocomplete="off">
+                                <input id="price-secondary" name="priceSecondary" type="text" v-model="editableSpecs.priceSecondary" placeholder="Ej: $1.099.990" maxlength="21" autocomplete="off">
                             </div>
+                        </div>
+
+                        <div v-if="(editableSpecs.pricePrimary && editableSpecs.pricePrimary.length >= 21) || (editableSpecs.priceSecondary && editableSpecs.priceSecondary.length >= 21)" class="price-limit-error">
+                            ⚠️ Máximo 21 caracteres permitidos en el precio
                         </div>
 
                         <div style="margin-top: 25px; display: flex; justify-content: flex-end;">
@@ -727,5 +739,13 @@ const clearPrices = () => {
 
 .btn-clean-action:active {
     transform: translateY(0);
+}
+
+.price-limit-error {
+    color: #ff6b6b;
+    font-size: 0.75rem;
+    margin-top: 10px;
+    font-weight: 700;
+    animation: fadeIn 0.3s ease;
 }
 </style>

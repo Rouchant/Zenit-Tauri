@@ -463,9 +463,12 @@
     .section-title { margin-bottom: 12px; }
     .hardware-grid { gap: 10px 20px; }
     .input-with-action input, .custom-select select {
-        padding: 8px 14px;
-        font-size: 0.9rem;
+        padding: 6px 12px;
+        font-size: 0.85rem;
     }
+    .modal-header-main h2 { font-size: 1.3rem; }
+    .section-title { font-size: 0.9rem; }
+    .input-group label { font-size: 0.8rem; }
 }
 
 @media (max-width: 1024px) {
