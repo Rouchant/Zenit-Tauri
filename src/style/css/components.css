@@ -187,15 +187,26 @@
     border: none;
     outline: none;
     color: var(--bg-dark);
-    padding: clamp(15px, 2.5vh, 24px) clamp(30px, 4vw, 48px);
+    padding: clamp(12px, 2vh, 20px) clamp(25px, 4vw, 40px);
     border-radius: clamp(15px, 2vw, 24px);
-    font-size: clamp(1.2rem, 2vw, 1.8rem);
+    font-size: clamp(1.1rem, 1.8vw, 1.5rem);
     font-weight: 700;
     cursor: pointer;
     transition: transform 0.3s ease, background 0.3s ease;
+    
+    /* Prevención de desborde vertical */
     display: flex;
     justify-content: center;
     align-items: center;
+    text-align: center;
+    line-height: 1.1;
+    overflow: hidden;
+    
+    /* Soporte para máximo 2 líneas */
+    display: -webkit-box;
+    -webkit-line-clamp: 2;
+    -webkit-box-orient: vertical;
+    text-overflow: ellipsis;
 }
 
 .view-pc-btn:hover {

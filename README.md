@@ -2,7 +2,7 @@
 
 <img src="public/assets/logo.png" alt="Zenit Logo" width="200">
 
-![Version](https://img.shields.io/badge/version-1.1.9-blue.svg)
+![Version](https://img.shields.io/badge/version-1.2.0-blue.svg)
 ![Tauri](https://img.shields.io/badge/framework-Tauri%20v2-FFC131.svg)
 ![Rust](https://img.shields.io/badge/backend-Rust-orange.svg)
 ![Vue 3](https://img.shields.io/badge/frontend-Vue%203-42b883.svg)
@@ -18,9 +18,9 @@ Zenit es una solución de nivel empresarial para **Showcase Terminals**, diseña
 
 ---
 
-## ✨ Características Principales (v1.1.9)
+## ✨ Características Principales (v1.2.0)
 
-### 🖥️ Detección de Hardware Nativa (100% Rust & WMI)
+### 🖥️ Detección de Hardware Nativa (100% Rust & CIM/WMI)
 Zenit utiliza un motor de telemetría modularizado en Rust para una velocidad y precisión quirúrgica:
 - **Procesador (CPU)**: Identificación exacta de generaciones (Intel 14th/Core Ultra, Ryzen 7000/AI) con limpieza de marcas.
 - **Gráficos (GPU)**: Identificación inteligente con detección de **Wattage (TGP)** nativa para NVIDIA mediante `nvidia-smi`.
@@ -28,9 +28,13 @@ Zenit utiliza un motor de telemetría modularizado en Rust para una velocidad y 
 - **Almacenamiento Comercial**: Suma de discos con redondeo comercial (ej. 476GB -> 512GB SSD).
 - **Resolución Real**: Soporte para resoluciones exóticas (WUXGA, QHD+, 3.2K, UHD+) con etiquetas comerciales automáticas.
 
+### 📐 Optimización High-DPI y Layout
+- **Soporte de Escala**: Adaptación dinámica para pantallas de 14" con escalado de Windows al 150%, manteniendo la legibilidad y el orden visual.
+- **Validación de Entradas**: Sistema de restricciones (maxlength, character limits) en el panel administrativo para evitar desbordamientos de texto en las tarjetas de especificaciones.
+
 ### 🏷️ Personalización Comercial (E-Commerce Ready)
 - **Precios Dinámicos**: Soporte para precios de oferta (Exclusivo Tarjeta) y normales, con diseño premium adaptable.
-- **Branding de Retail**: Soporte para logos de retails (**Falabella, Paris, Ripley**) y marcas líderes con escalado automático.
+- **Branding de Retail**: Soporte para logos de retails (**Falabella, Paris, Ripley**) y marcas líderes (**Asus, HP, Samsung**) con escalado automático.
 - **Unidades Uniformes**: Formato de texto profesional sin espacios inconsistentes (`16GB`, `512GB`, `115W`).
 
 ### 🎥 Gestión Multimedia "Premium"
@@ -40,21 +44,21 @@ Zenit utiliza un motor de telemetría modularizado en Rust para una velocidad y 
 
 ---
 
-## 🔒 Hardening de Grado Industrial (Kiosk Mode)
+## 📦 Instalación
 
-### 🛡️ Blindaje Anti-Escape
-- **Bloqueo de Gestos**: Desactivación completa de gestos de trackpad (3 y 4 dedos) y "Vista de tareas" de Windows.
-- **Intercepción de Cierre**: Bloqueo nativo de Alt+F4 y del menú "Cerrar" de la barra de tareas. Solo el administrador puede apagar la app.
-- **Focus Guard**: Sistema que mantiene la ventana siempre al frente, recuperando el foco si otra aplicación intenta robarlo.
-- **Modo No Molestar**: Activación automática del estado `FocusAssistState` de Windows para ocultar notificaciones y popups.
+### Vía Winget (Recomendado)
+Puedes instalar Zenit directamente desde el repositorio oficial de Microsoft Winget:
+```powershell
+winget install Rouchant.Zenit
+```
 
-### ⏱️ Monitoreo de Inactividad Global
-- **Hardware Polling**: Monitoreo de entrada (mouse/teclado) en todo el sistema para regresar al video promocional tras inactividad.
-- **Procesos Limpios**: Cierre automático de procesos huérfanos y ventanas de retorno al salir de la aplicación.
+### Manual
+1. Descarga el instalador `.exe` desde la sección de [Releases](https://github.com/Rouchant/Zenit-Tauri/releases).
+2. Ejecuta el asistente de instalación.
 
 ---
 
-## 🚀 Instalación y Desarrollo
+## 🛠️ Desarrollo
 
 ### Requisitos
 - Windows 10/11 con **Webview2**.
@@ -67,9 +71,9 @@ Zenit utiliza un motor de telemetría modularizado en Rust para una velocidad y 
 npm install
 
 # Modo Desarrollo (HMR)
-npm run tauri dev
+npm run dev
 
-# Compilar para Producción (Genera Zenit_1.1.7_x64-setup.exe)
+# Compilar para Producción (Genera Zenit_1.2.0_x64-setup.exe)
 npm run tauri build
 ```
 
