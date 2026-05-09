@@ -38,9 +38,6 @@ const SYSTEM_VIDEOS_CATALOG = [
     { name: '✅ Asus Garantía Perfecta', path: INTERNAL_VIDEOS.ASUS_WARRANTY }
 ];
 
-const INTERNAL_OPTIONS = SYSTEM_VIDEOS_CATALOG;
-const LANDING_INTERNAL_OPTIONS = SYSTEM_VIDEOS_CATALOG;
-
 // Asegurar que haya 3 slots iniciales al abrir, o mapear los presentes
 const initCustomVideoPaths = () => {
     let base = store.currentSpecs.customVideoPaths || [];
@@ -57,6 +54,27 @@ const editableSpecs = reactive({
     ...store.currentSpecs,
     customVideoPaths: initCustomVideoPaths()
 });
+
+// Opciones filtradas según hardware (dependen de editableSpecs)
+const INTERNAL_OPTIONS = computed(() => {
+    return SYSTEM_VIDEOS_CATALOG.filter(v => {
+        const asusVideos = [
+            INTERNAL_VIDEOS.ASUS_PROMO,
+            INTERNAL_VIDEOS.ASUS_LANDING,
+            INTERNAL_VIDEOS.QUALITY_DURABILITY,
+            INTERNAL_VIDEOS.TUF_DURABILITY,
+            INTERNAL_VIDEOS.ASUS_WARRANTY
+        ];
+        if (asusVideos.includes(v.path)) {
+            const b = (editableSpecs.brand || '').toLowerCase();
+            const m = (editableSpecs.model || '').toLowerCase();
+            return b.includes('asus') || m.includes('asus');
+        }
+        return true;
+    });
+});
+
+const LANDING_INTERNAL_OPTIONS = INTERNAL_OPTIONS;
 
 const isProcessing = ref(false);
 const slotErrorIndex = ref(null);
@@ -159,7 +177,7 @@ const onVaultSelectionChange = (slot, type = 'inactivity') => {
     }
 
     // Buscar primero en internos
-    const options = type === 'landing' ? LANDING_INTERNAL_OPTIONS : INTERNAL_OPTIONS;
+    const options = type === 'landing' ? LANDING_INTERNAL_OPTIONS.value : INTERNAL_OPTIONS.value;
     const internal = options.find(v => v.path === slot.path);
     if (internal) {
         slot.name = internal.name;
