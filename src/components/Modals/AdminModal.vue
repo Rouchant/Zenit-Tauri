@@ -430,7 +430,7 @@ const isHardwareLimitReached = computed(() => {
                         <div class="video-slot-body no-padding" style="background: transparent; border: none;">
                             <div class="path-container" style="display: flex; align-items: flex-start; justify-content: flex-start;">
                                 <div style="flex: 1; display: flex; flex-direction: column; gap: 12px; border-right: 1px solid rgba(255,255,255,0.1); padding-right: 15px;">
-                                    <strong style="font-size: 0.85rem; color: #fff;">Opcion 1: Internos / Bóveda</strong>
+                                    <strong style="font-size: 0.85rem; color: var(--white);">Opcion 1: Internos / Bóveda</strong>
                                     <div class="custom-select">
                                         <select v-model="editableSpecs.customLandingVideoPath" @change="onVaultSelectionChange(editableSpecs, 'landing')">
                                             <optgroup label="Videos del Sistema">
@@ -445,7 +445,7 @@ const isHardwareLimitReached = computed(() => {
                                     <button v-else-if="editableSpecs.customLandingVideoPath" class="btn btn-danger select-file-btn danger-btn" style="align-self: flex-start; padding: 5px 15px !important;" @click="deleteSavedVideo(editableSpecs.customLandingVideoPath)">🗑️ Eliminar físicamente</button>
                                 </div>
                                 <div style="flex: 1; display: flex; flex-direction: column; gap: 12px; padding-left: 15px;">
-                                    <strong style="font-size: 0.85rem; color: #fff;">Opcion 2: Desde PC Local</strong>
+                                    <strong style="font-size: 0.85rem; color: var(--white);">Opcion 2: Desde PC Local</strong>
                                     <button class="btn btn-secondary select-file-btn" style="align-self: flex-start;" @click="selectVideo('landing')">Subir Nuevo Video</button>
                                     <div v-if="uploadError.type === 'landing'" class="slot-error-msg" style="margin: 0; font-size: 0.7rem;">
                                         ⚠️ {{ uploadError.msg }}
@@ -493,7 +493,7 @@ const isHardwareLimitReached = computed(() => {
                                     
                                     <!-- Opcion 1: Bóveda -->
                                     <div style="flex: 1; display: flex; flex-direction: column; gap: 12px; border-right: 1px solid rgba(255,255,255,0.1); padding-right: 15px;">
-                                        <strong style="font-size: 0.85rem; color: #fff;">Opcion 1: Internos / Bóveda</strong>
+                                        <strong style="font-size: 0.85rem; color: var(--white);">Opcion 1: Internos / Bóveda</strong>
                                         <div class="custom-select">
                                             <select v-model="slot.path" @change="onVaultSelectionChange(slot, 'inactivity')">
                                                 <optgroup label="Videos del Sistema">
@@ -511,7 +511,7 @@ const isHardwareLimitReached = computed(() => {
                                     
                                     <!-- Opcion 2: PC Local -->
                                     <div style="flex: 1; display: flex; flex-direction: column; gap: 12px; padding-left: 15px;">
-                                        <strong style="font-size: 0.85rem; color: #fff;">Opcion 2: Desde PC Local</strong>
+                                        <strong style="font-size: 0.85rem; color: var(--white);">Opcion 2: Desde PC Local</strong>
                                         <button class="btn btn-secondary select-file-btn" style="align-self: flex-start;" @click="selectVideo('inactivity', index)">Subir Video</button>
                                         <div v-if="uploadError.type === 'inactivity' && uploadError.index === index" class="slot-error-msg" style="margin: 0; font-size: 0.7rem;">
                                             ⚠️ {{ uploadError.msg }}
@@ -620,7 +620,7 @@ const isHardwareLimitReached = computed(() => {
   transition: color 0.3s ease;
 }
 .tab-btn:hover {
-  color: white;
+  color: var(--white);
 }
 .tab-btn.active {
   color: var(--primary);
@@ -718,7 +718,7 @@ const isHardwareLimitReached = computed(() => {
     border: 1px solid rgba(255, 255, 255, 0.1);
     padding: 6px 12px;
     border-radius: 8px;
-    color: white;
+    color: var(--white);
     font-size: 0.85rem;
     outline: none;
     transition: all 0.2s ease;

@@ -2,14 +2,19 @@
     --primary: #00f2ff;
     --secondary: #0072ff;
     --bg-dark: #0a0a0c;
+    --white: #F0F0F0;
     --glass: rgba(255, 255, 255, 0.05);
     --glass-border: rgba(255, 255, 255, 0.1);
-    --text: #ffffff;
-    --text-muted: rgba(255, 255, 255, 0.6);
+    --text: var(--white);
+    --text-muted: rgba(240, 240, 240, 0.6);
     
     /* Price Tag Controls */
     --price-primary-size: clamp(1.8rem, 2.5vw, 2.8rem);
     --price-logo-size: clamp(1.35rem, 1.4vw, 1.6rem);
+
+    /* OLED Pixel Shift */
+    --shift-x: 0px;
+    --shift-y: 0px;
 }
 
 .is-loading * {
@@ -38,6 +43,8 @@ body {
     width: 100vw;
     overscroll-behavior: none;
     touch-action: pan-y;
+    transform: translate(var(--shift-x), var(--shift-y));
+    transition: transform 10s ease-in-out; /* Smooth transition for the shift */
 }
 
 ::-webkit-scrollbar {

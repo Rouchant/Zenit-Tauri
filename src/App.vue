@@ -264,9 +264,20 @@ let unlistenInactivity = null;
 let unlistenActivity = null;
 let unlistenMinimized = null;
 
+const initPixelShift = () => {
+  // Move 1-2 pixels every 2 minutes to prevent OLED burn-in
+  setInterval(() => {
+    const x = (Math.random() * 4 - 2).toFixed(1) + 'px';
+    const y = (Math.random() * 4 - 2).toFixed(1) + 'px';
+    document.documentElement.style.setProperty('--shift-x', x);
+    document.documentElement.style.setProperty('--shift-y', y);
+  }, 120000);
+};
+
 onMounted(async () => {
   await store.loadSpecs();
   resetTimer();
+  initPixelShift();
 
   window.addEventListener('mousemove', throttledResetTimer);
   window.addEventListener('keydown', resetTimer);
@@ -325,7 +336,7 @@ onUnmounted(() => {
   justify-content: center;
   align-items: center;
   z-index: 9999;
-  color: white;
+  color: var(--white);
 }
 
 .loader-container {

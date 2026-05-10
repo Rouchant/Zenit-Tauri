@@ -29,7 +29,7 @@
     left: 0;
     right: 0;
     bottom: 0;
-    background: radial-gradient(circle at center, var(--bg-overlay-start) 0%, var(--bg-overlay-end) 100%);
+    background: radial-gradient(circle at center, var(--bg-overlay-start) 0%, var(--bg-overlay-start) 35%, var(--bg-overlay-end) 95%);
     z-index: 1;
     will-change: opacity;
     transform: translateZ(0);

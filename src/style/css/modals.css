@@ -134,15 +134,17 @@
     gap: 10px;
     align-items: center;
     width: 100%;
+    min-height: 44px;
 }
 
 .input-with-action input {
     flex: 1;
+    height: 44px;
     background: #202024;
     border: 1px solid #303034;
-    padding: 10px 16px;
+    padding: 0 16px;
     border-radius: 10px;
-    color: white;
+    color: var(--white);
     font-size: 0.95rem;
     outline: none;
     transition: border-color 0.2s;
@@ -159,11 +161,12 @@
 
 .custom-select select {
     width: 100%;
-    padding: 10px 40px 10px 16px;
+    height: 44px;
+    padding: 0 40px 0 16px;
     background-color: #202024;
     border: 1px solid #303034;
     border-radius: 10px;
-    color: white;
+    color: var(--white);
     font-size: 0.95rem;
     cursor: pointer;
     outline: none;
@@ -178,8 +181,8 @@
     top: 50%;
     width: 8px;
     height: 8px;
-    border-right: 2px solid white;
-    border-bottom: 2px solid white;
+    border-right: 2px solid var(--white);
+    border-bottom: 2px solid var(--white);
     transform: translateY(-70%) rotate(45deg);
     pointer-events: none;
     opacity: 0.8;
@@ -326,7 +329,7 @@
     cursor: pointer;
     font-size: 0.95rem;
     font-weight: 600;
-    color: white;
+    color: var(--white);
     user-select: none;
     transition: all 0.2s ease;
 }
@@ -427,7 +430,7 @@
     padding: 15px;
     border-radius: 12px;
     width: 100%;
-    color: white;
+    color: var(--white);
 }
 
 .password-content input[type="password"]::-ms-reveal,
@@ -446,7 +449,7 @@
 .specs-modal-content .spec-card {
     height: auto;
     padding: 25px;
-    background: rgba(255, 255, 255, 0.9);
+    background: var(--white);
 }
 
 @media (max-width: 1536px) {

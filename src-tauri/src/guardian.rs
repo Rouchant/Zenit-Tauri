@@ -2,104 +2,96 @@ use windows_sys::Win32::Foundation::*;
 use windows_sys::Win32::UI::WindowsAndMessaging::*;
 use windows_sys::Win32::UI::Input::KeyboardAndMouse::*;
 use windows_sys::Win32::System::LibraryLoader::GetModuleHandleW;
+use std::sync::atomic::{AtomicBool, Ordering};
 use std::sync::OnceLock;
 use std::ptr;
 
+// Constantes de legibilidad
+const VK_OEM_PERIOD: i32 = 0xBE; 
+const VK_OEM_1: i32 = 0xBA;
+const LLKHF_ALTDOWN: u32 = 0x20;
+
+// Seguimiento granular por tecla física para máxima precisión
+static LWIN_DOWN: AtomicBool = AtomicBool::new(false);
+static RWIN_DOWN: AtomicBool = AtomicBool::new(false);
+static LCTRL_DOWN: AtomicBool = AtomicBool::new(false);
+static RCTRL_DOWN: AtomicBool = AtomicBool::new(false);
+static LSHIFT_DOWN: AtomicBool = AtomicBool::new(false);
+static RSHIFT_DOWN: AtomicBool = AtomicBool::new(false);
+
 static HOOK_HANDLE: OnceLock<HHOOK> = OnceLock::new();
 
-/// Inicia el "Guardian" que bloquea combinaciones de teclas de sistema.
 pub fn start_keyboard_guardian() {
     std::thread::spawn(|| {
         unsafe {
-            // Obtener el handle del módulo actual para mayor robustez en el registro del hook global.
             let h_instance = GetModuleHandleW(ptr::null());
-            
-            let hook = SetWindowsHookExW(
-                WH_KEYBOARD_LL,
-                Some(low_level_keyboard_proc),
-                h_instance,
-                0,
-            );
+            let hook = SetWindowsHookExW(WH_KEYBOARD_LL, Some(low_level_keyboard_proc), h_instance, 0);
 
             if hook != 0 {
                 let _ = HOOK_HANDLE.set(hook);
-                
-                // Bucle de mensajes obligatorio para procesar el hook en este hilo.
                 let mut msg: MSG = std::mem::zeroed();
                 while GetMessageW(&mut msg, 0, 0, 0) != 0 {
                     TranslateMessage(&msg);
                     DispatchMessageW(&msg);
                 }
             } else {
-                eprintln!("[Guardian] Error al registrar hook: {}", GetLastError());
+                eprintln!("[Guardian] Error {}: fallo al registrar hook.", GetLastError());
             }
         }
     });
 }
 
-/// Callback que procesa cada pulsación de tecla en el sistema.
+pub fn stop_keyboard_guardian() {
+    if let Some(&hook) = HOOK_HANDLE.get() {
+        unsafe { UnhookWindowsHookEx(hook); }
+    }
+}
+
 unsafe extern "system" fn low_level_keyboard_proc(n_code: i32, w_param: WPARAM, l_param: LPARAM) -> LRESULT {
-    // Si n_code < 0, debemos pasar el mensaje al siguiente hook inmediatamente.
-    if n_code < 0 {
+    if n_code < 0 || n_code != HC_ACTION as i32 {
         return CallNextHookEx(0, n_code, w_param, l_param);
     }
 
-    if n_code == HC_ACTION as i32 {
-        let kbd_struct = *(l_param as *const KBDLLHOOKSTRUCT);
-        let key = kbd_struct.vkCode as i32;
+    let kbd_struct = *(l_param as *const KBDLLHOOKSTRUCT);
+    let key = kbd_struct.vkCode as i32;
+    let event = w_param as u32;
+    let is_down = event == WM_KEYDOWN || event == WM_SYSKEYDOWN;
 
-        // Solo procesar eventos de "presionado" para evitar inconsistencias en el estado de las teclas
-        // (Aunque para bloqueos totales es común bloquear tanto Down como Up).
-        let is_keydown = w_param as u32 == WM_KEYDOWN || w_param as u32 == WM_SYSKEYDOWN;
-        
-        if is_keydown {
-            // GetAsyncKeyState es más fiable que GetKeyState para hooks de bajo nivel globales.
-            let win_pressed = (GetAsyncKeyState(VK_LWIN as i32) as u16 & 0x8000) != 0 || 
-                              (GetAsyncKeyState(VK_RWIN as i32) as u16 & 0x8000) != 0;
-            let alt_pressed = (GetAsyncKeyState(VK_LMENU as i32) as u16 & 0x8000) != 0 || 
-                              (GetAsyncKeyState(VK_RMENU as i32) as u16 & 0x8000) != 0;
-            let ctrl_pressed = (GetAsyncKeyState(VK_LCONTROL as i32) as u16 & 0x8000) != 0 || 
-                               (GetAsyncKeyState(VK_RCONTROL as i32) as u16 & 0x8000) != 0;
-            let shift_pressed = (GetAsyncKeyState(VK_LSHIFT as i32) as u16 & 0x8000) != 0 || 
-                                (GetAsyncKeyState(VK_RSHIFT as i32) as u16 & 0x8000) != 0;
+    // --- SEGUIMIENTO GRANULAR ---
+    match key {
+        k if k == VK_LWIN as i32 => LWIN_DOWN.store(is_down, Ordering::SeqCst),
+        k if k == VK_RWIN as i32 => RWIN_DOWN.store(is_down, Ordering::SeqCst),
+        k if k == VK_LCONTROL as i32 => LCTRL_DOWN.store(is_down, Ordering::SeqCst),
+        k if k == VK_RCONTROL as i32 => RCTRL_DOWN.store(is_down, Ordering::SeqCst),
+        k if k == VK_LSHIFT as i32 => LSHIFT_DOWN.store(is_down, Ordering::SeqCst),
+        k if k == VK_RSHIFT as i32 => RSHIFT_DOWN.store(is_down, Ordering::SeqCst),
+        _ => {}
+    }
 
-            // 1. Bloquear Win + Tab (Gesto 3 dedos arriba / Task View)
-            if win_pressed && key == VK_TAB as i32 { return 1; }
+    if is_down {
+        let win = LWIN_DOWN.load(Ordering::SeqCst) || RWIN_DOWN.load(Ordering::SeqCst);
+        let ctrl = LCTRL_DOWN.load(Ordering::SeqCst) || RCTRL_DOWN.load(Ordering::SeqCst);
+        let shift = LSHIFT_DOWN.load(Ordering::SeqCst) || RSHIFT_DOWN.load(Ordering::SeqCst);
+        let alt = (kbd_struct.flags & LLKHF_ALTDOWN) != 0;
 
-            // 2. Bloquear Alt + Tab (Gesto 3 dedos lateral / Cambio app)
-            if alt_pressed && key == VK_TAB as i32 { return 1; }
-
-            // 3. Bloquear Alt + Esc / Alt + Shift + Esc
-            if alt_pressed && key == VK_ESCAPE as i32 { return 1; }
-
-            // 4. Bloquear Alt + F4 (Cerrar app)
-            if alt_pressed && key == VK_F4 as i32 { return 1; }
-
-            // 6. Bloquear Win + D (Minimizar todo / Gesto 3 dedos abajo)
-            if win_pressed && key == VK_D as i32 { return 1; }
-
-            // 7. Bloquear Cambio de Escritorio Virtual (Gestos de 4 dedos / Atajos)
-            if ctrl_pressed && win_pressed && (key == VK_LEFT as i32 || key == VK_RIGHT as i32) { return 1; }
-
-            // 8. Bloquear Crear / Cerrar Escritorio Virtual
-            if ctrl_pressed && win_pressed && (key == VK_D as i32 || key == VK_F4 as i32) { return 1; }
-
-            // 9. Bloquear Alt + Espacio (Menú de sistema de la ventana)
-            if alt_pressed && key == VK_SPACE as i32 { return 1; }
-
-            // 10. Bloquear combinaciones Win + Letra / Símbolos
-            let blocked_keys = [
-                VK_R as i32, VK_E as i32, VK_L as i32, VK_X as i32, VK_I as i32, 
-                VK_S as i32, VK_A as i32, VK_K as i32, VK_P as i32, VK_U as i32,
-                VK_V as i32, VK_W as i32, VK_Z as i32, VK_C as i32, VK_HOME as i32,
-                0xBE, // VK_OEM_PERIOD (Win + .)
-                0xBA, // VK_OEM_1 (Win + ;)
-            ];
-            if win_pressed && blocked_keys.contains(&key) { return 1; }
-
-            // 11. Bloquear Tecla de Aplicación y Shift + F10 (Menús contextuales)
-            if key == VK_APPS as i32 || (shift_pressed && key == VK_F10 as i32) { return 1; }
+        // 1. Bypass para Admin
+        if ctrl && !win && (matches!(key, VK_C as i32 | VK_V as i32 | VK_X as i32) || (shift && key == VK_ESCAPE as i32)) {
+            return CallNextHookEx(0, n_code, w_param, l_param);
         }
+
+        // 2. Bloqueos consolidados
+        let should_block = match () {
+            _ if win && matches!(key, VK_TAB as i32 | VK_D as i32 | VK_R as i32 | VK_E as i32 | VK_L as i32 | 
+                                     VK_X as i32 | VK_I as i32 | VK_S as i32 | VK_A as i32 | VK_K as i32 | 
+                                     VK_P as i32 | VK_U as i32 | VK_V as i32 | VK_W as i32 | VK_Z as i32 | 
+                                     VK_C as i32 | VK_HOME as i32 | VK_OEM_PERIOD | VK_OEM_1) => true,
+            _ if alt && matches!(key, VK_TAB as i32 | VK_ESCAPE as i32 | VK_F4 as i32 | VK_SPACE as i32) => true,
+            _ if ctrl && (key == VK_ESCAPE as i32 || (win && matches!(key, VK_LEFT as i32 | VK_RIGHT as i32 | VK_D as i32 | VK_F4 as i32))) => true,
+            _ if key == VK_APPS as i32 || (shift && key == VK_F10 as i32) => true,
+            _ => false,
+        };
+
+        if should_block { return 1; }
     }
 
     CallNextHookEx(0, n_code, w_param, l_param)

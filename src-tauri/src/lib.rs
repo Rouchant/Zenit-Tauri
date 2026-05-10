@@ -156,4 +156,7 @@ pub fn run() {
         })
         .run(tauri::generate_context!())
         .expect("Error al iniciar Zenit");
+
+    // Limpieza al cerrar: desinstalar el hook de teclado
+    guardian::stop_keyboard_guardian();
 }
