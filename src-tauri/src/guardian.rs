@@ -80,15 +80,19 @@ unsafe extern "system" fn low_level_keyboard_proc(n_code: i32, w_param: WPARAM, 
         }
 
         // 2. Bloqueos consolidados
-        let should_block = match () {
-            _ if win && matches!(key, VK_TAB as i32 | VK_D as i32 | VK_R as i32 | VK_E as i32 | VK_L as i32 | 
-                                     VK_X as i32 | VK_I as i32 | VK_S as i32 | VK_A as i32 | VK_K as i32 | 
-                                     VK_P as i32 | VK_U as i32 | VK_V as i32 | VK_W as i32 | VK_Z as i32 | 
-                                     VK_C as i32 | VK_HOME as i32 | VK_OEM_PERIOD | VK_OEM_1) => true,
-            _ if alt && matches!(key, VK_TAB as i32 | VK_ESCAPE as i32 | VK_F4 as i32 | VK_SPACE as i32) => true,
-            _ if ctrl && (key == VK_ESCAPE as i32 || (win && matches!(key, VK_LEFT as i32 | VK_RIGHT as i32 | VK_D as i32 | VK_F4 as i32))) => true,
-            _ if key == VK_APPS as i32 || (shift && key == VK_F10 as i32) => true,
-            _ => false,
+        let should_block = if win && matches!(key, VK_TAB as i32 | VK_D as i32 | VK_R as i32 | VK_E as i32 | VK_L as i32 |
+                VK_X as i32 | VK_I as i32 | VK_S as i32 | VK_A as i32 | VK_K as i32 |
+                VK_P as i32 | VK_U as i32 | VK_V as i32 | VK_W as i32 | VK_Z as i32 |
+                VK_C as i32 | VK_HOME as i32 | VK_OEM_PERIOD | VK_OEM_1) {
+            true
+        } else if alt && matches!(key, VK_TAB as i32 | VK_ESCAPE as i32 | VK_F4 as i32 | VK_SPACE as i32) {
+            true
+        } else if ctrl && (key == VK_ESCAPE as i32 || (win && matches!(key, VK_LEFT as i32 | VK_RIGHT as i32 | VK_D as i32 | VK_F4 as i32))) {
+            true
+        } else if key == VK_APPS as i32 || (shift && key == VK_F10 as i32) {
+            true
+        } else {
+            false
         };
 
         if should_block { return 1; }
