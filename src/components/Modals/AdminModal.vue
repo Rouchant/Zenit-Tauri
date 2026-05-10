@@ -568,18 +568,18 @@ const isHardwareLimitReached = computed(() => {
                         <div class="input-group">
                             <label for="price-primary">Precio con Tarjeta</label>
                             <div class="input-with-action">
-                                <input id="price-primary" name="pricePrimary" type="text" v-model="editableSpecs.pricePrimary" placeholder="Ej: $899.990" maxlength="21" autocomplete="off">
+                                <input id="price-primary" name="pricePrimary" type="text" v-model="editableSpecs.pricePrimary" placeholder="Ej: $899.990" maxlength="28" autocomplete="off">
                             </div>
                         </div>
                         <div class="input-group">
                             <label for="price-secondary">Precio Todo Medio de Pago</label>
                             <div class="input-with-action">
-                                <input id="price-secondary" name="priceSecondary" type="text" v-model="editableSpecs.priceSecondary" placeholder="Ej: $1.099.990" maxlength="21" autocomplete="off">
+                                <input id="price-secondary" name="priceSecondary" type="text" v-model="editableSpecs.priceSecondary" placeholder="Ej: $1.099.990" maxlength="28" autocomplete="off">
                             </div>
                         </div>
 
-                        <div v-if="(editableSpecs.pricePrimary && editableSpecs.pricePrimary.length >= 21) || (editableSpecs.priceSecondary && editableSpecs.priceSecondary.length >= 21)" class="price-limit-error">
-                            ⚠️ Máximo 21 caracteres permitidos en el precio
+                        <div v-if="(editableSpecs.pricePrimary && editableSpecs.pricePrimary.length >= 28) || (editableSpecs.priceSecondary && editableSpecs.priceSecondary.length >= 28)" class="price-limit-error">
+                            ⚠️ Máximo 28 caracteres permitidos en el precio
                         </div>
 
                         <div style="margin-top: 25px; display: flex; justify-content: flex-end;">
