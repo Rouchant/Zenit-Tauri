@@ -213,7 +213,7 @@ fn rate_gpu(name: &str) -> i32 {
 fn get_nvidia_watts() -> Option<String> {
     NVIDIA_POWER_LIMIT.get_or_init(|| {
         let script = r#"$val = (nvidia-smi -q -d POWER | Select-String "Max Power Limit" | Where-Object { $_ -notmatch "N/A" }); if ($val) { [int][float]($val.ToString().Split(':')[1].Replace('W','').Trim()) }"#;
-        if let Ok(output) = Command::new("powershell").args(["-NoProfile", "-Command", script]).creation_flags(CREATE_NO_WINDOW).output() {
+        if let Ok(output) = Command::new("powershell").args(["-NoProfile", "-WindowStyle", "Hidden", "-Command", script]).creation_flags(CREATE_NO_WINDOW).output() {
             let stdout = String::from_utf8_lossy(&output.stdout).trim().to_string();
             if !stdout.is_empty() && stdout.chars().all(|c| c.is_numeric()) {
                 return Some(stdout);
@@ -426,7 +426,7 @@ pub fn set_max_brightness() {
             powercfg /s SCHEME_CURRENT
         } catch {}
     "#;
-    let _ = Command::new("powershell.exe").args(["-ExecutionPolicy", "Bypass", "-Command", script]).creation_flags(CREATE_NO_WINDOW).spawn();
+    let _ = Command::new("powershell.exe").args(["-ExecutionPolicy", "Bypass", "-WindowStyle", "Hidden", "-Command", script]).creation_flags(CREATE_NO_WINDOW).spawn();
 }
 
 #[cfg(not(windows))]
