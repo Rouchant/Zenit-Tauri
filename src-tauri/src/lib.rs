@@ -17,6 +17,34 @@ use crate::commands::{system, vault, window};
 /// Configura plugins, estado global, handlers de comandos y eventos de ventana.
 #[cfg_attr(mobile, tauri::mobile_entry_point)]
 pub fn run() {
+    // Optimización de memoria para WebView2/Chromium en modo kiosk.
+    // La app no usa internet y todo el contenido es local (asset protocol),
+    // así que podemos desactivar muchos subsistemas que desperdician RAM.
+    let webview_args = [
+        // GPU: Limitar memoria que Chromium asigna (evita 800MB en GPUs gamer)
+        "--force-gpu-mem-available-mb=256",
+        "--disable-gpu-shader-disk-cache",
+        // Cache: Desactivar caches HTTP (todo es local vía asset://)
+        "--disk-cache-size=1",
+        "--media-cache-size=1",
+        // V8: Limitar el heap de JavaScript a 128MB (de sobra para esta UI)
+        "--js-flags=--max-old-space-size=128",
+        // Red: Desactivar subsistemas de networking innecesarios
+        "--disable-background-networking",
+        "--disable-domain-reliability",
+        "--disable-component-update",
+        // Features: Desactivar funciones que consumen memoria sin beneficio en kiosk
+        "--disable-features=BackForwardCache,TranslateUI",
+        // Renderer: Limitar procesos de renderizado (main + return = 2 webviews)
+        "--renderer-process-limit=1",
+        // Autoplay: Asegurar que los videos reproduzcan sin gesto del usuario
+        "--autoplay-policy=no-user-gesture-required",
+    ];
+    std::env::set_var(
+        "WEBVIEW2_ADDITIONAL_BROWSER_ARGUMENTS",
+        webview_args.join(" "),
+    );
+
     tauri::Builder::default()
         // Configuración de Logs: Guarda logs en archivo y los muestra en consola/webview
         .plugin(
@@ -68,6 +96,9 @@ pub fn run() {
             let user_data = app.path().app_data_dir().unwrap_or_default();
             let _ = fs::create_dir_all(&user_data);
             let _ = fs::create_dir_all(user_data.join("custom-videos"));
+
+            // Limpiar caché de WebView (Evita acumulación de basura en el kiosk)
+            crate::setup::cleanup_cache(&user_data);
 
             // 5. Migración de datos (config.json antiguo a store.json moderno)
             let config_path = user_data.join("config.json");

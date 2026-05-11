@@ -167,14 +167,26 @@ const handleHotspotClick = (mode) => {
   }
 };
 
+// Pausar videos del info-view cuando no son visibles (modal abierto o modo video/screensaver).
+// Cada <video> oculto pero activo consume ~50-100MB en buffers de frames decodificados.
+const pauseInfoVideos = () => {
+  bgVideo.value?.pause();
+  landingVideo.value?.pause();
+};
+
+const resumeInfoVideos = () => {
+  bgVideo.value?.play().catch(() => {});
+  landingVideo.value?.play().catch(() => {});
+};
+
 watch(() => store.isModalOpen, (isOpen) => {
-  if (isOpen) {
-    bgVideo.value?.pause();
-    landingVideo.value?.pause();
-  } else {
-    bgVideo.value?.play().catch(() => {});
-    landingVideo.value?.play().catch(() => {});
-  }
+  if (isOpen) pauseInfoVideos();
+  else if (!store.isVideoMode) resumeInfoVideos();
+});
+
+watch(() => store.isVideoMode, (isVideo) => {
+  if (isVideo) pauseInfoVideos();
+  else if (!store.isModalOpen) resumeInfoVideos();
 });
 
 watch([showPasswordModal, showAdminModal, showSpecsModal], () => {

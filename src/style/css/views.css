@@ -6,8 +6,6 @@
     height: 100%;
     transition: opacity 1s ease-in-out;
     opacity: 0;
-    will-change: opacity;
-    transform: translateZ(0);
 }
 
 .view.active {
