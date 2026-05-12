@@ -1,0 +1,10 @@
+PackageIdentifier: Rouchant.Zenit
+PackageVersion: 1.2.7
+InstallerType: msi
+Installers:
+- Architecture: x64
+  InstallerUrl: https://github.com/Rouchant/Zenit-Tauri/releases/download/v1.2.7/Zenit_1.2.7_x64_es-ES.msi
+  InstallerSha256: b879195fbbb798096726ddff70b8cdaafcb54a4fcfb7f0934d74925111fc9f80
+  ProductCode: '{E6380555-CD4F-448F-AAF4-23939BD20869}'
+ManifestType: installer
+ManifestVersion: 1.6.0
