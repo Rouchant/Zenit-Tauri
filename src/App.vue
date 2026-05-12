@@ -141,6 +141,11 @@ const passwordMode = ref('settings');
 const bgVideo = ref(null);
 const landingVideo = ref(null);
 
+// Sincronizar estado global de modales
+watch([showPasswordModal, showAdminModal, showSpecsModal], ([p, a, s]) => {
+  store.isModalOpen = p || a || s;
+});
+
 // Admin Hotspot Secrets
 const hotspotCounts = reactive({
   settings: 0,

@@ -96,6 +96,18 @@ const onVideoEnded = () => {
   }
 };
 
+watch(() => store.isModalOpen, (isOpen) => {
+  if (isOpen) {
+    videoRef.value?.pause();
+    clearSafetyTimer();
+  } else {
+    videoRef.value?.play().catch(() => {});
+    if (videoRef.value) {
+      startSafetyTimer(videoRef.value.duration - videoRef.value.currentTime);
+    }
+  }
+});
+
 onMounted(() => {
   playVideo();
 });

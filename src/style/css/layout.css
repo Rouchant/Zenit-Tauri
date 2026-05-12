@@ -84,7 +84,7 @@ background: radial-gradient(ellipse at top, var(--bg-overlay-start) 0% 65%, var(
     border-radius: clamp(15px, 2vw, 32px);
     overflow: hidden;
     box-shadow: 0 20px 60px rgba(0, 0, 0, 0.5);
-    border: 1px solid rgba(255, 255, 255, 0.1);
+    border: none;
     background: rgba(0, 0, 0, 0.85);
     transition: background-color 0.3s ease;
     /* Fix for corner bleeding on some GPUs */
@@ -99,8 +99,8 @@ background: radial-gradient(ellipse at top, var(--bg-overlay-start) 0% 65%, var(
     height: 100%;
     object-fit: cover;
     /* Perfect clipping to avoid border-radius anti-aliasing bleeding */
-    clip-path: inset(1px round clamp(15px, 2vw, 32px));
-    -webkit-clip-path: inset(1px round clamp(15px, 2vw, 32px));
+    clip-path: inset(0 round clamp(15px, 2vw, 32px));
+    -webkit-clip-path: inset(0 round clamp(15px, 2vw, 32px));
 }
 
 .specs-column {
