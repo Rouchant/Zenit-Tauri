@@ -140,11 +140,18 @@ const passwordMode = ref('settings');
 
 const bgVideo = ref(null);
 const landingVideo = ref(null);
+const isInternalFocusHack = ref(false);
 
 // Sincronizar estado global de modales
 watch([showPasswordModal, showAdminModal, showSpecsModal], ([p, a, s]) => {
   store.isModalOpen = p || a || s;
 });
+
+// Throttled reset timer for mousemove
+const throttledResetTimer = () => {
+  if (isInternalFocusHack.value) return;
+  resetTimer();
+};
 
 // Admin Hotspot Secrets
 const hotspotCounts = reactive({
