@@ -22,6 +22,7 @@
       :poster="store.isAsus ? '/assets/images/background-asus.png' : '/assets/images/background-generic.png'"
       ref="bgVideo"
       class="background-media"
+      style="background-color: #000; transition: opacity 0.5s ease;"
       :key="store.isAsus ? 'asus' : 'generic'"
       :src="store.getVideoUrl(store.isAsus ? 'ASUS' : 'GENERIC')"
     >
@@ -172,121 +173,130 @@ const handleHotspotClick = (mode) => {
 // Al reanudar, reasignamos el src original y damos play (más rápido que destruir/recrear el DOM).
 let savedBgSrc = '';
 let savedLandingSrc = '';
+let bgPauseTimeout = null;
+let landingPauseTimeout = null;
 
 const pauseInfoVideos = () => {
+  // Cancelar cualquier intento previo de reanudación o pausa
+  if (bgPauseTimeout) clearTimeout(bgPauseTimeout);
+  if (landingPauseTimeout) clearTimeout(landingPauseTimeout);
+
   if (bgVideo.value) {
+    bgVideo.value.style.opacity = '0';
     savedBgSrc = bgVideo.value.src;
     bgVideo.value.pause();
-    bgVideo.value.removeAttribute('src');
-    bgVideo.value.load(); // Fuerza a Chromium a liberar los buffers
+    
+    bgPauseTimeout = setTimeout(() => {
+      if (bgVideo.value) {
+        bgVideo.value.removeAttribute('src');
+        bgVideo.value.load();
+      }
+    }, 500);
   }
+  
   if (landingVideo.value) {
+    landingVideo.value.style.opacity = '0.3';
     savedLandingSrc = landingVideo.value.src;
     landingVideo.value.pause();
-    landingVideo.value.removeAttribute('src');
-    landingVideo.value.load();
+    
+    landingPauseTimeout = setTimeout(() => {
+      if (landingVideo.value) {
+        landingVideo.value.removeAttribute('src');
+        landingVideo.value.load();
+      }
+    }, 500);
   }
 };
 
 const resumeInfoVideos = () => {
+  // Cancelar pausas pendientes para que no vacíen el src justo después de restaurarlo
+  if (bgPauseTimeout) clearTimeout(bgPauseTimeout);
+  if (landingPauseTimeout) clearTimeout(landingPauseTimeout);
+
   if (bgVideo.value && savedBgSrc) {
-    bgVideo.value.src = savedBgSrc;
+    // Si el src ya está vacío, restaurarlo
+    if (!bgVideo.value.src || bgVideo.value.src.includes('undefined')) {
+      bgVideo.value.src = savedBgSrc;
+    }
+    bgVideo.value.style.opacity = '1';
     bgVideo.value.play().catch(() => {});
   }
+  
   if (landingVideo.value && savedLandingSrc) {
-    landingVideo.value.src = savedLandingSrc;
+    if (!landingVideo.value.src || landingVideo.value.src.includes('undefined')) {
+      landingVideo.value.src = savedLandingSrc;
+    }
+    landingVideo.value.style.opacity = '1';
     landingVideo.value.play().catch(() => {});
   }
 };
 
+// --- WATCHERS CONSOLIDADOS (ESTABILIDAD) ---
+
+// 1. Gestión de Modales
 watch(() => store.isModalOpen, (isOpen) => {
-  if (isOpen) pauseInfoVideos();
-  else if (!store.isVideoMode) resumeInfoVideos();
+  if (isOpen) {
+    pauseInfoVideos();
+    clearTimeout(inactivityTimer.value);
+    // Desactivar AlwaysOnTop para permitir diálogos del sistema (selectores de archivos, etc)
+    if (showAdminModal.value) tauriAPI.setAlwaysOnTop(false);
+  } else {
+    // Si cerramos modal y no estamos en modo video, restaurar
+    if (!store.isVideoMode) {
+      resumeInfoVideos();
+      resetTimer();
+    }
+    tauriAPI.setAlwaysOnTop(true);
+  }
 });
 
+// 2. Gestión de Modo Video (Screensaver)
 watch(() => store.isVideoMode, (isVideo) => {
-  if (isVideo) pauseInfoVideos();
-  else if (!store.isModalOpen) resumeInfoVideos();
+  if (isVideo) {
+    pauseInfoVideos();
+    // Acciones de Kiosko
+    tauriAPI.setMaxBrightness();
+    isInternalFocusHack.value = true;
+    tauriAPI.restoreApp().finally(() => {
+      setTimeout(() => { isInternalFocusHack.value = false; }, 1000);
+    });
+  } else {
+    // Salir de modo video
+    if (!store.isModalOpen) {
+      resumeInfoVideos();
+      resetTimer();
+    }
+  }
 });
 
-watch([showPasswordModal, showAdminModal, showSpecsModal], () => {
-  store.isModalOpen = showPasswordModal.value || showAdminModal.value || showSpecsModal.value;
-});
-
-// Desactivar AlwaysOnTop cuando el menú de personalización está abierto 
-// para permitir que los diálogos de selección de archivos se sobrepongan.
-watch(showAdminModal, (isOpen) => {
-  tauriAPI.setAlwaysOnTop(!isOpen);
-});
-
-const isInternalFocusHack = ref(false);
-let lastMouseMoveTime = 0;
-
-
-const resetTimer = (event) => {
-  // Ignorar la tecla Escape (enviada por Rust al restaurar) y el hack de foco interno.
-  if (event && event.key === 'Escape') return;
-  if (isInternalFocusHack.value) return;
-
-  // Siempre cancelar el timer anterior ante cualquier actividad
-  clearTimeout(inactivityTimer.value);
-  inactivityTimer.value = null;
-
-  // Salir del modo video si estábamos en él
-  if (store.isVideoMode) store.isVideoMode = false;
-
-  // No activar el contador si hay un modal abierto
-  if (store.isModalOpen) return;
-
-  // Siempre recrear el timer. clearTimeout + setTimeout es casi gratuito en CPU,
-  // no es necesario throttle aquí. Lo importante es que SIEMPRE haya uno activo.
-  inactivityTimer.value = setTimeout(() => {
-    console.log('[Inactivity] Limit reached, entering video mode.');
-    store.isVideoMode = true;
-  }, store.CONFIG.INACTIVITY_LIMIT);
-};
-
-const throttledResetTimer = (event) => {
-  const now = Date.now();
-  if (now - lastMouseMoveTime < 1000) return; // Throttle 1s
-  lastMouseMoveTime = now;
-  resetTimer(event);
-};
-
-// Auto-reset timer when modals close
-watch(() => store.isModalOpen, (isOpen) => {
-  if (!isOpen) resetTimer();
-  else clearTimeout(inactivityTimer.value);
-});
-
+// 3. Gestión de Carga Inicial
 watch(() => store.isLoading, (loading) => {
   if (!loading) {
-    // Force play after loading finishes and DOM updates
     setTimeout(() => {
-      bgVideo.value?.play().catch(() => {});
-      landingVideo.value?.play().catch(() => {});
+      if (!store.isModalOpen && !store.isVideoMode) {
+        bgVideo.value?.play().catch(() => {});
+        landingVideo.value?.play().catch(() => {});
+      }
     }, 100);
   }
 });
 
-// Force window focus and on-top status when screensaver starts
-watch(() => store.isVideoMode, (isVideo) => {
-  if (isVideo) {
-    // Intentar forzar brillo al 100% antes de mostrar el video
-    tauriAPI.setMaxBrightness();
+// --- LÓGICA DE INACTIVIDAD ---
 
-    isInternalFocusHack.value = true;
-    tauriAPI.restoreApp().finally(() => {
-      // Dejar una ventana de 1s para que los eventos de teclado/foco del sistema se procesen e ignoren
-      setTimeout(() => {
-        isInternalFocusHack.value = false;
-      }, 1000);
-    });
-  } else {
-    // Si salimos del modo video (ej: por mouse o porque terminó la lista), reiniciar timer
-    resetTimer();
-  }
-});
+const resetTimer = (event) => {
+  if (event && event.key === 'Escape') return;
+  if (isInternalFocusHack.value) return;
+
+  clearTimeout(inactivityTimer.value);
+  inactivityTimer.value = null;
+
+  if (store.isVideoMode) store.isVideoMode = false;
+  if (store.isModalOpen) return;
+
+  inactivityTimer.value = setTimeout(() => {
+    store.isVideoMode = true;
+  }, store.CONFIG.INACTIVITY_LIMIT);
+};
 
 const openPassword = (mode) => {
   passwordMode.value = mode;

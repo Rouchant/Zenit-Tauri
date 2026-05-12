@@ -2,7 +2,7 @@
 
 <img src="public/assets/logo.png" alt="Zenit Logo" width="200">
 
-![Version](https://img.shields.io/badge/version-1.2.6-blue.svg)
+![Version](https://img.shields.io/badge/version-1.2.7-blue.svg)
 ![Tauri](https://img.shields.io/badge/framework-Tauri%20v2-FFC131.svg)
 ![Rust](https://img.shields.io/badge/backend-Rust-orange.svg)
 ![Vue 3](https://img.shields.io/badge/frontend-Vue%203-42b883.svg)
@@ -18,7 +18,7 @@ Zenit es una solución de nivel empresarial para **Showcase Terminals**, diseña
 
 ---
 
-## ✨ Características Principales (v1.2.6)
+## ✨ Características Principales (v1.2.7)
 
 ### 🖥️ Detección de Hardware Nativa (100% Rust & CIM/WMI)
 Zenit utiliza un motor de telemetría modularizado en Rust para una velocidad y precisión quirúrgica:
@@ -28,19 +28,19 @@ Zenit utiliza un motor de telemetría modularizado en Rust para una velocidad y 
 - **Almacenamiento Comercial**: Suma de discos con redondeo comercial (ej. 476GB -> 512GB SSD).
 - **Resolución Real**: Soporte para resoluciones exóticas (WUXGA, QHD+, 3.2K, UHD+) con etiquetas comerciales automáticas.
 
-### 📐 Optimización High-DPI y Layout
-- **Soporte de Escala**: Adaptación dinámica para pantallas de 14" con escalado de Windows al 150%, manteniendo la legibilidad y el orden visual.
-- **Validación de Entradas**: Sistema de restricciones (maxlength, character limits) en el panel administrativo para evitar desbordamientos de texto en las tarjetas de especificaciones.
+### 📐 Optimización de Layout & High-DPI
+- **Soporte Non-16:9**: Adaptación dinámica para resoluciones exóticas (2.8K, WUXGA) mediante técnica de **Overscan de 2px**, eliminando franjas negras causadas por errores de redondeo de subpíxeles.
+- **Escalado Inteligente**: Soporte nativo para High-DPI (150%+) en laptops de 14", manteniendo la jerarquía visual y legibilidad.
+
+### 🧠 Eficiencia de Recursos (Green Kiosk)
+- **Gestión Híbrida de Memoria**: Sistema de vaciado de buffers de video (`src clearing`) que libera entre **150MB y 300MB de RAM** instantáneamente al abrir modales o entrar en modo inactividad.
+- **Chromium Tuning**: Flags optimizados (`--in-process-gpu`, `--aggressive-cache-discard`) para minimizar el footprint del WebView2 en equipos con recursos limitados.
+- **Watchdog de Estabilidad**: Lógica reactiva consolidada que previene condiciones de carrera (race conditions) y asegura la recuperación del foco absoluto.
 
 ### 🏷️ Personalización Comercial (E-Commerce Ready)
 - **Precios Dinámicos**: Soporte para precios de oferta (Exclusivo Tarjeta) y normales, con diseño premium adaptable.
-- **Branding de Retail**: Soporte para logos de retails (**Falabella, Paris, Ripley**) y marcas líderes (**Asus, HP, Samsung**) con escalado automático.
+- **Branding de Retail**: Soporte para logos de retails (**Falabella, Paris, Ripley**) y marcas líderes (**Asus, HP, Samsung**) con matices de color dinámicos en los fondos.
 - **Unidades Uniformes**: Formato de texto profesional sin espacios inconsistentes (`16GB`, `512GB`, `115W`).
-
-### 🎥 Gestión Multimedia "Premium"
-- **Bóveda de Videos**: Gestor inteligente con almacenamiento local persistente y alias de marketing.
-- **Inactividad Visual**: Forzado de brillo al 100%, desactivación de brillo adaptativo y ocultamiento de cursor.
-- **Failsafe Watchdog**: Reinicio automático de videos si se detectan pausas o errores de reproducción.
 
 ---
 
@@ -73,7 +73,7 @@ npm install
 # Modo Desarrollo (HMR)
 npm run dev
 
-# Compilar para Producción (Genera Zenit_1.2.6_x64-setup.exe)
+# Compilar para Producción (Genera Zenit_1.2.7_x64-setup.exe)
 npm run tauri build
 ```
 
