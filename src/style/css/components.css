@@ -1,7 +1,6 @@
 /* Spec Cards */
 .spec-card {
     background: var(--white);
-    border: 1px solid rgba(0, 0, 0, 0.05);
     border: 1px solid rgba(26, 26, 26, 0.05);
     border-radius: clamp(15px, 2vw, 24px);
     padding: clamp(10px, 1.5vh, 14px) clamp(15px, 2vw, 25px);
