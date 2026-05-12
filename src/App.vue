@@ -11,28 +11,33 @@
       </div>
     </Transition>
 
-    <!-- Background Video / Image -->
-    <video 
-      v-if="!store.currentSpecs.fixedBackground && !store.isLoading"
-      id="bg-video" 
-      autoplay 
-      loop 
-      muted 
-      playsinline 
-      :poster="store.isAsus ? '/assets/images/background-asus.png' : '/assets/images/background-generic.png'"
-      ref="bgVideo"
-      class="background-media"
-      style="background-color: #000; transition: opacity 0.5s ease;"
-      :key="store.isAsus ? 'asus' : 'generic'"
-      :src="store.getVideoUrl(store.isAsus ? 'ASUS' : 'GENERIC')"
-    >
-    </video>
-    <img 
-      v-else-if="!store.isLoading"
-      id="bg-image"
-      :src="store.isAsus ? '/assets/images/background-asus.png' : '/assets/images/background-generic.png'"
-      class="bg-fixed-image"
-    />
+    <!-- Background Media Layers -->
+    <div class="background-wrapper" v-if="!store.isLoading">
+      <!-- Static Layer (Always present as fallback/base) -->
+      <img 
+        id="bg-image"
+        :src="store.isAsus ? '/assets/images/background-asus.png' : '/assets/images/background-generic.png'"
+        class="bg-fixed-image"
+        :style="{ opacity: store.currentSpecs.fixedBackground ? 1 : 0.8 }"
+      />
+
+      <!-- Video Layer (Active only if not in fixed background mode) -->
+      <video 
+        v-if="!store.currentSpecs.fixedBackground"
+        id="bg-video" 
+        autoplay 
+        loop 
+        muted 
+        playsinline 
+        :poster="store.isAsus ? '/assets/images/background-asus.png' : '/assets/images/background-generic.png'"
+        ref="bgVideo"
+        class="background-media"
+        style="background-color: transparent; transition: opacity 0.5s ease;"
+        :key="store.isAsus ? 'asus' : 'generic'"
+        :src="store.getVideoUrl(store.isAsus ? 'ASUS' : 'GENERIC')"
+      >
+      </video>
+    </div>
     
     <!-- Background Overlay -->
     <div class="bg-blur"></div>
@@ -268,10 +273,14 @@ watch(() => store.isVideoMode, (isVideo) => {
     pauseInfoVideos();
     // Acciones de Kiosko
     tauriAPI.setMaxBrightness();
-    isInternalFocusHack.value = true;
-    tauriAPI.restoreApp().finally(() => {
-      setTimeout(() => { isInternalFocusHack.value = false; }, 1000);
-    });
+    
+    // Solo restaurar si no viene de un evento interno que ya lo hizo (como el de Rust)
+    if (!isInternalFocusHack.value) {
+      isInternalFocusHack.value = true;
+      tauriAPI.restoreApp().finally(() => {
+        setTimeout(() => { isInternalFocusHack.value = false; }, 2000);
+      });
+    }
   } else {
     // Salir de modo video
     if (!store.isModalOpen) {
@@ -361,7 +370,10 @@ onMounted(async () => {
     // Cuando Rust detecta 3 min de inactividad: activar modo video
     unlistenInactivity = await listen('trigger-inactivity-video', () => {
       console.log('Restored via global inactivity, forcing video mode');
+      isInternalFocusHack.value = true;
       store.isVideoMode = true;
+      // Mantener el hack activo un tiempo para absorber el "foco" de la restauración
+      setTimeout(() => { isInternalFocusHack.value = false; }, 2000);
     });
 
     // Cuando el usuario hace algo en el PC (detectado por Rust): quitar video y reanudar timer JS
