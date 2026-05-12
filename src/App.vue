@@ -1,5 +1,5 @@
 <template>
-  <div id="app" class="app-container" :class="{ 'is-loading': store.isLoading }" :style="{ backgroundColor: '#000' }">
+  <div class="app-container" :class="{ 'is-loading': store.isLoading }">
     <!-- Loading Screen -->
     <Transition name="fade">
       <div v-if="store.isLoading" class="loading-screen">
@@ -13,8 +13,7 @@
 
     <!-- Background Video / Image -->
     <video 
-      v-if="!store.currentSpecs.fixedBackground"
-      v-show="!store.isLoading"
+      v-if="!store.currentSpecs.fixedBackground && !store.isLoading"
       id="bg-video" 
       autoplay 
       loop 
@@ -28,8 +27,7 @@
     >
     </video>
     <img 
-      v-else
-      v-show="!store.isLoading"
+      v-else-if="!store.isLoading"
       id="bg-image"
       :src="store.isAsus ? '/assets/images/background-asus.png' : '/assets/images/background-generic.png'"
       class="bg-fixed-image"
@@ -52,9 +50,11 @@
               autoplay 
               loop 
               muted 
-              playsinline 
+              playsinline
+              preload="none"
               :src="store.getVideoUrl(store.currentSpecs.customLandingVideoPath || (store.isAsus ? '__ASUS_LANDING__' : '__GENERIC_LANDING__'))"
               ref="landingVideo"
+              v-if="!store.isLoading"
             >
             </video>
           </div>
@@ -168,15 +168,35 @@ const handleHotspotClick = (mode) => {
 };
 
 // Pausar videos del info-view cuando no son visibles (modal abierto o modo video/screensaver).
-// Cada <video> oculto pero activo consume ~50-100MB en buffers de frames decodificados.
+// Además de pausar, vaciamos el src para liberar los buffers de frames decodificados (~50-100MB cada uno).
+// Al reanudar, reasignamos el src original y damos play (más rápido que destruir/recrear el DOM).
+let savedBgSrc = '';
+let savedLandingSrc = '';
+
 const pauseInfoVideos = () => {
-  bgVideo.value?.pause();
-  landingVideo.value?.pause();
+  if (bgVideo.value) {
+    savedBgSrc = bgVideo.value.src;
+    bgVideo.value.pause();
+    bgVideo.value.removeAttribute('src');
+    bgVideo.value.load(); // Fuerza a Chromium a liberar los buffers
+  }
+  if (landingVideo.value) {
+    savedLandingSrc = landingVideo.value.src;
+    landingVideo.value.pause();
+    landingVideo.value.removeAttribute('src');
+    landingVideo.value.load();
+  }
 };
 
 const resumeInfoVideos = () => {
-  bgVideo.value?.play().catch(() => {});
-  landingVideo.value?.play().catch(() => {});
+  if (bgVideo.value && savedBgSrc) {
+    bgVideo.value.src = savedBgSrc;
+    bgVideo.value.play().catch(() => {});
+  }
+  if (landingVideo.value && savedLandingSrc) {
+    landingVideo.value.src = savedLandingSrc;
+    landingVideo.value.play().catch(() => {});
+  }
 };
 
 watch(() => store.isModalOpen, (isOpen) => {
@@ -237,6 +257,16 @@ const throttledResetTimer = (event) => {
 watch(() => store.isModalOpen, (isOpen) => {
   if (!isOpen) resetTimer();
   else clearTimeout(inactivityTimer.value);
+});
+
+watch(() => store.isLoading, (loading) => {
+  if (!loading) {
+    // Force play after loading finishes and DOM updates
+    setTimeout(() => {
+      bgVideo.value?.play().catch(() => {});
+      landingVideo.value?.play().catch(() => {});
+    }, 100);
+  }
 });
 
 // Force window focus and on-top status when screensaver starts

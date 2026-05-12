@@ -36,17 +36,29 @@
 }
 
 html {
-    background-color: #000;
+    background-color: var(--bg-dark);
+    height: 100vh;
+    width: 100vw;
+    overflow: hidden;
+    margin: 0;
+    padding: 0;
+}
+
+#app, [data-v-app] {
+    height: 100%;
+    width: 100%;
+    display: flex;
+    flex-direction: column;
 }
 
 body {
     background-color: var(--bg-dark);
     color: var(--text);
     overflow: hidden;
-    height: calc(100vh + 20px);
-    width: calc(100vw + 20px);
-    margin-left: -10px;
-    margin-top: -10px;
+    height: calc(100vh + 40px);
+    width: calc(100vw + 40px);
+    margin-left: -20px;
+    margin-top: -20px;
     overscroll-behavior: none;
     touch-action: pan-y;
     transform: translate(var(--shift-x), var(--shift-y));

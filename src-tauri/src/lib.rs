@@ -24,17 +24,26 @@ pub fn run() {
         // GPU: Limitar memoria que Chromium asigna (evita 800MB en GPUs gamer)
         "--force-gpu-mem-available-mb=256",
         "--disable-gpu-shader-disk-cache",
+        // GPU: Consolidar proceso GPU en el principal (~30-50MB menos)
+        // En un kiosk estable, si el GPU crashea queremos reiniciar todo de todas formas.
+        "--in-process-gpu",
         // Cache: Desactivar caches HTTP (todo es local vía asset://)
         "--disk-cache-size=1",
         "--media-cache-size=1",
+        "--aggressive-cache-discard",
         // V8: Limitar el heap de JavaScript a 128MB (de sobra para esta UI)
         "--js-flags=--max-old-space-size=128",
         // Red: Desactivar subsistemas de networking innecesarios
         "--disable-background-networking",
         "--disable-domain-reliability",
         "--disable-component-update",
+        // Subsistemas innecesarios para un kiosk local
+        "--disable-speech-api",
+        "--disable-shared-workers",
+        "--disable-notifications",
+        "--disable-breakpad",
         // Features: Desactivar funciones que consumen memoria sin beneficio en kiosk
-        "--disable-features=BackForwardCache,TranslateUI",
+        "--disable-features=BackForwardCache,TranslateUI,MediaRouter,Translate,AcceptCHFrame,AutofillServerCommunication",
         // Renderer: Limitar procesos de renderizado (main + return = 2 webviews)
         "--renderer-process-limit=1",
         // Autoplay: Asegurar que los videos reproduzcan sin gesto del usuario
