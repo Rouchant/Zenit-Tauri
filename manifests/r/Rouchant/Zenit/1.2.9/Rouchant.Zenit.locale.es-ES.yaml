@@ -1,0 +1,20 @@
+# yaml-language-server: $schema=https://aka.ms/winget-manifest.locale.1.2.0.schema.json
+
+PackageIdentifier: Rouchant.Zenit
+PackageVersion: 1.2.9
+PackageLocale: es-ES
+Publisher: Rouchant
+PublisherUrl: https://github.com/Rouchant/Zenit-Tauri
+Author: Zenit
+PackageName: Zenit
+PackageUrl: https://github.com/Rouchant/Zenit-Tauri
+License: ISC
+ShortDescription: Showcase App for POS Laptops — Powered by Tauri
+Description: Aplicación de exhibición para laptops en punto de venta con gestión de especificaciones y videos de inactividad.
+Tags:
+- kiosk
+- showcase
+- laptop
+- tauri
+ManifestType: defaultLocale
+ManifestVersion: 1.2.0

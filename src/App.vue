@@ -267,6 +267,12 @@ watch(() => store.isModalOpen, (isOpen) => {
   }
 });
 
+const closeAllModals = () => {
+  showPasswordModal.value = false;
+  showAdminModal.value = false;
+  showSpecsModal.value = false;
+};
+
 // 2. Gestión de Modo Video (Screensaver)
 watch(() => store.isVideoMode, (isVideo) => {
   if (isVideo) {
@@ -312,9 +318,12 @@ const resetTimer = (event) => {
   inactivityTimer.value = null;
 
   if (store.isVideoMode) store.isVideoMode = false;
-  if (store.isModalOpen) return;
 
   inactivityTimer.value = setTimeout(() => {
+    if (store.isModalOpen) {
+      console.log('Inactivity detected while modal open, closing all modals.');
+      closeAllModals();
+    }
     store.isVideoMode = true;
   }, store.CONFIG.INACTIVITY_LIMIT);
 };
