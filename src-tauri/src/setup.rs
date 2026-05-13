@@ -29,6 +29,10 @@ pub fn run_system_setup() {
             powercfg /setacvalueindex SCHEME_CURRENT SUB_VIDEO ADAPTBRIGHT 0
             powercfg /setdcvalueindex SCHEME_CURRENT SUB_VIDEO ADAPTBRIGHT 0
 
+            # Forzar calidad de video (evita reducción de bitrate/fps por ahorro de energía)
+            powercfg /setacvalueindex SCHEME_CURRENT SUB_VIDEO VIDEOQUALITY 1
+            powercfg /setdcvalueindex SCHEME_CURRENT SUB_VIDEO VIDEOQUALITY 1
+
             # 2. Hardening y Registro (Notificaciones, Bluetooth, Gestos)
             $paths = @(
                 "HKCU:\Software\Microsoft\Windows\CurrentVersion\Notifications\Settings",

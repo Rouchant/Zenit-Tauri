@@ -55,14 +55,11 @@ body {
     background-color: var(--bg-dark);
     color: var(--text);
     overflow: hidden;
-    height: calc(100vh + 40px);
-    width: calc(100vw + 40px);
-    margin-left: -20px;
-    margin-top: -20px;
+    height: 100vh;
+    width: 100vw;
+    margin: 0;
     overscroll-behavior: none;
     touch-action: pan-y;
-    transform: translate(var(--shift-x), var(--shift-y));
-    transition: transform 10s ease-in-out; /* Smooth transition for the shift */
 }
 
 ::-webkit-scrollbar {

@@ -272,8 +272,6 @@
     z-index: 2147483647;
     cursor: default;
     background: transparent;
-    /* Margin bleed to compensate for OLED pixel shift */
-    margin: -20px;
 }
 
 .admin-hotspot.top-right { top: 0; right: 0; }

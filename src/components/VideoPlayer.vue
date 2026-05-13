@@ -6,6 +6,8 @@ const store = useSpecsStore();
 const videoRef = ref(null);
 
 const currentIndex = ref(0);
+const videoKey = ref(0);
+const retryCount = ref(0);
 
 const videoUrls = computed(() => {
   const customPaths = store.currentSpecs.customVideoPaths || [];
@@ -30,16 +32,21 @@ const currentUrl = computed(() => {
   return videoUrls.value[idx] || '';
 });
 
-const playVideo = () => {
+const playVideo = async () => {
   if (videoRef.value) {
-    videoRef.value.load(); // Force reload the source
-    const playPromise = videoRef.value.play();
-    if (playPromise !== undefined) {
-      playPromise.catch(error => {
-        if (error.name !== 'AbortError') {
-          console.warn('Inactivity video failed to play:', error);
-        }
-      });
+    try {
+      // Si el video ya está en una URL válida, solo dar play. 
+      // load() solo es necesario si cambiamos el src manualmente y no se dispara solo.
+      const playPromise = videoRef.value.play();
+      if (playPromise !== undefined) {
+        await playPromise;
+      }
+    } catch (error) {
+      if (error.name !== 'AbortError') {
+        console.warn('Inactivity video failed to play, attempting reload:', error);
+        videoRef.value.load();
+        videoRef.value.play().catch(e => console.error("Final play attempt failed:", e));
+      }
     }
   }
 };
@@ -52,8 +59,24 @@ const safetyTimeout = ref(null);
 
 const onVideoError = (e) => {
   console.error('[VideoPlayer] Video error detected:', e);
-  // Failsafe: Si el video falla, volver a specs para no dejar pantalla negra
-  store.isVideoMode = false;
+  
+  if (retryCount.value < 3) {
+    retryCount.value++;
+    console.warn(`[VideoPlayer] Attempting recovery (retry ${retryCount.value}/3)...`);
+    
+    // Force re-mount the video element
+    videoKey.value++;
+    
+    // Attempt play after a short delay
+    setTimeout(() => {
+      playVideo();
+    }, 1000);
+  } else {
+    console.error('[VideoPlayer] Max retries reached, exiting video mode.');
+    // Failsafe: Si el video falla definitivamente, volver a specs para no dejar pantalla negra
+    store.isVideoMode = false;
+    retryCount.value = 0;
+  }
 };
 
 const clearSafetyTimer = () => {
@@ -66,9 +89,11 @@ const clearSafetyTimer = () => {
 const startSafetyTimer = (durationInSeconds) => {
   clearSafetyTimer();
   
+  // Validar que la duración sea un número válido
+  const validDuration = (typeof durationInSeconds === 'number' && !isNaN(durationInSeconds)) ? durationInSeconds : 60;
+  
   // Usamos la duración del video + 3 segundos de margen
-  // Si no hay duración (metadata falló), usamos 60s por defecto
-  const timeoutMs = (durationInSeconds ? (durationInSeconds + 3) : 60) * 1000;
+  const timeoutMs = (validDuration + 3) * 1000;
   
   safetyTimeout.value = setTimeout(() => {
     console.warn('[VideoPlayer] Safety timeout reached, forcing exit.');
@@ -87,6 +112,7 @@ const onMetadataLoaded = () => {
 const onVideoEnded = () => {
   console.log('[VideoPlayer] Video ended, index:', currentIndex.value, 'of', videoUrls.value.length);
   clearSafetyTimer();
+  retryCount.value = 0; // Reset retries on success
   
   if (currentIndex.value === videoUrls.value.length - 1) {
     console.log('[VideoPlayer] Last video reached, returning to specs view.');
@@ -121,15 +147,18 @@ onUnmounted(() => {
 <template>
   <div class="video-container">
     <video 
+      :key="videoKey"
       ref="videoRef"
       id="promo-video" 
       autoplay
       muted 
       playsinline
+      preload="auto"
       :src="currentUrl"
       @ended="onVideoEnded"
       @error="onVideoError"
       @loadedmetadata="onMetadataLoaded"
+      style="transform: translateZ(0); will-change: transform;"
     ></video>
     <div class="video-overlay">
       <div class="video-caption"></div>

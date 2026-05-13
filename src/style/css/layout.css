@@ -1,8 +1,7 @@
 .app-container {
-    height: 100%;
-    width: 100%;
-    min-height: 100vh;
-    min-width: 100vw;
+    height: calc(100vh + 10px);
+    width: calc(100vw + 10px);
+    margin: -5px;
     position: relative;
     display: flex;
     flex-direction: column;
@@ -10,6 +9,11 @@
     align-items: center;
     background: transparent;
     overflow: hidden;
+    /* Move pixel shift here to avoid moving the hotspots if we place them outside this container */
+    transform: translate(var(--shift-x), var(--shift-y));
+    transition: transform 10s ease-in-out;
+    will-change: transform;
+    backface-visibility: hidden;
 }
 
 #bg-video,
@@ -21,6 +25,7 @@
     height: calc(100% + 4px);
     object-fit: cover;
     z-index: 0;
+    transform: translateZ(0); /* Hardware acceleration */
 }
 
 .bg-blur {
@@ -35,7 +40,7 @@ background: radial-gradient(ellipse at top, var(--bg-overlay-start) 0% 65%, var(
 
 .header {
     width: 100%;
-    padding: clamp(25px, 3.5vh, 35px) clamp(20px, 5vw, 60px) clamp(15px, 2.5vh, 25px);
+    padding: clamp(13px, 2vh, 20px) clamp(20px, 5vw, 60px);
     display: flex;
     justify-content: space-between;
     align-items: center;
@@ -47,7 +52,7 @@ background: radial-gradient(ellipse at top, var(--bg-overlay-start) 0% 65%, var(
     display: flex;
     align-items: center;
     gap: clamp(15px, 2vw, 30px);
-    filter: drop-shadow(0px 4px 6px rgba(0, 0, 0, 0.12));
+    filter: drop-shadow(0px 4px 3px rgba(0, 0, 0, 0.4));
 }
 
 .logo-separator {
@@ -93,6 +98,7 @@ background: radial-gradient(ellipse at top, var(--bg-overlay-start) 0% 65%, var(
     -webkit-mask-image: -webkit-radial-gradient(white, black);
     isolation: isolate;
     transform: translateZ(0); 
+    will-change: transform;
 }
 
 .landing-video-container video {
@@ -102,6 +108,8 @@ background: radial-gradient(ellipse at top, var(--bg-overlay-start) 0% 65%, var(
     /* Perfect clipping to avoid border-radius anti-aliasing bleeding */
     clip-path: inset(0 round clamp(15px, 2vw, 32px));
     -webkit-clip-path: inset(0 round clamp(15px, 2vw, 32px));
+    background: transparent;
+    transform: translateZ(0);
 }
 
 .specs-column {

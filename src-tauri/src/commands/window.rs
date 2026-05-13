@@ -85,6 +85,7 @@ pub async fn restore_app_logic(app: &AppHandle) -> Result<(), String> {
     
     // Ocultar la ventana flotante de retorno
     let _ = return_window.hide();
+    let _ = app.emit("app-restored", ());
 
     Ok(())
 }

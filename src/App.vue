@@ -1,124 +1,137 @@
 <template>
-  <div class="app-container" :class="{ 'is-loading': store.isLoading }">
-    <!-- Loading Screen -->
-    <Transition name="fade">
-      <div v-if="store.isLoading" class="loading-screen">
-        <div class="loader-container">
-          <div class="loader"></div>
-          <div class="loader-glow"></div>
+  <div class="app-root">
+    <div class="app-container" :class="{ 'is-loading': store.isLoading }">
+      <!-- Loading Screen -->
+      <Transition name="fade">
+        <div v-if="store.isLoading" class="loading-screen">
+          <div class="loader-container">
+            <div class="loader"></div>
+            <div class="loader-glow"></div>
+          </div>
+          <p class="loading-text">Cargando especificaciones...</p>
         </div>
-        <p class="loading-text">Cargando especificaciones...</p>
-      </div>
-    </Transition>
+      </Transition>
 
-    <!-- Background Media Layers -->
-    <div class="background-wrapper" v-if="!store.isLoading">
-      <!-- Static Layer (Always present as fallback/base) -->
-      <img 
-        id="bg-image"
-        :src="store.isAsus ? '/assets/images/background-asus.png' : '/assets/images/background-generic.png'"
-        class="bg-fixed-image"
-        :style="{ opacity: store.currentSpecs.fixedBackground ? 1 : 0.8 }"
+      <!-- Background Media Layers -->
+      <div class="background-wrapper" v-if="!store.isLoading">
+        <!-- Static Layer (Always present as fallback/base) -->
+        <img 
+          id="bg-image"
+          :src="store.isAsus ? '/assets/images/background-asus.png' : '/assets/images/background-generic.png'"
+          class="bg-fixed-image"
+          :style="{ opacity: store.currentSpecs.fixedBackground ? 1 : 0.8 }"
+        />
+
+        <!-- Video Layer (Active only if not in fixed background mode) -->
+        <video 
+          v-if="!store.currentSpecs.fixedBackground"
+          id="bg-video" 
+          autoplay 
+          loop 
+          muted 
+          playsinline 
+          preload="auto"
+          :poster="store.isAsus ? '/assets/images/background-asus.png' : '/assets/images/background-generic.png'"
+          ref="bgVideo"
+          class="background-media"
+          style="background-color: transparent; transition: opacity 0.5s ease; transform: translateZ(0);"
+          :key="store.isAsus ? 'asus' : 'generic'"
+          :src="store.getVideoUrl(store.isAsus ? 'ASUS' : 'GENERIC')"
+          @error="handleBgVideoError"
+          @playing="bgRetryCount = 0"
+        >
+        </video>
+      </div>
+      
+      <!-- Background Overlay -->
+      <div class="bg-blur"></div>
+      
+      <!-- Info View -->
+      <div id="info-view" v-show="!store.isVideoMode && !store.isLoading" class="view active">
+        <Header />
+
+        <main class="main-content">
+          <SpecsGrid @open-specs="showSpecsModal = true" />
+          
+          <div class="landing-content-area">
+            <div class="landing-video-container">
+              <video 
+                id="landing-video" 
+                autoplay 
+                loop 
+                muted 
+                playsinline
+                preload="auto"
+                :src="store.getVideoUrl(store.currentSpecs.customLandingVideoPath || (store.isAsus ? '__ASUS_LANDING__' : '__GENERIC_LANDING__'))"
+                ref="landingVideo"
+                v-if="!store.isLoading"
+                :style="{ 
+                  transform: 'translateZ(0)',
+                  opacity: isLandingReady ? 1 : 0,
+                  transition: 'opacity 0.5s ease'
+                }"
+                @error="handleLandingVideoError"
+                @playing="() => { isLandingReady = true; landingRetryCount = 0; }"
+                @loadstart="isLandingReady = false"
+              >
+              </video>
+            </div>
+            <div id="display-price" class="price-tag-container" v-if="store.currentSpecs.pricePrimary || store.currentSpecs.priceSecondary">
+               <div v-if="store.currentSpecs.pricePrimary" class="price-primary-group">
+                  <div class="price-row">
+                    <div class="retail-badge badge-card">EXCLUSIVO TARJETA</div>
+                    <div class="price-primary">
+                      {{ store.currentSpecs.pricePrimary }}
+                    </div>
+                    <div class="store-logo-inline" v-if="['falabella', 'ripley', 'paris'].includes(store.theme)">
+                       <img v-if="store.theme === 'falabella'" src="/assets/images/T-FALABELLA.svg" class="store-logo-sub" />
+                       <img v-if="store.theme === 'ripley'" src="/assets/images/T-RIPLEY.svg" class="store-logo-sub" />
+                       <img v-if="store.theme === 'paris'" src="/assets/images/T-CENCOSUD.svg" class="store-logo-sub" />
+                    </div>
+                  </div>
+               </div>
+               <div v-if="store.currentSpecs.priceSecondary" class="price-secondary-group">
+                  <div class="price-row">
+                    <div class="retail-badge badge-all">TODO MEDIO DE PAGO</div>
+                    <div class="price-secondary">
+                      {{ store.currentSpecs.priceSecondary }}
+                    </div>
+                  </div>
+               </div>
+            </div>
+          </div>
+        </main>
+
+        <footer class="footer"></footer>
+      </div>
+
+      <!-- Video View (Inactivity) -->
+      <div id="video-view" v-show="store.isVideoMode && !store.isLoading" class="view active">
+         <VideoPlayer v-if="store.isVideoMode" />
+      </div>
+
+      <!-- Modals -->
+      <PasswordModal 
+        v-if="showPasswordModal" 
+        :mode="passwordMode"
+        @close="showPasswordModal = false"
+        @verified="onPasswordVerified"
       />
 
-      <!-- Video Layer (Active only if not in fixed background mode) -->
-      <video 
-        v-if="!store.currentSpecs.fixedBackground"
-        id="bg-video" 
-        autoplay 
-        loop 
-        muted 
-        playsinline 
-        :poster="store.isAsus ? '/assets/images/background-asus.png' : '/assets/images/background-generic.png'"
-        ref="bgVideo"
-        class="background-media"
-        style="background-color: transparent; transition: opacity 0.5s ease;"
-        :key="store.isAsus ? 'asus' : 'generic'"
-        :src="store.getVideoUrl(store.isAsus ? 'ASUS' : 'GENERIC')"
-      >
-      </video>
-    </div>
-    
-    <!-- Background Overlay -->
-    <div class="bg-blur"></div>
-    
-    <!-- Info View -->
-    <div id="info-view" v-show="!store.isVideoMode && !store.isLoading" class="view active">
-      <Header />
+      <AdminModal 
+        v-if="showAdminModal"
+        @close="showAdminModal = false"
+      />
 
-      <main class="main-content">
-        <SpecsGrid @open-specs="showSpecsModal = true" />
-        
-        <div class="landing-content-area">
-          <div class="landing-video-container">
-            <video 
-              id="landing-video" 
-              autoplay 
-              loop 
-              muted 
-              playsinline
-              preload="none"
-              :src="store.getVideoUrl(store.currentSpecs.customLandingVideoPath || (store.isAsus ? '__ASUS_LANDING__' : '__GENERIC_LANDING__'))"
-              ref="landingVideo"
-              v-if="!store.isLoading"
-            >
-            </video>
-          </div>
-          <div id="display-price" class="price-tag-container" v-if="store.currentSpecs.pricePrimary || store.currentSpecs.priceSecondary">
-             <div v-if="store.currentSpecs.pricePrimary" class="price-primary-group">
-                <div class="price-row">
-                  <div class="retail-badge badge-card">EXCLUSIVO TARJETA</div>
-                  <div class="price-primary">
-                    {{ store.currentSpecs.pricePrimary }}
-                  </div>
-                  <div class="store-logo-inline" v-if="['falabella', 'ripley', 'paris'].includes(store.theme)">
-                     <img v-if="store.theme === 'falabella'" src="/assets/images/T-FALABELLA.svg" class="store-logo-sub" />
-                     <img v-if="store.theme === 'ripley'" src="/assets/images/T-RIPLEY.svg" class="store-logo-sub" />
-                     <img v-if="store.theme === 'paris'" src="/assets/images/T-CENCOSUD.svg" class="store-logo-sub" />
-                  </div>
-                </div>
-             </div>
-             <div v-if="store.currentSpecs.priceSecondary" class="price-secondary-group">
-                <div class="price-row">
-                  <div class="retail-badge badge-all">TODO MEDIO DE PAGO</div>
-                  <div class="price-secondary">
-                    {{ store.currentSpecs.priceSecondary }}
-                  </div>
-                </div>
-             </div>
-          </div>
-        </div>
-      </main>
-
-      <footer class="footer"></footer>
+      <SpecsModal 
+        v-if="showSpecsModal"
+        @close="showSpecsModal = false"
+      />
     </div>
 
-    <!-- Admin Hotspots (Now require 4 clicks) -->
+    <!-- Admin Hotspots (Now outside .app-container to avoid pixel-shift offset) -->
     <div id="settings-hotspot" class="admin-hotspot top-right" @click="handleHotspotClick('settings')"></div>
     <div id="exit-hotspot" class="admin-hotspot bottom-right" @click="handleHotspotClick('exit')"></div>
-
-    <!-- Video View (Inactivity) -->
-    <div id="video-view" v-show="store.isVideoMode && !store.isLoading" class="view active">
-       <VideoPlayer v-if="store.isVideoMode" />
-    </div>
-
-    <!-- Modals -->
-    <PasswordModal 
-      v-if="showPasswordModal" 
-      :mode="passwordMode"
-      @close="showPasswordModal = false"
-      @verified="onPasswordVerified"
-    />
-
-    <AdminModal 
-      v-if="showAdminModal"
-      @close="showAdminModal = false"
-    />
-
-    <SpecsModal 
-      v-if="showSpecsModal"
-      @close="showSpecsModal = false"
-    />
   </div>
 </template>
 
@@ -146,6 +159,11 @@ const passwordMode = ref('settings');
 const bgVideo = ref(null);
 const landingVideo = ref(null);
 const isInternalFocusHack = ref(false);
+const isLandingReady = ref(false);
+
+// Retry counters for video recovery
+const bgRetryCount = ref(0);
+const landingRetryCount = ref(0);
 
 // Sincronizar estado global de modales
 watch([showPasswordModal, showAdminModal, showSpecsModal], ([p, a, s]) => {
@@ -232,19 +250,51 @@ const resumeInfoVideos = () => {
 
   if (bgVideo.value && savedBgSrc) {
     // Si el src ya está vacío, restaurarlo
-    if (!bgVideo.value.src || bgVideo.value.src.includes('undefined')) {
+    if (!bgVideo.value.src || bgVideo.value.src.includes('undefined') || bgVideo.value.src === window.location.href) {
       bgVideo.value.src = savedBgSrc;
+      bgVideo.value.load(); // Importante: llamar a load() tras restaurar src
     }
     bgVideo.value.style.opacity = '1';
-    bgVideo.value.play().catch(() => {});
+    bgVideo.value.play().catch((e) => console.warn("Bg video play failed:", e));
   }
   
   if (landingVideo.value && savedLandingSrc) {
-    if (!landingVideo.value.src || landingVideo.value.src.includes('undefined')) {
+    if (!landingVideo.value.src || landingVideo.value.src.includes('undefined') || landingVideo.value.src === window.location.href) {
       landingVideo.value.src = savedLandingSrc;
+      landingVideo.value.load(); // Importante: llamar a load() tras restaurar src
     }
     landingVideo.value.style.opacity = '1';
-    landingVideo.value.play().catch(() => {});
+    landingVideo.value.play().catch((e) => console.warn("Landing video play failed:", e));
+  }
+};
+
+const handleBgVideoError = () => {
+  if (bgRetryCount.value < 3) {
+    bgRetryCount.value++;
+    console.warn(`Background video error detected, reloading (retry ${bgRetryCount.value}/3)...`);
+    setTimeout(() => {
+      if (bgVideo.value) {
+        bgVideo.value.load();
+        bgVideo.value.play().catch(() => {});
+      }
+    }, 2000);
+  } else {
+    console.error("Background video failed after max retries. Keeping static fallback.");
+  }
+};
+
+const handleLandingVideoError = () => {
+  if (landingRetryCount.value < 3) {
+    landingRetryCount.value++;
+    console.warn(`Landing video error detected, reloading (retry ${landingRetryCount.value}/3)...`);
+    setTimeout(() => {
+      if (landingVideo.value) {
+        landingVideo.value.load();
+        landingVideo.value.play().catch(() => {});
+      }
+    }, 2000);
+  } else {
+    console.error("Landing video failed after max retries.");
   }
 };
 
@@ -345,6 +395,7 @@ const onPasswordVerified = () => {
 let unlistenInactivity = null;
 let unlistenActivity = null;
 let unlistenMinimized = null;
+let unlistenRestored = null;
 
 const initPixelShift = () => {
   // Move 1-2 pixels every 2 minutes to prevent OLED burn-in
@@ -369,11 +420,20 @@ onMounted(async () => {
     // Cuando Rust minimiza la app: PAUSAR el timer de JS.
     // Rust asume el control de la vigilancia de inactividad.
     unlistenMinimized = await listen('app-minimized', () => {
-      console.log('App minimized: pausing JS inactivity timer, Rust takes over.');
+      console.log('App minimized: pausing JS inactivity timer and videos.');
       if (inactivityTimer.value) {
         clearTimeout(inactivityTimer.value);
         inactivityTimer.value = null;
       }
+      pauseInfoVideos();
+    });
+
+    unlistenRestored = await listen('app-restored', () => {
+      console.log('App restored: resuming videos and resetting timer.');
+      if (!store.isModalOpen && !store.isVideoMode) {
+        resumeInfoVideos();
+      }
+      resetTimer();
     });
 
     // Cuando Rust detecta 3 min de inactividad: activar modo video
@@ -405,12 +465,21 @@ onUnmounted(() => {
   if (unlistenMinimized) unlistenMinimized();
   if (unlistenInactivity) unlistenInactivity();
   if (unlistenActivity) unlistenActivity();
+  if (unlistenRestored) unlistenRestored();
   
   clearTimeout(inactivityTimer.value);
 });
 </script>
 
 <style>
+.app-root {
+  width: 100vw;
+  height: 100vh;
+  overflow: hidden;
+  position: relative;
+  background: var(--bg-dark);
+}
+
 /* Global styles are imported in main.js */
 .loading-screen {
   position: fixed;
