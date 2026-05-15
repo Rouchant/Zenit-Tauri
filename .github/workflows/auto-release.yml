@@ -10,6 +10,10 @@ on:
       - src-tauri/Cargo.toml
   workflow_dispatch:
 
+# 1. Fuerza a GitHub a usar Node 24 para ejecutar las acciones internas (quitar advertencias)
+env:
+  FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: true
+
 permissions:
   contents: write
 
@@ -22,11 +26,13 @@ jobs:
         with:
           fetch-depth: 0
 
+      # 2. Instalamos pnpm v11 (tu versión local) usando la acción v4
       - name: Install pnpm
         uses: pnpm/action-setup@v4
         with:
           version: 11
 
+      # 3. Configuramos Node.js v24 (requisito de pnpm 11 y estándar 2026)
       - name: Setup Node.js
         uses: actions/setup-node@v4
         with:
@@ -62,8 +68,12 @@ jobs:
           $commitCount = [int](git rev-list --count HEAD)
           
           if ($commitCount -gt 1) {
-            $previousPackage = git show HEAD^:package.json | ConvertFrom-Json
-            $previousVersion = $previousPackage.version
+            try {
+              $previousPackage = git show HEAD^:package.json | ConvertFrom-Json
+              $previousVersion = $previousPackage.version
+            } catch {
+              $previousVersion = ""
+            }
           }
           
           $tagRef = "refs/tags/v$version"
@@ -94,4 +104,6 @@ jobs:
 
       - name: Skip release log
         if: steps.release_meta.outputs.should_release != 'true'
-        run: echo "No se generará release para v${{ steps.release_meta.outputs.version }} (motivo:${{ steps.release_meta.outputs.reason }})."
+        run: |
+          echo "No se generará release para v${{ steps.release_meta.outputs.version }}"
+          echo "Motivo: ${{ steps.release_meta.outputs.reason }}"
