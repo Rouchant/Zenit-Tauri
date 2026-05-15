@@ -10,35 +10,36 @@ on:
       - src-tauri/Cargo.toml
   workflow_dispatch:
 
+# Fuerza a GitHub a usar Node 24 para las acciones internas
+env:
+  FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: true
+
 permissions:
   contents: write
 
 jobs:
   release:
     runs-on: windows-latest
-
     steps:
       - name: Checkout repository
         uses: actions/checkout@v4
         with:
-          fetch-depth: 0
+          fetch-depth: 0 # Crucial para poder leer los tags previos
 
-      # 1. Instalar pnpm antes de Setup Node
       - name: Install pnpm
-        uses: pnpm/action-setup@v3
+        uses: pnpm/action-setup@v4
         with:
-          version: 8 # Puedes cambiarlo a la versión que prefieras (9 es la actual estable)
+          version: 11
 
       - name: Setup Node.js
         uses: actions/setup-node@v4
         with:
-          node-version: 20
-          cache: pnpm # Cambiamos npm por pnpm para el caché
+          node-version: 24
+          cache: pnpm
 
       - name: Setup Rust
         uses: dtolnay/rust-toolchain@stable
 
-      # 2. Usar pnpm para instalar dependencias
       - name: Install frontend dependencies
         run: pnpm install --frozen-lockfile
 
@@ -46,65 +47,55 @@ jobs:
         id: release_meta
         shell: pwsh
         run: |
+          # 1. Leer versiones de los archivos de configuración
           try {
-            $version = (Get-Content "package.json" | ConvertFrom-Json).version
-            $tauriVersion = (Get-Content "src-tauri/tauri.conf.json" | ConvertFrom-Json).version
+            $packageJson = Get-Content "package.json" | ConvertFrom-Json
+            $version = $packageJson.version
+            $tauriConf = Get-Content "src-tauri/tauri.conf.json" | ConvertFrom-Json
+            $tauriVersion = $tauriConf.version
           } catch {
-            Write-Error "No se pudo leer la versión desde package.json o src-tauri/tauri.conf.json: $($_.Exception.Message)"
+            Write-Error "Error leyendo archivos de configuración: $($_.Exception.Message)"
             exit 1
           }
 
           if ($version -ne $tauriVersion) {
-            Write-Error "La versión de package.json ($version) no coincide con src-tauri/tauri.conf.json ($tauriVersion)."
+            Write-Error "La versión de package.json ($version) no coincide con tauri.conf.json ($tauriVersion)."
             exit 1
           }
-
+          
+          # Guardar versión para pasos siguientes
           "version=$version" >> $env:GITHUB_OUTPUT
-
-          $previousVersion = ""
-          $previousPackage = ""
-          $commitCount = [int](git rev-list --count HEAD)
-          if ($commitCount -gt 1) {
-            $previousPackagePath = git ls-tree --name-only HEAD^ package.json
-            if ($previousPackagePath -eq "package.json") {
-              $previousPackage = git show HEAD^:package.json
-            }
-            if ($previousPackage) {
-              $previousVersion = ($previousPackage | ConvertFrom-Json).version
-            }
-          }
-
-          $versionChanged = $true
-          if ($previousVersion) {
-            $versionChanged = $previousVersion -ne $version
-          }
-
-          $tagRef = "refs/tags/v$version"
-          $tagExists = git ls-remote --tags origin $tagRef
-
-          if (-not $versionChanged) {
+          
+          # 2. Buscar el último tag en el repositorio (formato vX.X.X)
+          # Si no hay tags, usamos 0.0.0 como base
+          $latestTag = git describe --tags --abbrev=0 --match "v*" 2>$null
+          $cleanTag = if ($latestTag) { $latestTag.TrimStart('v') } else { "0.0.0" }
+          
+          # 3. Comparación lógica
+          if ($version -eq $cleanTag) {
+            echo "La versión actual ($version) ya ha sido liberada en el tag $latestTag."
             "should_release=false" >> $env:GITHUB_OUTPUT
             "reason=noVersionChange" >> $env:GITHUB_OUTPUT
-          } elseif ($tagExists) {
-            "should_release=false" >> $env:GITHUB_OUTPUT
-            "reason=tagAlreadyExists" >> $env:GITHUB_OUTPUT
           } else {
+            echo "Nueva versión detectada: $version (Anterior: $cleanTag)."
             "should_release=true" >> $env:GITHUB_OUTPUT
             "reason=versionChanged" >> $env:GITHUB_OUTPUT
           }
 
       - name: Build and create GitHub Release
         if: steps.release_meta.outputs.should_release == 'true'
-        uses: tauri-apps/tauri-action@v0
+        uses: tauri-apps/tauri-action@v0.5
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         with:
-          tagName: v__VERSION__
-          releaseName: Zenit v__VERSION__
-          releaseBody: Release automática generada por GitHub Actions.
+          tagName: v${{ steps.release_meta.outputs.version }}
+          releaseName: Zenit v${{ steps.release_meta.outputs.version }}
+          releaseBody: "Release automática generada por GitHub Actions tras detectar cambio de versión."
           releaseDraft: false
           prerelease: false
 
-      - name: Skip release when tag already exists
+      - name: Skip release log
         if: steps.release_meta.outputs.should_release != 'true'
-        run: echo "No se generará release para v${{ steps.release_meta.outputs.version }} (motivo: ${{ steps.release_meta.outputs.reason }})."
+        run: |
+          echo "No se generará release para la versión ${{ steps.release_meta.outputs.version }}"
+          echo "Motivo: ${{ steps.release_meta.outputs.reason }}"
