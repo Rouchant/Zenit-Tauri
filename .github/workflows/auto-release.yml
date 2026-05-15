@@ -20,6 +20,8 @@ jobs:
     steps:
       - name: Checkout repository
         uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
 
       # 1. Instalar pnpm antes de Setup Node
       - name: Install pnpm
@@ -44,16 +46,51 @@ jobs:
         id: release_meta
         shell: pwsh
         run: |
-          $version = (Get-Content "src-tauri/tauri.conf.json" | ConvertFrom-Json).version
+          try {
+            $version = (Get-Content "package.json" | ConvertFrom-Json).version
+            $tauriVersion = (Get-Content "src-tauri/tauri.conf.json" | ConvertFrom-Json).version
+          } catch {
+            Write-Error "No se pudo leer la versión desde package.json o src-tauri/tauri.conf.json: $($_.Exception.Message)"
+            exit 1
+          }
+
+          if ($version -ne $tauriVersion) {
+            Write-Error "La versión de package.json ($version) no coincide con src-tauri/tauri.conf.json ($tauriVersion)."
+            exit 1
+          }
+
           "version=$version" >> $env:GITHUB_OUTPUT
+
+          $previousVersion = ""
+          $previousPackage = ""
+          $commitCount = [int](git rev-list --count HEAD)
+          if ($commitCount -gt 1) {
+            $previousPackagePath = git ls-tree --name-only HEAD^ package.json
+            if ($previousPackagePath -eq "package.json") {
+              $previousPackage = git show HEAD^:package.json
+            }
+            if ($previousPackage) {
+              $previousVersion = ($previousPackage | ConvertFrom-Json).version
+            }
+          }
+
+          $versionChanged = $true
+          if ($previousVersion) {
+            $versionChanged = $previousVersion -ne $version
+          }
 
           $tagRef = "refs/tags/v$version"
           $tagExists = git ls-remote --tags origin $tagRef
 
-          if ($tagExists) {
+          if (-not $versionChanged) {
             "should_release=false" >> $env:GITHUB_OUTPUT
+            "reason=noVersionChange" >> $env:GITHUB_OUTPUT
+          } elseif ($tagExists) {
+            "should_release=false" >> $env:GITHUB_OUTPUT
+            "reason=tagAlreadyExists" >> $env:GITHUB_OUTPUT
           } else {
             "should_release=true" >> $env:GITHUB_OUTPUT
+            "reason=versionChanged" >> $env:GITHUB_OUTPUT
           }
 
       - name: Build and create GitHub Release
@@ -70,4 +107,4 @@ jobs:
 
       - name: Skip release when tag already exists
         if: steps.release_meta.outputs.should_release != 'true'
-        run: echo "Release v${{ steps.release_meta.outputs.version }} ya existe. No se generará una nueva."
+        run: echo "No se generará release para v${{ steps.release_meta.outputs.version }} (motivo: ${{ steps.release_meta.outputs.reason }})."
