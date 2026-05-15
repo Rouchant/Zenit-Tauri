@@ -21,17 +21,24 @@ jobs:
       - name: Checkout repository
         uses: actions/checkout@v4
 
+      # 1. Instalar pnpm antes de Setup Node
+      - name: Install pnpm
+        uses: pnpm/action-setup@v3
+        with:
+          version: 8 # Puedes cambiarlo a la versión que prefieras (9 es la actual estable)
+
       - name: Setup Node.js
         uses: actions/setup-node@v4
         with:
           node-version: 20
-          cache: npm
+          cache: pnpm # Cambiamos npm por pnpm para el caché
 
       - name: Setup Rust
         uses: dtolnay/rust-toolchain@stable
 
+      # 2. Usar pnpm para instalar dependencias
       - name: Install frontend dependencies
-        run: npm ci
+        run: pnpm install --frozen-lockfile
 
       - name: Resolve release version
         id: release_meta
