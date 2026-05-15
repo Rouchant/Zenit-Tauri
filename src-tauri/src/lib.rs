@@ -173,6 +173,9 @@ pub fn run() {
                         // Si la app está en primer plano y no minimizada, reforzamos el foco
                         if !is_minimized && is_visible {
                             let _ = window.set_focus();
+                            // Asegurar que no haya bordes residuales de Windows
+                            let _ = window.set_resizable(false);
+                            let _ = window.set_decorations(false);
                         }
                     }
                 }

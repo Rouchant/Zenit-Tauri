@@ -267,8 +267,8 @@
 /* Hotspots */
 .admin-hotspot {
     position: fixed;
-    width: clamp(60px, 6vw, 90px);
-    height: clamp(60px, 6vw, 90px);
+    width: clamp(60px, 5vw, 80px);
+    height: clamp(60px, 5vw, 80px);
     z-index: 2147483647;
     cursor: default;
     background: transparent;
@@ -277,14 +277,14 @@
 .admin-hotspot.top-right { 
     top: 0; 
     right: 0; 
-    height: clamp(80px, 10vh, 120px);
-    width: clamp(80px, 10vw, 120px);
+    height: clamp(60px, 5vh, 80px);
+    width: clamp(60px, 5vw, 80px);
 }
 .admin-hotspot.bottom-right { 
     bottom: 0; 
     right: 0; 
-    height: clamp(80px, 10vh, 120px);
-    width: clamp(80px, 10vw, 120px);
+    height: clamp(60px, 5vh, 80px);
+    width: clamp(60px, 5vw, 80px);
 }
 
 /* Price Tag */
