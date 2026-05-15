@@ -133,8 +133,13 @@ async fn start_idle_monitor(app: AppHandle, state: tauri::State<'_, AppState>) {
             
             // Si el PC está inactivo por más de 3 min, restaurar Zenit (Modo Kiosk Activo)
             if !is_restored && idle_time >= IDLE_LIMIT_MS {
-                let _ = restore_app_logic(&app_clone).await;
+                // Notificar al frontend ANTES de restaurar para que cambie a modo video mientras está oculto
                 let _ = app_clone.emit("trigger-inactivity-video", ());
+                
+                // Pequeño margen para que el WebView procese el cambio de estado
+                tokio::time::sleep(tokio::time::Duration::from_millis(150)).await;
+
+                let _ = restore_app_logic(&app_clone).await;
                 is_restored = true;
                 // Pequeña espera para evitar detectar la actividad propia de la restauración
                 tokio::time::sleep(tokio::time::Duration::from_secs(6)).await;
