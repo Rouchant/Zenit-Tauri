@@ -9,7 +9,7 @@ ElevationRequirement: elevationRequired
 Installers:
 - Architecture: x64
   InstallerUrl: https://github.com/Rouchant/Zenit-Tauri/releases/download/v1.3.2/Zenit_1.3.2_x64-setup.exe
-  InstallerSha256: D2F1CC2906F0EA24EE4A6A1D6E587FA309526DC9B161AFB9BDCD3547ACC9D328 # ACTUALIZAR TRAS BUILD
+  InstallerSha256: 35B2E810F24B99DF93E754EEDF23360BF5D3959DC63097A8D8CA131F5ADCC879
 ManifestType: installer
 ManifestVersion: 1.12.0
 ReleaseDate: 2026-05-15

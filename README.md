@@ -35,12 +35,19 @@ Zenit utiliza un motor de telemetría modularizado en Rust para una velocidad y 
 ### 🧠 Eficiencia de Recursos (Green Kiosk)
 - **Gestión Híbrida de Memoria**: Sistema de vaciado de buffers de video (`src clearing`) que libera entre **150MB y 300MB de RAM** instantáneamente al abrir modales o entrar en modo inactividad.
 - **Chromium Tuning**: Flags optimizados (`--in-process-gpu`, `--aggressive-cache-discard`) para minimizar el footprint del WebView2 en equipos con recursos limitados.
-- **Watchdog de Estabilidad**: Lógica reactiva consolidada que previene condiciones de carrera (race conditions) y asegura la recuperación del foco absoluto.
+- **Watchdog de Estabilidad**: Lógica reactiva consolidada que previene condiciones de carrera (race conditions), asegura la recuperación del foco absoluto y garantiza transiciones limpias al video promocional tras inactividad.
 
 ### 🏷️ Personalización Comercial (E-Commerce Ready)
 - **Precios Dinámicos**: Soporte para precios de oferta (Exclusivo Tarjeta) y normales, con diseño premium adaptable.
 - **Branding de Retail**: Soporte para logos de retails (**Falabella, Paris, Ripley**) y marcas líderes (**Asus, HP, Samsung**) con matices de color dinámicos en los fondos.
 - **Unidades Uniformes**: Formato de texto profesional sin espacios inconsistentes (`16GB`, `512GB`, `115W`).
+
+---
+
+## 📝 Notas de Versión (v1.3.2)
+- **Optimización de Restauración**: Corregido el "flicker" visual donde las especificaciones eran visibles momentáneamente durante la restauración automática por inactividad.
+- **Transiciones Mejoradas**: Reducción del tiempo de cambio de vista a 0.3s para una respuesta más fluida y profesional.
+- **Event Orchestration**: Sincronización precisa entre el backend (Rust) y el frontend (Vue) para asegurar que el contenido promocional sea lo primero que se visualice al "despertar" el equipo.
 
 ---
 
