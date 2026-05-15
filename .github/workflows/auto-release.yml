@@ -50,15 +50,19 @@ jobs:
           $tauriVersion = (Get-Content "src-tauri/tauri.conf.json" | ConvertFrom-Json).version
 
           if ($version -ne $tauriVersion) {
-            Write-Error "La version de package.json ($version) no coincide con src-tauri/tauri.conf.json ($tauriVersion)."
+            Write-Error "La versión de package.json ($version) no coincide con src-tauri/tauri.conf.json ($tauriVersion)."
             exit 1
           }
 
           "version=$version" >> $env:GITHUB_OUTPUT
 
           $previousVersion = ""
-          if (git rev-parse HEAD^ 2>$null) {
-            $previousPackage = git show HEAD^:package.json 2>$null
+          $commitCount = [int](git rev-list --count HEAD)
+          if ($commitCount -gt 1) {
+            $previousPackagePath = git ls-tree --name-only HEAD^ package.json
+            if ($previousPackagePath -eq "package.json") {
+              $previousPackage = git show HEAD^:package.json
+            }
             if ($previousPackage) {
               $previousVersion = ($previousPackage | ConvertFrom-Json).version
             }
