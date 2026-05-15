@@ -6,7 +6,7 @@ mod guardian;
 use std::fs;
 use std::sync::Arc;
 use tokio::sync::Mutex;
-use tauri::Manager;
+use tauri::{Manager, Emitter};
 use tauri_plugin_store::StoreExt;
 
 use crate::state::AppState;
@@ -206,11 +206,19 @@ pub fn run() {
 
         // Manejo de eventos de ventana
         .on_window_event(|window, event| {
-            if let tauri::WindowEvent::CloseRequested { api, .. } = event {
-                if window.label() == "main" {
-                    // Bloquear el cierre de la ventana principal para mantener el modo quiosco
-                    api.prevent_close();
+            match event {
+                tauri::WindowEvent::CloseRequested { api, .. } => {
+                    if window.label() == "main" {
+                        api.prevent_close();
+                    }
                 }
+                // Detectar cuando la ventana se restaura desde la barra de tareas (Windows nativo)
+                tauri::WindowEvent::Focused(focused) => {
+                    if *focused && window.label() == "main" {
+                        let _ = window.emit("app-restored", ());
+                    }
+                }
+                _ => {}
             }
         })
         .run(tauri::generate_context!())

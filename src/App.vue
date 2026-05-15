@@ -415,6 +415,14 @@ onMounted(async () => {
       // Reanudar el timer de JS ahora que la app está de vuelta
       resetTimer();
     });
+
+    // Refuerzo: Si el navegador detecta foco, intentar reanudar videos
+    window.addEventListener('focus', () => {
+      console.log('Browser focus detected, checking video states...');
+      if (!store.isModalOpen && !store.isVideoMode) {
+        resumeInfoVideos();
+      }
+    });
   }
 });
 
