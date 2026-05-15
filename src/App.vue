@@ -129,9 +129,10 @@
       />
     </div>
 
-    <!-- Admin Hotspots (Now outside .app-container to avoid pixel-shift offset) -->
-    <div id="settings-hotspot" class="admin-hotspot top-right" @click="handleHotspotClick('settings')"></div>
-    <div id="exit-hotspot" class="admin-hotspot bottom-right" @click="handleHotspotClick('exit')"></div>
+    <Teleport to="body">
+      <div id="settings-hotspot" class="admin-hotspot top-right" @click="handleHotspotClick('settings')"></div>
+      <div id="exit-hotspot" class="admin-hotspot bottom-right" @click="handleHotspotClick('exit')"></div>
+    </Teleport>
   </div>
 </template>
 

@@ -275,16 +275,16 @@
 }
 
 .admin-hotspot.top-right { 
-    top: -10px; 
-    right: -5px; 
-    height: calc(clamp(60px, 6vw, 90px) + 10px);
-    width: calc(clamp(60px, 6vw, 90px) + 5px);
+    top: 0; 
+    right: 0; 
+    height: clamp(80px, 10vh, 120px);
+    width: clamp(80px, 10vw, 120px);
 }
 .admin-hotspot.bottom-right { 
-    bottom: -10px; 
-    right: -5px; 
-    height: calc(clamp(60px, 6vw, 90px) + 10px);
-    width: calc(clamp(60px, 6vw, 90px) + 5px);
+    bottom: 0; 
+    right: 0; 
+    height: clamp(80px, 10vh, 120px);
+    width: clamp(80px, 10vw, 120px);
 }
 
 /* Price Tag */
