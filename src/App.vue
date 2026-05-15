@@ -206,64 +206,24 @@ const handleHotspotClick = (mode) => {
 // Pausar videos del info-view cuando no son visibles (modal abierto o modo video/screensaver).
 // Además de pausar, vaciamos el src para liberar los buffers de frames decodificados (~50-100MB cada uno).
 // Al reanudar, reasignamos el src original y damos play (más rápido que destruir/recrear el DOM).
-let savedBgSrc = '';
-let savedLandingSrc = '';
-let bgPauseTimeout = null;
-let landingPauseTimeout = null;
+
 
 const pauseInfoVideos = () => {
-  // Cancelar cualquier intento previo de reanudación o pausa
-  if (bgPauseTimeout) clearTimeout(bgPauseTimeout);
-  if (landingPauseTimeout) clearTimeout(landingPauseTimeout);
-
   if (bgVideo.value) {
-    bgVideo.value.style.opacity = '0';
-    savedBgSrc = bgVideo.value.src;
     bgVideo.value.pause();
-    
-    bgPauseTimeout = setTimeout(() => {
-      if (bgVideo.value) {
-        bgVideo.value.removeAttribute('src');
-        bgVideo.value.load();
-      }
-    }, 500);
   }
   
   if (landingVideo.value) {
-    landingVideo.value.style.opacity = '0.3';
-    savedLandingSrc = landingVideo.value.src;
     landingVideo.value.pause();
-    
-    landingPauseTimeout = setTimeout(() => {
-      if (landingVideo.value) {
-        landingVideo.value.removeAttribute('src');
-        landingVideo.value.load();
-      }
-    }, 500);
   }
 };
 
 const resumeInfoVideos = () => {
-  // Cancelar pausas pendientes para que no vacíen el src justo después de restaurarlo
-  if (bgPauseTimeout) clearTimeout(bgPauseTimeout);
-  if (landingPauseTimeout) clearTimeout(landingPauseTimeout);
-
-  if (bgVideo.value && savedBgSrc) {
-    // Si el src ya está vacío, restaurarlo
-    if (!bgVideo.value.src || bgVideo.value.src.includes('undefined') || bgVideo.value.src === window.location.href) {
-      bgVideo.value.src = savedBgSrc;
-      bgVideo.value.load(); // Importante: llamar a load() tras restaurar src
-    }
-    bgVideo.value.style.opacity = '1';
+  if (bgVideo.value) {
     bgVideo.value.play().catch((e) => console.warn("Bg video play failed:", e));
   }
   
-  if (landingVideo.value && savedLandingSrc) {
-    if (!landingVideo.value.src || landingVideo.value.src.includes('undefined') || landingVideo.value.src === window.location.href) {
-      landingVideo.value.src = savedLandingSrc;
-      landingVideo.value.load(); // Importante: llamar a load() tras restaurar src
-    }
-    landingVideo.value.style.opacity = '1';
+  if (landingVideo.value) {
     landingVideo.value.play().catch((e) => console.warn("Landing video play failed:", e));
   }
 };

@@ -61,6 +61,9 @@ pub fn run() {
         
         // Autoplay: Asegurar que los videos reproduzcan sin gesto del usuario
         "--autoplay-policy=no-user-gesture-required",
+        
+        // Color: Forzar perfil sRGB para evitar inconsistencias entre monitores/HDR
+        "--force-color-profile=srgb",
     ];
     std::env::set_var(
         "WEBVIEW2_ADDITIONAL_BROWSER_ARGUMENTS",

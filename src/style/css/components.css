@@ -274,8 +274,18 @@
     background: transparent;
 }
 
-.admin-hotspot.top-right { top: 0; right: 0; }
-.admin-hotspot.bottom-right { bottom: 0; right: 0; }
+.admin-hotspot.top-right { 
+    top: -10px; 
+    right: -5px; 
+    height: calc(clamp(60px, 6vw, 90px) + 10px);
+    width: calc(clamp(60px, 6vw, 90px) + 5px);
+}
+.admin-hotspot.bottom-right { 
+    bottom: -10px; 
+    right: -5px; 
+    height: calc(clamp(60px, 6vw, 90px) + 10px);
+    width: calc(clamp(60px, 6vw, 90px) + 5px);
+}
 
 /* Price Tag */
 .price-tag-container {
