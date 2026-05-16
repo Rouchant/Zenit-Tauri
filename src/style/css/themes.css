@@ -1,5 +1,5 @@
 /* Retail Themes */
-.theme-falabella { --primary: #B9D40D; --secondary: #8da10a; --primary-rgb: 185, 212, 13; --bg-overlay-start: rgba(185, 212, 13, 0.60); --bg-overlay-end: rgba(25, 30, 5, 0.98); }
+.theme-falabella { --primary: #B9D40D; --secondary: #8da10a; --primary-rgb: 185, 212, 13; --bg-overlay-start: rgba(197, 227, 0, 0.6); --bg-overlay-end: rgba(25, 30, 5, 0.98); }
 .theme-paris { --primary: #00D1FF; --secondary: #00A3C7; --primary-rgb: 0, 209, 255; --bg-overlay-start: rgba(0, 209, 255, 0.6); --bg-overlay-end: rgba(5, 25, 35, 0.98); }
 .theme-ripley { --primary: #AF47FF; --secondary: #FFB800; --primary-rgb: 175, 71, 255; --bg-overlay-start: rgba(175, 71, 255, 0.65); --bg-overlay-end: rgba(25, 10, 40, 0.98); }
 .theme-default { --primary: #00f2aa; --secondary: #007bb0; --primary-rgb: 0, 242, 170; --bg-overlay-start: rgba(0, 242, 170, 0.6); --bg-overlay-end: rgba(5, 35, 25, 0.98); }
