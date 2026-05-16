@@ -1,5 +1,5 @@
 <script setup>
-import { computed } from 'vue';
+import { ref, computed } from 'vue';
 import { useSpecsStore } from '../store/specs';
 import SpecCard from './SpecCard.vue';
 import { tauriAPI } from '../api/tauriApi';
@@ -18,7 +18,8 @@ const procIcon = computed(() => {
 
 const osLogo = computed(() => '/assets/ui/windows-11.svg');
 
-const tryPc = () => {
+const tryPc = (e) => {
+    if (e && e.target) e.target.blur();
     tauriAPI.minimizeApp(store.currentSpecs.store);
 };
 </script>
@@ -42,7 +43,7 @@ const tryPc = () => {
         :value="specs.ram"
         icon="/assets/ui/ram.svg"
       />
-
+      
       <SpecCard 
         id="card-storage"
         label="Almacenamiento"
@@ -72,6 +73,12 @@ const tryPc = () => {
       />
     </div>
     
-    <button id="view-pc" class="view-pc-btn" @click="tryPc">Prueba esta PC</button>
+    <button 
+      id="view-pc" 
+      class="view-pc-btn" 
+      @click="tryPc($event)"
+    >
+      Prueba esta PC
+    </button>
   </div>
 </template>

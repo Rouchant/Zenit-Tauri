@@ -1,6 +1,6 @@
 [package]
 name = "zenit"
-version = "1.3.5"
+version = "1.3.6"
 description = "Zenit - Showcase App for POS Laptops"
 authors = ["Zenit"]
 license = "ISC"
@@ -30,6 +30,7 @@ tauri-plugin-store = "2"
 tauri-plugin-window-state = "2"
 tauri-plugin-notification = "2"
 tauri-plugin-prevent-default = "4"
+tauri-plugin-global-shortcut = "2"
 sysinfo = "0.30"
 wmi = "0.13"
 regex = "1.10"

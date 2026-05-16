@@ -1,4 +1,5 @@
 <script setup>
+import { ref } from 'vue';
 import { useSpecsStore } from '../../store/specs';
 import { tauriAPI } from '../../api/tauriApi';
 
@@ -6,7 +7,8 @@ const emit = defineEmits(['close']);
 const store = useSpecsStore();
 const specs = store.currentSpecs;
 
-const tryPc = () => {
+const tryPc = (e) => {
+    if (e && e.target) e.target.blur();
     emit('close');
     tauriAPI.minimizeApp(specs.store);
 };
@@ -64,7 +66,13 @@ const tryPc = () => {
             </div>
         </div>
         <div class="modal-footer" style="padding-top: 30px; display: flex; justify-content: center;">
-            <button class="view-pc-btn" style="max-width: 400px;" @click="tryPc">Prueba esta PC</button>
+            <button 
+              class="view-pc-btn" 
+              style="max-width: 400px;" 
+              @click="tryPc($event)"
+            >
+              Prueba esta PC
+            </button>
         </div>
     </div>
   </div>

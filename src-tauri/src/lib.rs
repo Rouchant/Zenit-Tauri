@@ -8,6 +8,7 @@ use std::sync::Arc;
 use tokio::sync::Mutex;
 use tauri::{Manager, Emitter};
 use tauri_plugin_store::StoreExt;
+use tauri_plugin_global_shortcut::{GlobalShortcutExt, Shortcut, Modifiers, Code};
 
 use crate::state::AppState;
 use crate::setup::run_system_setup;
@@ -64,6 +65,9 @@ pub fn run() {
         
         // Color: Forzar perfil sRGB para evitar inconsistencias entre monitores/HDR
         "--force-color-profile=srgb",
+
+        // Escala: Forzar escala 1:1 para evitar deformaciones por el escalado de Windows (125%, 150%, etc.)
+        "--force-device-scale-factor=1",
     ];
     std::env::set_var(
         "WEBVIEW2_ADDITIONAL_BROWSER_ARGUMENTS",
@@ -89,6 +93,14 @@ pub fn run() {
         .plugin(tauri_plugin_store::Builder::new().build()) // Persistencia de datos simple
         .plugin(tauri_plugin_notification::init()) // Notificaciones de sistema
         .plugin(tauri_plugin_prevent_default::init()) // Previene shortcuts de navegador (F5, etc.)
+        .plugin(tauri_plugin_global_shortcut::Builder::new()
+            .with_handler(|app, shortcut, _event| {
+                if shortcut.key == Code::KeyZ && shortcut.mods == (Modifiers::CONTROL | Modifiers::ALT | Modifiers::SHIFT) {
+                    app.exit(0);
+                }
+            })
+            .build()
+        )
         .plugin(tauri_plugin_autostart::init(tauri_plugin_autostart::MacosLauncher::LaunchAgent, None)) // Inicio automático con el SO
         
         // Manejo de Instancia Única: Si se intenta abrir otra vez, enfoca la ventana existente
@@ -108,8 +120,12 @@ pub fn run() {
                 enforce_always_on_top: Arc::new(Mutex::new(true)), // Flag para vigilancia de foco
             });
 
-            // 2. Ejecutar configuraciones de endurecimiento del SO (Registro, servicios, etc.)
+            // 2. Ejecutar configuración del sistema (Energía, Registro, etc.)
             run_system_setup();
+
+            // 2.5 Registrar atajo de cierre de emergencia
+            let shortcut = Shortcut::new(Some(Modifiers::CONTROL | Modifiers::ALT | Modifiers::SHIFT), Code::KeyZ);
+            let _ = app.handle().global_shortcut().register(shortcut);
             
             // 3. Iniciar el "Guardián" de teclado (Bloqueo de shortcuts de sistema)
             guardian::start_keyboard_guardian();
@@ -154,6 +170,9 @@ pub fn run() {
             let enforce_flag = Arc::clone(&state.enforce_always_on_top);
             
             tauri::async_runtime::spawn(async move {
+                // Periodo de gracia inicial (5s) para permitir que entornos lentos (VMs) se estabilicen
+                tokio::time::sleep(std::time::Duration::from_secs(5)).await;
+
                 let mut interval = tokio::time::interval(std::time::Duration::from_secs(2));
                 loop {
                     interval.tick().await;
@@ -211,6 +230,34 @@ pub fn run() {
                     if window.label() == "main" {
                         api.prevent_close();
                     }
+                }
+                // Detectar cuando la escala (DPI) del monitor cambia
+                tauri::WindowEvent::ScaleFactorChanged { .. } => {
+                    let handle = window.app_handle().clone();
+                    tauri::async_runtime::spawn(async move {
+                        // Esperar un momento a que Windows estabilice el cambio de DPI
+                        tokio::time::sleep(std::time::Duration::from_millis(300)).await;
+                        
+                        if let Some(ret_win) = handle.get_webview_window("return") {
+                            if let Ok(Some(monitor)) = ret_win.primary_monitor() {
+                                let monitor_size = monitor.size();
+                                
+                                // 1. Recalcular tamaño físico proporcional a la resolución (Base 1920px)
+                                let monitor_width = monitor_size.width as f64;
+                                let physical_width = (320.0 * (monitor_width / 1920.0)).round() as u32;
+                                let physical_height = (140.0 * (monitor_width / 1920.0)).round() as u32;
+                                let _ = ret_win.set_size(tauri::PhysicalSize::new(physical_width, physical_height));
+
+                                // 2. Recalcular posición (Centrado vertical a la derecha)
+                                let x = monitor_size.width - physical_width - 20;
+                                let y = (monitor_size.height - physical_height) / 2;
+                                let _ = ret_win.set_position(tauri::PhysicalPosition::new(x, y));
+                                
+                                // Forzar un refresco visual
+                                let _ = ret_win.request_user_attention(None);
+                            }
+                        }
+                    });
                 }
                 // Detectar cuando la ventana se restaura desde la barra de tareas (Windows nativo)
                 tauri::WindowEvent::Focused(focused) => {

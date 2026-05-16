@@ -78,7 +78,7 @@
 .logo-placeholder img {
     height: 100%;
     width: auto;
-    max-width: 250px;
+    max-width: clamp(180px, 15vw, 280px);
     object-fit: contain;
     filter: brightness(0) invert(1) brightness(0.94);
 }
@@ -108,7 +108,7 @@
 .store-logo-placeholder img {
     height: 100%;
     width: auto;
-    max-width: 250px;
+    max-width: clamp(180px, 15vw, 280px);
     object-fit: contain;
     transform: scale(1.1); /* Subtle boost to size across all stores */
 }
@@ -194,7 +194,7 @@
     font-size: clamp(1.1rem, 1.8vw, 1.5rem);
     font-weight: 700;
     cursor: pointer;
-    transition: transform 0.3s ease, background 0.3s ease;
+    transition: all 0.15s cubic-bezier(0.4, 0, 0.2, 1);
     
     /* Prevención de desborde vertical */
     display: flex;
@@ -216,8 +216,14 @@
     text-overflow: ellipsis;
 }
 
+.view-pc-btn:active {
+    transform: scale(0.98);
+    box-shadow: 0 4px 8px rgba(0, 0, 0, 0.2);
+    filter: brightness(0.9);
+}
+
 .view-pc-btn:hover {
-    transform: scale(1.03);
+    box-shadow: 0 8px 25px rgba(0, 0, 0, 0.4);
     filter: brightness(1.1);
 }
 

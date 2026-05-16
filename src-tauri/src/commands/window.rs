@@ -94,10 +94,24 @@ pub async fn restore_app_logic(app: &AppHandle) -> Result<(), String> {
 async fn position_return_window(main: &tauri::WebviewWindow, ret: &tauri::WebviewWindow, store: Option<String>) -> Result<(), String> {
     if let Ok(Some(monitor)) = main.primary_monitor() {
         let monitor_size = monitor.size().to_logical::<f64>(monitor.scale_factor());
-        let window_size = ret.outer_size().map(|s| s.to_logical::<f64>(monitor.scale_factor())).unwrap_or(LogicalSize::new(320.0, 140.0));
+        
+        // Lógica de escalado físico constante (Neutraliza el DPI de Windows para el contenedor)
+        let dpi_factor = monitor.scale_factor();
+        let physical_width = monitor.size().width as f64;
+
+        // Calculamos el tamaño físico deseado (Base: 320px en una pantalla 1080p)
+        let target_physical_width = 320.0 * (physical_width / 1920.0);
+        let target_physical_height = 140.0 * (physical_width / 1920.0);
+
+        // Dividimos por el dpi_factor para que Windows no lo agrande
+        let width = target_physical_width / dpi_factor;
+        let height = target_physical_height / dpi_factor;
+        let window_size = LogicalSize::new(width, height);
         
         let x = monitor_size.width - window_size.width - 20.0;
-        let y = 40.0;
+        let y = (monitor_size.height - window_size.height) / 2.0;
+        
+        let _ = ret.set_size(window_size);
         let _ = ret.set_position(LogicalPosition::new(x, y));
     }
 
@@ -127,6 +141,9 @@ async fn start_idle_monitor(app: AppHandle, state: tauri::State<'_, AppState>) {
         let start_tick = unsafe { windows_sys::Win32::System::SystemInformation::GetTickCount() };
         let mut is_restored = false;
         
+        // Pequeño margen de seguridad para evitar falsos positivos por latencia en VMs
+        tokio::time::sleep(tokio::time::Duration::from_millis(500)).await;
+
         loop {
             tokio::time::sleep(tokio::time::Duration::from_secs(POLL_INTERVAL)).await;
             let idle_time = get_system_idle_time(start_tick);
