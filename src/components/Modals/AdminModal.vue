@@ -306,7 +306,7 @@ const isHardwareLimitReached = computed(() => {
     <div class="modal-content admin-modal-content">
         <div class="modal-header-main" style="margin-bottom: 20px;">
             <div class="header-title-row">
-                <h2>Personalizar Zenit <span style="font-size: 0.8rem; opacity: 0.5; font-weight: normal; margin-left: 10px;">v{{ appVersion }} <span style="color: var(--primary);">designed by Juan Marchant</span></span></h2>
+                <h2>Personalizar Zenit <span style="font-size: 0.8rem; opacity: 0.5; font-weight: normal; margin-left: 10px;">v{{ appVersion }} <span style="color: var(--primary);">desarrollado por Juan Marchant</span></span></h2>
             </div>
             
             <div class="tabs-menu" style="margin-top: 20px;">
