@@ -68,7 +68,7 @@
 
 /* Logos & Badges */
 .logo-placeholder {
-    height: clamp(35px, 5vh, 50px);
+    height: clamp(45.5px, 6.5vh, 65px);
     display: flex;
     align-items: center;
     width: auto;
@@ -98,7 +98,7 @@
 }
 
 .store-logo-placeholder {
-    height: clamp(45px, 6vh, 60px); /* Increased from 35-50px */
+    height: clamp(52.5px, 7vh, 70px); /* Increased from 35-50px */
     display: flex;
     align-items: center;
     width: auto;

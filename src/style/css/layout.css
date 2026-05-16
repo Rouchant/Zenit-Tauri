@@ -52,7 +52,7 @@ background: radial-gradient(ellipse at top, var(--bg-overlay-start) 0% 65%, var(
     display: flex;
     align-items: center;
     gap: clamp(15px, 2vw, 30px);
-    filter: drop-shadow(0px 4px 3px rgba(0, 0, 0, 0.4));
+    filter: drop-shadow(0px 4px 4px rgba(0, 0, 0, 0.6));
 }
 
 .logo-separator {

@@ -2,7 +2,7 @@
 
 <img src="public/assets/logo.png" alt="Zenit Logo" width="200">
 
-![Version](https://img.shields.io/badge/version-1.3.4-blue.svg)
+![Version](https://img.shields.io/badge/version-1.3.5-blue.svg)
 ![Tauri](https://img.shields.io/badge/framework-Tauri%20v2-FFC131.svg)
 ![Rust](https://img.shields.io/badge/backend-Rust-orange.svg)
 ![Vue 3](https://img.shields.io/badge/frontend-Vue%203-42b883.svg)
@@ -18,7 +18,7 @@ Zenit es una solución de nivel empresarial para **Showcase Terminals**, diseña
 
 ---
 
-## ✨ Características Principales (v1.3.4)
+## ✨ Características Principales (v1.3.5)
 
 ### 🖥️ Detección de Hardware Nativa (100% Rust & CIM/WMI)
 Zenit utiliza un motor de telemetría modularizado en Rust para una velocidad y precisión quirúrgica:
@@ -43,6 +43,10 @@ Zenit utiliza un motor de telemetría modularizado en Rust para una velocidad y 
 - **Unidades Uniformes**: Formato de texto profesional sin espacios inconsistentes (`16GB`, `512GB`, `115W`).
 
 ---
+
+## 📝 Notas de Versión (v1.3.5)
+- **Actualización de Mantenimiento**: Incremento de versión para nueva release.
+- **Sincronización de Archivos**: Asegurada la paridad de versiones entre Cargo, Tauri y Node.
 
 ## 📝 Notas de Versión (v1.3.4)
 - **Optimización de Restauración**: Corregido el "flicker" visual donde las especificaciones eran visibles momentáneamente durante la restauración automática por inactividad.
@@ -80,7 +84,7 @@ npm install
 # Modo Desarrollo (HMR)
 npm run dev
 
-# Compilar para Producción (Genera Zenit_1.3.4_x64-setup.exe)
+# Compilar para Producción (Genera Zenit_1.3.5_x64-setup.exe)
 npm run tauri build
 ```
 
