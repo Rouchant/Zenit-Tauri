@@ -315,6 +315,13 @@ export const useSpecsStore = defineStore('specs', () => {
       const m = (currentSpecs.value.model || '').toLowerCase();
       const asus = b.includes('asus') || m.includes('asus');
       return !asus || b.includes('generico');
+    }),
+    matchedBrand: computed(() => {
+      const brand = (currentSpecs.value.brand || '').toLowerCase();
+      const model = (currentSpecs.value.model || '').toLowerCase();
+      const combined = `${brand} ${model}`;
+      const knownBrands = ['asus', 'hp', 'samsung', 'acer', 'lenovo'];
+      return knownBrands.find(b => combined.includes(b)) || null;
     })
   };
 });

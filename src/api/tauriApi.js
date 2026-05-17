@@ -24,7 +24,7 @@ export const tauriAPI = {
   /** Obtiene las especificaciones del sistema via PowerShell */
   getSystemSpecs: () => safeInvoke('get_system_specs'),
   getVideoPath: () => safeInvoke('get_video_path'),
-  minimizeApp: (store) => safeInvoke('minimize_app', { store }),
+  minimizeApp: (store, brand) => safeInvoke('minimize_app', { store, brand }),
   restoreApp: () => safeInvoke('restore_app'),
   selectVideo: () => safeInvoke('select_video'),
   saveCustomVideo: (sourcePath, customName = null) => safeInvoke('save_custom_video', { sourcePath, customName }),

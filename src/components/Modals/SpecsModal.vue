@@ -10,7 +10,7 @@ const specs = store.currentSpecs;
 const tryPc = (e) => {
     if (e && e.target) e.target.blur();
     emit('close');
-    tauriAPI.minimizeApp(specs.store);
+    tauriAPI.minimizeApp(specs.store, store.matchedBrand);
 };
 </script>
 

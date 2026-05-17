@@ -240,17 +240,19 @@ pub fn run() {
                         
                         if let Some(ret_win) = handle.get_webview_window("return") {
                             if let Ok(Some(monitor)) = ret_win.primary_monitor() {
-                                let monitor_size = monitor.size();
+                                let scale_factor = monitor.scale_factor();
+                                let work_area = monitor.work_area();
                                 
                                 // 1. Recalcular tamaño físico proporcional a la resolución (Base 1920px)
-                                let monitor_width = monitor_size.width as f64;
-                                let physical_width = (320.0 * (monitor_width / 1920.0)).round() as u32;
-                                let physical_height = (140.0 * (monitor_width / 1920.0)).round() as u32;
+                                let monitor_width = monitor.size().width as f64;
+                                let physical_width = (240.0 * (monitor_width / 1920.0)).round() as u32;
+                                let physical_height = (200.0 * (monitor_width / 1920.0)).round() as u32;
                                 let _ = ret_win.set_size(tauri::PhysicalSize::new(physical_width, physical_height));
 
-                                // 2. Recalcular posición (Centrado vertical a la derecha)
-                                let x = monitor_size.width - physical_width - 20;
-                                let y = (monitor_size.height - physical_height) / 2;
+                                // 2. Recalcular posición (Centrado vertical relativo a la zona de trabajo visible)
+                                let x = work_area.position.x + work_area.size.width as i32 - physical_width as i32 - 20;
+                                let y_offset = (30.0 * scale_factor).round() as i32;
+                                let y = work_area.position.y + (work_area.size.height as i32 - physical_height as i32) / 2 - y_offset;
                                 let _ = ret_win.set_position(tauri::PhysicalPosition::new(x, y));
                                 
                                 // Forzar un refresco visual

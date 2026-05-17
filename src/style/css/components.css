@@ -87,6 +87,10 @@
     filter: none;
 }
 
+.logo-placeholder img.brand-hp {
+    transform: scale(1.3);
+}
+
 .logo {
     font-size: clamp(2rem, 4vw, 3rem);
     font-weight: 700;
@@ -98,7 +102,7 @@
 }
 
 .store-logo-placeholder {
-    height: clamp(52.5px, 7vh, 70px); /* Increased from 35-50px */
+    height: clamp(57.75px, 7.7vh, 77px);
     display: flex;
     align-items: center;
     width: auto;

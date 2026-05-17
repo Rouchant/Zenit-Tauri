@@ -20,7 +20,7 @@ const osLogo = computed(() => '/assets/ui/windows-11.svg');
 
 const tryPc = (e) => {
     if (e && e.target) e.target.blur();
-    tauriAPI.minimizeApp(store.currentSpecs.store);
+    tauriAPI.minimizeApp(store.currentSpecs.store, store.matchedBrand);
 };
 </script>
 

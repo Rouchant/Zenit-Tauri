@@ -5,13 +5,7 @@ import { useSpecsStore } from '../store/specs';
 const store = useSpecsStore();
 
 const brandLogo = computed(() => {
-  const brand = (store.currentSpecs.brand || '').toLowerCase();
-  const model = (store.currentSpecs.model || '').toLowerCase();
-  const combined = `${brand} ${model}`;
-  const knownBrands = ['asus', 'hp', 'samsung', 'acer', 'lenovo'];
-  const matched = knownBrands.find(b => combined.includes(b));
-  
-  if (matched) return `/assets/logos/${matched}.svg`;
+  if (store.matchedBrand) return `/assets/logos/${store.matchedBrand}.svg`;
   return null;
 });
 
@@ -27,7 +21,7 @@ const storeLogo = computed(() => {
   <header class="header">
     <div class="header-branding">
       <div class="logo-placeholder" id="header-logo-container">
-        <img v-if="brandLogo" :src="brandLogo" :alt="store.currentSpecs?.brand" class="brand-logo">
+        <img v-if="brandLogo" :src="brandLogo" :alt="store.currentSpecs?.brand" class="brand-logo" :class="'brand-' + store.matchedBrand">
       </div>
       <div class="logo-separator" v-if="brandLogo && storeLogo"></div>
       <div class="store-logo-placeholder" id="store-logo-container" v-if="storeLogo">

@@ -52,6 +52,10 @@
 
         html {
             background: transparent;
+            width: 100%;
+            height: 100%;
+            margin: 0;
+            padding: 0;
         }
         body {
             margin: 0;
@@ -60,7 +64,8 @@
             display: flex;
             justify-content: center;
             align-items: center;
-            height: 100vh;
+            height: 100%;
+            width: 100%;
             background: transparent;
             font-family: 'Outfit', sans-serif;
             user-select: none;
@@ -70,84 +75,129 @@
             background: linear-gradient(50deg, var(--secondary), var(--primary));
             color: #1A1A1A;
             border: none;
-            margin-top: 3px;
-            margin-bottom: auto;
             width: 95%;
             height: 95%;
             padding: 0;
+            margin-bottom: auto;
             border-radius: 16px;
             letter-spacing: 1px;
             font-weight: 800;
-            font-size: clamp(0.81rem, 6.75vw, 1.125rem);
-            line-height: 1;
+            font-size: 1rem;
+            line-height: 1.2;
             text-transform: uppercase;
             cursor: pointer;
-            transition: all 0.15s cubic-bezier(0.4, 0, 0.2, 1);
+            transition: all 0.1s cubic-bezier(0.4, 0, 0.2, 1);
             -webkit-app-region: no-drag; 
-            white-space: nowrap;
             display: flex;
             flex-direction: column;
             justify-content: center;
             align-items: center;
-            gap: 8px;
+            gap: 12px;
             box-shadow: 0 4px 5px rgba(0, 0, 0, 0.4);
             position: relative;
             z-index: 100;
             will-change: transform, filter;
         }
-        .return-btn:active {
-            transform: scale(0.98);
-            filter: brightness(0.9);
+        
+        /* NO HOVER EFFECTS */
+
+        /* Native active state and JS class active state */
+        .return-btn:active,
+        .return-btn.is-active {
+            transform: scale(0.96);
+            filter: brightness(0.85);
             box-shadow: 0 2px 4px rgba(0,0,0,0.2);
         }
 
-        /* Hover manual controlado por JS */
-        .return-btn.is-hovered {
-            transform: translateY(-1px);
-            filter: brightness(1.05);
-            box-shadow: 0 6px 12px rgba(0,0,0,0.3);
+        .btn-icon, .btn-text, .brand-logo-container {
+            pointer-events: none;
         }
         .btn-icon {
             opacity: 0.9;
-            margin-top: 4px;
+            stroke: #1A1A1A !important;
         }
         .btn-text {
             line-height: 1.2;
+            text-align: center;
+            max-width: 85%;
+            color: #1A1A1A !important;
+        }
+        .brand-logo-container {
+            display: none;
+            margin-top: 5px;
+        }
+        .brand-logo-container img {
+            max-height: 16px;
+            opacity: 0.9;
+            filter: brightness(0) invert(10.2%);
+        }
+        .brand-logo-container img.brand-hp {
+            max-height: 25px; /* Aumentado de 16px a 25px para compensar visualmente su forma circular */
         }
     </style>
 </head>
 <body>
     <button id="restore-btn" class="return-btn">
-        <span class="btn-text">Ver caracteristicas</span>
-        <svg xmlns="http://www.w3.org/2000/svg" width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" class="lucide lucide-laptop-minimal-check-icon lucide-laptop-minimal-check" style="width: clamp(40px, 6vh, 60px); height: clamp(40px, 6vh, 60px);"><path d="M2 20h20"/><path d="m9 10 2 2 4-4"/><rect x="3" y="4" width="18" height="12" rx="2"/></svg>
+        <span class="btn-text">VER DETALLES</span>
+        <svg xmlns="http://www.w3.org/2000/svg" width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" class="lucide lucide-laptop-minimal-check-icon lucide-laptop-minimal-check btn-icon"><path d="M2 20h20"/><path d="m9 10 2 2 4-4"/><rect x="3" y="4" width="18" height="12" rx="2"/></svg>
+        <div id="brand-logo-container" class="brand-logo-container">
+            <img id="brand-logo-img" src="" alt="Brand Logo" />
+        </div>
     </button>
 
     <script type="module">
         import { invoke } from '@tauri-apps/api/core';
 
         const btn = document.getElementById('restore-btn');
+        const logoContainer = document.getElementById('brand-logo-container');
+        const logoImg = document.getElementById('brand-logo-img');
 
-        // Gestión manual del hover para evitar el "sticky hover" de Chromium
-        btn.addEventListener('mouseenter', () => btn.classList.add('is-hovered'));
-        btn.addEventListener('mouseleave', () => btn.classList.remove('is-hovered'));
+        // Función global para actualizar el contexto sin recargar la página
+        window.setReturnContext = (store, brand) => {
+            // Actualizar tema
+            const theme = store === 'none' ? 'default' : store;
+            document.documentElement.className = 'theme-' + theme;
+            
+            // Actualizar logo
+            if (brand && brand !== 'none' && brand !== 'null' && brand !== '') {
+                logoImg.src = '/assets/logos/' + brand + '.svg';
+                logoImg.className = 'brand-' + brand;
+                logoContainer.style.display = 'block';
+            } else {
+                logoImg.className = '';
+                logoContainer.style.display = 'none';
+            }
+        };
 
-        // Limpiar hover si la ventana pierde visibilidad o gana foco (reset de seguridad)
-        const clearHover = () => btn.classList.remove('is-hovered');
-        
+        // Soporte fallback para parámetros URL si se recarga
+        const urlParams = new URLSearchParams(window.location.search);
+        const urlStore = urlParams.get('store');
+        const urlBrand = urlParams.get('brand');
+        if (urlStore || urlBrand) {
+            window.setReturnContext(urlStore || 'none', urlBrand || '');
+        }
+
+        // Reset state helper
+        const resetState = () => {
+            btn.classList.remove('is-active');
+        };
+
+        // Reset state when window becomes hidden (e.g. app maximized)
         document.addEventListener('visibilitychange', () => {
-            if (document.hidden) clearHover();
+            if (document.hidden) resetState();
         });
+        
+        window.addEventListener('focus', resetState);
+        window.addEventListener('blur', resetState);
 
-        window.addEventListener('focus', clearHover);
-        window.addEventListener('blur', clearHover);
-
+        // Pulsation via JS on click
         btn.addEventListener('click', async () => {
-            clearHover();
-            btn.blur();
+            btn.classList.add('is-active');
             try {
                 await invoke('restore_app');
             } catch (err) {
                 console.error('Failed to restore app:', err);
+                resetState();
             }
         });
     </script>

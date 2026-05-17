@@ -11,7 +11,7 @@ use windows_sys::Win32::Foundation::*;
 /// Minimiza la aplicación principal y muestra una pequeña ventana de retorno.
 /// También inicia la vigilancia de inactividad para restaurar la app automáticamente.
 #[tauri::command]
-pub async fn minimize_app(app: AppHandle, state: tauri::State<'_, AppState>, store: Option<String>) -> Result<(), String> {
+pub async fn minimize_app(app: AppHandle, state: tauri::State<'_, AppState>, store: Option<String>, brand: Option<String>) -> Result<(), String> {
     let main_window = app.get_webview_window("main").ok_or("Main window not found")?;
     let return_window = app.get_webview_window("return").ok_or("Return window not found")?;
 
@@ -20,7 +20,7 @@ pub async fn minimize_app(app: AppHandle, state: tauri::State<'_, AppState>, sto
     let _ = app.emit("app-minimized", ());
 
     // 2. Posicionar y configurar la ventana flotante de retorno
-    position_return_window(&main_window, &return_window, store).await?;
+    position_return_window(&main_window, &return_window, store, brand).await?;
 
     // 3. Iniciar el monitor de inactividad en segundo plano (vía Win32 API)
     start_idle_monitor(app, state).await;
@@ -91,33 +91,42 @@ pub async fn restore_app_logic(app: &AppHandle) -> Result<(), String> {
 }
 
 /// Configura la posición de la ventana de retorno en la esquina superior derecha del monitor principal.
-async fn position_return_window(main: &tauri::WebviewWindow, ret: &tauri::WebviewWindow, store: Option<String>) -> Result<(), String> {
+async fn position_return_window(main: &tauri::WebviewWindow, ret: &tauri::WebviewWindow, store: Option<String>, brand: Option<String>) -> Result<(), String> {
     if let Ok(Some(monitor)) = main.primary_monitor() {
-        let monitor_size = monitor.size().to_logical::<f64>(monitor.scale_factor());
+        let scale_factor = monitor.scale_factor();
+        let work_area = monitor.work_area();
+        let work_area_size = work_area.size.to_logical::<f64>(scale_factor);
+        let work_area_pos = work_area.position.to_logical::<f64>(scale_factor);
         
         // Lógica de escalado físico constante (Neutraliza el DPI de Windows para el contenedor)
-        let dpi_factor = monitor.scale_factor();
+        let dpi_factor = scale_factor;
         let physical_width = monitor.size().width as f64;
 
-        // Calculamos el tamaño físico deseado (Base: 320px en una pantalla 1080p)
-        let target_physical_width = 320.0 * (physical_width / 1920.0);
-        let target_physical_height = 140.0 * (physical_width / 1920.0);
+        // Calculamos el tamaño físico deseado (Base: 240px x 200px en una pantalla 1080p)
+        let target_physical_width = 240.0 * (physical_width / 1920.0);
+        let target_physical_height = 200.0 * (physical_width / 1920.0);
 
         // Dividimos por el dpi_factor para que Windows no lo agrande
         let width = target_physical_width / dpi_factor;
         let height = target_physical_height / dpi_factor;
         let window_size = LogicalSize::new(width, height);
         
-        let x = monitor_size.width - window_size.width - 20.0;
-        let y = (monitor_size.height - window_size.height) / 2.0;
+        // Posicionar relativo al área de trabajo visible (excluye barra de tareas)
+        // Desplazamos levemente hacia arriba (-30.0 px lógicos) para balance óptico
+        let x = work_area_pos.x + work_area_size.width - window_size.width - 20.0;
+        let y = work_area_pos.y + (work_area_size.height - window_size.height) / 2.0 - 30.0;
         
         let _ = ret.set_size(window_size);
         let _ = ret.set_position(LogicalPosition::new(x, y));
     }
 
-    // Pasar el contexto de la tienda a la ventana de retorno vía URL query
-    let target_query = format!("store={}", store.unwrap_or_else(|| "none".to_string()));
-    let _ = ret.eval(format!("window.location.search = '{}';", target_query));
+    // Pasar el contexto de la tienda y marca a la ventana de retorno
+    let store_str = store.unwrap_or_else(|| "none".to_string());
+    let brand_str = brand.unwrap_or_else(|| "".to_string());
+    let _ = ret.eval(&format!(
+        "if (window.setReturnContext) {{ window.setReturnContext('{}', '{}'); }} else {{ window.location.search = 'store={}&brand={}'; }}",
+        store_str, brand_str, store_str, brand_str
+    ));
 
     ret.show().map_err(|e| e.to_string())?;
     ret.set_always_on_top(true).map_err(|e| e.to_string())?;
