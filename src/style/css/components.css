@@ -195,6 +195,9 @@
     color: var(--bg-dark);
     padding: clamp(12px, 2vh, 20px) clamp(25px, 4vw, 40px);
     border-radius: clamp(15px, 2vw, 24px);
+    font-family: 'Antonio', sans-serif;
+    text-transform: uppercase;
+    letter-spacing: 2px;
     font-size: clamp(1.1rem, 1.8vw, 1.5rem);
     font-weight: 700;
     cursor: pointer;
