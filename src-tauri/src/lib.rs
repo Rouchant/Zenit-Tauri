@@ -197,6 +197,28 @@ pub fn run() {
                             let _ = window.set_decorations(false);
                         }
                     }
+
+                    // Asegurar que la ventana de retorno esté siempre arriba de todo si está activa/visible (sin robar el foco)
+                    if let Some(ret_window) = handle.get_webview_window("return") {
+                        if ret_window.is_visible().unwrap_or(false) {
+                            let _ = ret_window.set_always_on_top(true);
+                            if let Ok(hwnd) = ret_window.hwnd() {
+                                unsafe {
+                                    use windows_sys::Win32::UI::WindowsAndMessaging::{
+                                        SetWindowPos, SWP_NOMOVE, SWP_NOSIZE, SWP_NOACTIVATE, SWP_SHOWWINDOW
+                                    };
+                                    use windows_sys::Win32::Foundation::HWND;
+                                    
+                                    SetWindowPos(
+                                        hwnd.0 as HWND,
+                                        -1isize as HWND, // HWND_TOPMOST
+                                        0, 0, 0, 0,
+                                        SWP_NOMOVE | SWP_NOSIZE | SWP_NOACTIVATE | SWP_SHOWWINDOW
+                                    );
+                                }
+                            }
+                        }
+                    }
                 }
             });
 
