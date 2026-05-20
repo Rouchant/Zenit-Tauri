@@ -1,51 +1,52 @@
 <template>
   <div class="app-root">
-    <div class="app-container" :class="{ 'is-loading': store.isLoading }">
-      <!-- Loading Screen -->
-      <Transition name="fade">
-        <div v-if="store.isLoading" class="loading-screen">
-          <div class="loader-container">
-            <div class="loader"></div>
-            <div class="loader-glow"></div>
-          </div>
-          <p class="loading-text">Cargando especificaciones...</p>
+    <!-- Loading Screen -->
+    <Transition name="fade">
+      <div v-if="store.isLoading" class="loading-screen">
+        <div class="loader-container">
+          <div class="loader"></div>
+          <div class="loader-glow"></div>
         </div>
-      </Transition>
-
-      <!-- Background Media Layers -->
-      <div class="background-wrapper" v-if="!store.isLoading">
-        <!-- Static Layer (Always present as fallback/base) -->
-        <img 
-          id="bg-image"
-          :src="store.isAsus ? '/assets/images/background-asus.png' : '/assets/images/background-generic.png'"
-          class="bg-fixed-image"
-          :style="{ opacity: store.currentSpecs.fixedBackground ? 1 : 0.8 }"
-        />
-
-        <!-- Video Layer (Active only if not in fixed background mode) -->
-        <video 
-          v-if="!store.currentSpecs.fixedBackground"
-          id="bg-video" 
-          autoplay 
-          loop 
-          muted 
-          playsinline 
-          preload="auto"
-          :poster="store.isAsus ? '/assets/images/background-asus.png' : '/assets/images/background-generic.png'"
-          ref="bgVideo"
-          class="background-media"
-          style="background-color: transparent; transition: opacity 0.5s ease; transform: translateZ(0);"
-          :key="store.isAsus ? 'asus' : 'generic'"
-          :src="store.getVideoUrl(store.isAsus ? 'ASUS' : 'GENERIC')"
-          @error="handleBgVideoError"
-          @playing="bgRetryCount = 0"
-        >
-        </video>
+        <p class="loading-text">Cargando especificaciones...</p>
       </div>
-      
-      <!-- Background Overlay -->
-      <div class="bg-blur"></div>
-      
+    </Transition>
+
+    <!-- Background Media Layers (Plano de fondo a pantalla física completa) -->
+    <div class="background-wrapper" v-if="!store.isLoading">
+      <!-- Static Layer (Always present as fallback/base) -->
+      <img 
+        id="bg-image"
+        :src="store.isAsus ? '/assets/images/background-asus.png' : '/assets/images/background-generic.png'"
+        class="bg-fixed-image"
+        :style="{ opacity: store.currentSpecs.fixedBackground ? 1 : 0.8 }"
+      />
+
+      <!-- Video Layer (Active only if not in fixed background mode) -->
+      <video 
+        v-if="!store.currentSpecs.fixedBackground"
+        id="bg-video" 
+        autoplay 
+        loop 
+        muted 
+        playsinline 
+        preload="auto"
+        :poster="store.isAsus ? '/assets/images/background-asus.png' : '/assets/images/background-generic.png'"
+        ref="bgVideo"
+        class="background-media"
+        style="background-color: transparent; transition: opacity 0.5s ease; transform: translateZ(0);"
+        :key="store.isAsus ? 'asus' : 'generic'"
+        :src="store.getVideoUrl(store.isAsus ? 'ASUS' : 'GENERIC')"
+        @error="handleBgVideoError"
+        @playing="bgRetryCount = 0"
+      >
+      </video>
+    </div>
+    
+    <!-- Background Overlay -->
+    <div class="bg-blur"></div>
+
+    <!-- Contenedor Escalable del Contenido (Transparente y centrado en la pantalla física) -->
+    <div class="app-container" :class="{ 'is-loading': store.isLoading }">
       <!-- Info View -->
       <div id="info-view" v-show="!store.isVideoMode && !store.isLoading" class="view active">
         <Header />
@@ -358,6 +359,14 @@ let unlistenActivity = null;
 let unlistenMinimized = null;
 let unlistenRestored = null;
 
+const updateScale = () => {
+  // Escalar de forma uniforme (contain) eligiendo la menor proporción
+  // para evitar achatamiento en pantallas con relación de aspecto distinta de 16:9 (ej. 16:10 como 2880x1800)
+  const scale = Math.min(window.innerWidth / 1920, window.innerHeight / 1080);
+  document.documentElement.style.setProperty('--scale-x', scale);
+  document.documentElement.style.setProperty('--scale-y', scale);
+};
+
 const initPixelShift = () => {
   // Move 1-2 pixels every 2 minutes to prevent OLED burn-in
   setInterval(() => {
@@ -369,6 +378,9 @@ const initPixelShift = () => {
 };
 
 onMounted(async () => {
+  updateScale();
+  window.addEventListener('resize', updateScale);
+  
   await store.loadSpecs();
   resetTimer();
   initPixelShift();
@@ -427,6 +439,7 @@ onMounted(async () => {
 });
 
 onUnmounted(() => {
+  window.removeEventListener('resize', updateScale);
   window.removeEventListener('mousemove', throttledResetTimer);
   window.removeEventListener('keydown', resetTimer);
   window.removeEventListener('mousedown', resetTimer);
@@ -447,6 +460,11 @@ onUnmounted(() => {
   overflow: hidden;
   position: relative;
   background: var(--bg-dark);
+  /* Proteccion OLED Pixel Shift integrada de forma independiente */
+  transform: translate(var(--shift-x, 0px), var(--shift-y, 0px));
+  transition: transform 10s ease-in-out;
+  will-change: transform;
+  backface-visibility: hidden;
 }
 
 /* Global styles are imported in main.js */

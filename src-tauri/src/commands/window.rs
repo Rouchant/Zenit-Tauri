@@ -130,13 +130,14 @@ async fn position_return_window(main: &tauri::WebviewWindow, ret: &tauri::Webvie
 
     ret.show().map_err(|e| e.to_string())?;
     ret.set_always_on_top(true).map_err(|e| e.to_string())?;
+    let _ = ret.set_focus(); // Forzar foco activo en la ventana de retorno para evitar que Windows lo delegue al botón de Inicio
     if let Ok(hwnd) = ret.hwnd() {
         unsafe {
             SetWindowPos(
                 hwnd.0 as HWND,
                 -1isize as HWND, // HWND_TOPMOST
                 0, 0, 0, 0,
-                SWP_NOMOVE | SWP_NOSIZE | SWP_NOACTIVATE | SWP_SHOWWINDOW
+                SWP_NOMOVE | SWP_NOSIZE | SWP_SHOWWINDOW // Eliminado SWP_NOACTIVATE para activar la ventana nativamente
             );
         }
     }

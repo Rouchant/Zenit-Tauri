@@ -66,8 +66,9 @@ pub fn run() {
         // Color: Forzar perfil sRGB para evitar inconsistencias entre monitores/HDR
         "--force-color-profile=srgb",
 
-        // Escala: Forzar escala 1:1 para evitar deformaciones por el escalado de Windows (125%, 150%, etc.)
-        "--force-device-scale-factor=1",
+        // Escala: Permitir escalado nativo del sistema para alta resolución (2K, 3K, 4K, 2880x1800).
+        // Forzar 1:1 causaba que la interfaz se viera microscópica y deformada en pantallas High-DPI.
+        // "--force-device-scale-factor=1",
     ];
     std::env::set_var(
         "WEBVIEW2_ADDITIONAL_BROWSER_ARGUMENTS",

@@ -20,7 +20,12 @@ const osLogo = computed(() => '/assets/ui/windows-11.svg');
 
 const tryPc = (e) => {
     if (e && e.target) e.target.blur();
-    tauriAPI.minimizeApp(store.currentSpecs.store, store.matchedBrand);
+    
+    // Retraso de 200ms para que la animación se complete y evitar que el click/hover
+    // se propague físicamente al botón de Inicio de Windows que está debajo.
+    setTimeout(() => {
+        tauriAPI.minimizeApp(store.currentSpecs.store, store.matchedBrand);
+    }, 200);
 };
 </script>
 

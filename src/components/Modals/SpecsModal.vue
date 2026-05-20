@@ -10,7 +10,12 @@ const specs = store.currentSpecs;
 const tryPc = (e) => {
     if (e && e.target) e.target.blur();
     emit('close');
-    tauriAPI.minimizeApp(specs.store, store.matchedBrand);
+    
+    // Retraso de 200ms para que la animación se complete y evitar que el click/hover
+    // se propague físicamente al botón de Inicio de Windows que está debajo.
+    setTimeout(() => {
+        tauriAPI.minimizeApp(specs.store, store.matchedBrand);
+    }, 200);
 };
 </script>
 

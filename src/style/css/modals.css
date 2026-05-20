@@ -36,7 +36,7 @@
     padding: clamp(15px, 2.5vw, 25px);
     border-radius: 20px;
     position: relative;
-    max-height: 90vh;
+    max-height: 90%; /* Ajustado de 90vh a 90% del contenedor para auto-escalado perfecto */
     display: flex;
     flex-direction: column;
     overflow-x: hidden;
@@ -50,7 +50,7 @@
 
 .admin-modal-content {
     max-width: 950px;
-    height: 90vh;
+    height: 85%; /* Ajustado de 90vh a 85% del contenedor para mantener botones visibles */
 }
 
 .modal-header-main {
@@ -459,7 +459,7 @@
     }
     .admin-modal-content {
         max-width: 920px;
-        height: 95vh;
+        height: 90%;
     }
     .settings-grid { gap: 20px; }
     .input-group { margin-bottom: 10px; }
@@ -476,7 +476,7 @@
 
 @media (max-width: 1024px) {
     .modal-content.wide-modal {
-        max-height: 95vh;
+        max-height: 95%;
         width: 98%;
     }
     .settings-grid { 
@@ -493,7 +493,7 @@
     .modal-content { 
         width: 100%; 
         height: 100%; 
-        max-height: 100vh; 
+        max-height: 100%; 
         border-radius: 0; 
         padding: 15px;
     }
@@ -506,7 +506,7 @@
 
 @media (max-height: 800px) {
     .modal-content.wide-modal {
-        max-height: 98vh;
+        max-height: 98%;
     }
     .input-group { margin-bottom: 8px; }
     .settings-section { margin-top: 10px; }

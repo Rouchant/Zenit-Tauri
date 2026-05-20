@@ -2,19 +2,19 @@
 .spec-card {
     background: var(--white);
     border: 1px solid rgba(26, 26, 26, 0.05);
-    border-radius: clamp(15px, 2vw, 24px);
-    padding: clamp(10px, 1.5vh, 14px) clamp(15px, 2vw, 25px);
+    border-radius: 24px;
+    padding: 14px 25px;
     display: flex;
     flex-direction: row;
     align-items: center;
-    gap: clamp(15px, 2vw, 25px);
+    gap: 25px;
     transition: transform 0.3s ease;
     color: #1a1a1a;
 }
 
 .spec-icon {
-    width: clamp(30px, 4vw, 40px);
-    height: clamp(30px, 4vw, 40px);
+    width: 40px;
+    height: 40px;
     display: flex;
     align-items: center;
     justify-content: center;
@@ -31,7 +31,7 @@
 
 .spec-label {
     text-transform: uppercase;
-    font-size: clamp(0.7rem, 0.85vw, 0.95rem);
+    font-size: 0.95rem;
     letter-spacing: 2px;
     color: #666666;
     font-weight: 700;
@@ -44,7 +44,7 @@
 }
 
 .spec-value {
-    font-size: clamp(1rem, 1.2vw, 1.45rem);
+    font-size: 1.45rem;
     font-weight: 700;
     line-height: 1.2;
     color: #1A1A1A;
@@ -58,7 +58,7 @@
 }
 
 .spec-sub-value {
-    font-size: clamp(0.85rem, 1vw, 1.1rem);
+    font-size: 1.1rem;
     color: #555555;
     margin-top: 5px;
     font-weight: 500;
@@ -68,7 +68,7 @@
 
 /* Logos & Badges */
 .logo-placeholder {
-    height: clamp(45.5px, 6.5vh, 65px);
+    height: 65px;
     display: flex;
     align-items: center;
     width: auto;
@@ -78,7 +78,7 @@
 .logo-placeholder img {
     height: 100%;
     width: auto;
-    max-width: clamp(180px, 15vw, 280px);
+    max-width: 280px;
     object-fit: contain;
     filter: brightness(0) invert(1) brightness(0.94);
 }
@@ -92,7 +92,7 @@
 }
 
 .logo {
-    font-size: clamp(2rem, 4vw, 3rem);
+    font-size: 3rem;
     font-weight: 700;
     letter-spacing: -2px;
 }
@@ -102,7 +102,7 @@
 }
 
 .store-logo-placeholder {
-    height: clamp(57.75px, 7.7vh, 77px);
+    height: 77px;
     display: flex;
     align-items: center;
     width: auto;
@@ -112,17 +112,17 @@
 .store-logo-placeholder img {
     height: 100%;
     width: auto;
-    max-width: clamp(180px, 15vw, 280px);
+    max-width: 280px;
     object-fit: contain;
     transform: scale(1.1); /* Subtle boost to size across all stores */
 }
 
 .brand-badge {
     background: rgba(0, 0, 0, 0.75); /* More opaque for visibility without blur */
-    padding: clamp(10px, 1.5vh, 15px) clamp(20px, 2.5vw, 30px);
+    padding: 15px 30px;
     border-radius: 50px;
     border: 1px solid rgba(255, 255, 255, 0.1);
-    font-size: clamp(1rem, 1.5vw, 1.5rem);
+    font-size: 1.5rem;
     font-weight: 600;
     color: var(--primary);
     white-space: nowrap;
@@ -136,7 +136,7 @@
 }
 
 .sku-badge {
-    font-size: clamp(0.7rem, 0.9vw, 1rem);
+    font-size: 1rem;
     font-weight: 500;
     color: rgba(255, 255, 255, 0.7);
     letter-spacing: 1px;
@@ -187,18 +187,18 @@
 }
 
 .view-pc-btn {
-    width: 94%;
-    margin: auto auto 5px auto;
+    width: 100%;
+    margin: auto auto 0 auto;
     background: linear-gradient(45deg, var(--secondary), var(--primary));
     border: none;
     outline: none;
     color: var(--bg-dark);
-    padding: clamp(12px, 2vh, 20px) clamp(25px, 4vw, 40px);
-    border-radius: clamp(15px, 2vw, 24px);
+    padding: 20px 40px;
+    border-radius: 24px;
     font-family: 'Antonio', sans-serif;
     text-transform: uppercase;
     letter-spacing: 2px;
-    font-size: clamp(1.1rem, 1.8vw, 1.5rem);
+    font-size: 1.5rem;
     font-weight: 700;
     cursor: pointer;
     transition: all 0.15s cubic-bezier(0.4, 0, 0.2, 1);
@@ -212,8 +212,8 @@
     overflow: hidden;
     
     /* Sombra corta y Glow contenido */
-    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.5), 
-                0 0 15px rgba(var(--primary-rgb, 0, 242, 255), 0.5);
+    box-shadow: 0 4px 10px rgba(0, 0, 0, 0.4), 
+                0 0 8px rgba(var(--primary-rgb, 0, 242, 255), 0.4);
     
     /* Soporte para máximo 2 líneas */
     display: -webkit-box;
@@ -230,7 +230,8 @@
 }
 
 .view-pc-btn:hover {
-    box-shadow: 0 8px 25px rgba(0, 0, 0, 0.4);
+    box-shadow: 0 4px 8px rgba(0, 0, 0, 0.35),
+                0 0 6px rgba(var(--primary-rgb, 0, 242, 255), 0.5);
     filter: brightness(1.1);
 }
 
@@ -281,8 +282,8 @@
 /* Hotspots */
 .admin-hotspot {
     position: fixed;
-    width: clamp(60px, 5vw, 80px);
-    height: clamp(60px, 5vw, 80px);
+    width: 80px;
+    height: 80px;
     z-index: 2147483647;
     cursor: default;
     background: transparent;
@@ -291,14 +292,14 @@
 .admin-hotspot.top-right { 
     top: 0; 
     right: 0; 
-    height: clamp(60px, 5vh, 80px);
-    width: clamp(60px, 5vw, 80px);
+    height: 80px;
+    width: 80px;
 }
 .admin-hotspot.bottom-right { 
     bottom: 0; 
     right: 0; 
-    height: clamp(60px, 5vh, 80px);
-    width: clamp(60px, 5vw, 80px);
+    height: 80px;
+    width: 80px;
 }
 
 /* Price Tag */
@@ -306,7 +307,7 @@
     background: rgba(0, 0, 0, 0.85);
     border: 1px solid rgba(255, 255, 255, 0.1);
     color: var(--white);
-    padding: clamp(10px, 1.5vh, 20px) clamp(20px, 2.5vw, 40px);
+    padding: 20px 40px;
     border-radius: 24px;
     display: flex;
     flex-direction: column;
@@ -341,7 +342,7 @@
 }
 
 .price-secondary {
-    font-size: clamp(1.6rem, 2.3vw, 2.6rem); /* Increased from 1.1-1.5rem */
+    font-size: 2.6rem; /* Increased from 1.1-1.5rem */
     opacity: 0.9;
     font-weight: 700;
 }
@@ -378,7 +379,7 @@
     display: flex;
     align-items: center;
     justify-content: center;
-    font-size: clamp(0.7rem, 0.8vw, 0.9rem);
+    font-size: 0.9rem;
     font-weight: 800;
     padding: 6px 14px;
     border-radius: 8px;
