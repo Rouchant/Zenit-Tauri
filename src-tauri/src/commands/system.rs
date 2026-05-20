@@ -58,11 +58,10 @@ pub async fn get_system_specs() -> Result<SystemSpecs, String> {
     let vendor = if proc_name.contains("Intel") { "Intel" } else if proc_name.contains("AMD") { "AMD" } else { "Generic" };
     let gen = detect_generation(&proc_name);
 
-    // 2. RAM & Almacenamiento con formateo comercial
+    // 2. RAM (Formateo comercial)
     let ram_display = get_ram_display(sys.total_memory());
-    let storage_display = get_storage_info();
 
-    // 3. Detalles profundos vía WMI (Marca, Modelo, GPU, Resolución, etc.)
+    // 3. Detalles profundos vía WMI (Marca, Modelo, GPU, Resolución, Almacenamiento, etc.)
     let wmi = get_wmi_details().unwrap_or_else(|_| default_wmi_fallback());
 
     let specs = SystemSpecs {
@@ -76,7 +75,7 @@ pub async fn get_system_specs() -> Result<SystemSpecs, String> {
         ram: ram_display,
         ram_type: wmi.ram_type,
         gpu: wmi.gpu,
-        storage: storage_display,
+        storage: wmi.storage,
         display: wmi.display,
         os: wmi.os,
     };
@@ -93,6 +92,7 @@ struct WmiData {
     gpu: String,
     display: String,
     ram_type: String,
+    storage: String,
     os: String,
 }
 
@@ -103,6 +103,7 @@ fn default_wmi_fallback() -> WmiData {
         gpu: "Gráficos Integrados".to_string(),
         display: "1920 x 1080".to_string(),
         ram_type: "DDR4".to_string(),
+        storage: get_storage_info_fallback(),
         os: System::name().unwrap_or_else(|| "Windows".to_string()).replace("Microsoft ", ""),
     }
 }
@@ -126,8 +127,11 @@ fn get_wmi_details() -> Result<WmiData, Box<dyn std::error::Error>> {
     let display = format_display_resolution(&wmi_con, &video_results);
     let ram_type = detect_ram_type(&wmi_con);
     let os = detect_os_version(&wmi_con);
+    
+    // Detección de almacenamiento excluyendo USB
+    let storage = get_storage_info_wmi(&wmi_con).unwrap_or_else(|| get_storage_info_fallback());
 
-    Ok(WmiData { brand, model, gpu, display, ram_type, os })
+    Ok(WmiData { brand, model, gpu, display, ram_type, storage, os })
 }
 
 #[cfg(windows)]
@@ -272,7 +276,11 @@ fn detect_ram_type(wmi: &wmi::WMIConnection) -> String {
         let results: Vec<HashMap<String, serde_json::Value>> = results;
         if let Some(res) = results.first() {
             return match res.get("SMBIOSMemoryType").and_then(|v| v.as_u64()).unwrap_or(0) {
+                20 => "DDR",
+                21 | 22 => "DDR2",
+                24 => "DDR3",
                 26 => "DDR4",
+                29 => "LPDDR3",
                 30 | 31 => "LPDDR4",
                 34 => "DDR5",
                 35 => "LPDDR5",
@@ -297,10 +305,8 @@ fn detect_os_version(wmi: &wmi::WMIConnection) -> String {
 
 // --- UTILIDADES ---
 
-/// Calcula el almacenamiento total sumando todos los discos y redondeando a capacidades comerciales (128, 256, 512, 1TB).
-fn get_storage_info() -> String {
-    let disks = Disks::new_with_refreshed_list();
-    let total_bytes: u64 = disks.iter().map(|d| d.total_space()).sum();
+/// Formatea los bytes totales para representarlos con capacidades comerciales de Retail (SSD/almacenamiento).
+fn format_bytes_commercial(total_bytes: u64) -> String {
     let total_gb = total_bytes as f64 / 1_000_000_000.0;
     
     if total_gb >= 872.0 {
@@ -313,6 +319,51 @@ fn get_storage_info() -> String {
         let rounded = (total_gb / 128.0).round() * 128.0;
         format!("{:.0}GB SSD", if rounded == 0.0 { total_gb.round() } else { rounded })
     }
+}
+
+/// Fallback de almacenamiento usando la librería sysinfo para multiplataforma o si WMI falla.
+fn get_storage_info_fallback() -> String {
+    let disks = Disks::new_with_refreshed_list();
+    let total_bytes: u64 = disks.iter().map(|d| d.total_space()).sum();
+    format_bytes_commercial(total_bytes)
+}
+
+#[cfg(windows)]
+/// Obtiene el almacenamiento comercial sumando el tamaño de todos los discos internos
+/// mediante WMI, ignorando discos con interfaz USB o id de dispositivo USBSTOR.
+fn get_storage_info_wmi(wmi: &wmi::WMIConnection) -> Option<String> {
+    if let Ok(results) = wmi.raw_query("SELECT Size, InterfaceType, PNPDeviceID FROM Win32_DiskDrive") {
+        let results: Vec<HashMap<String, serde_json::Value>> = results;
+        let mut total_bytes: u64 = 0;
+        let mut found_any = false;
+
+        for res in results {
+            let interface_type = res.get("InterfaceType").and_then(|v| v.as_str()).unwrap_or("").to_uppercase();
+            let pnp_device_id = res.get("PNPDeviceID").and_then(|v| v.as_str()).unwrap_or("").to_uppercase();
+            
+            // Ignorar explícitamente dispositivos USB y USBSTOR
+            if interface_type.contains("USB") || pnp_device_id.contains("USBSTOR") {
+                continue;
+            }
+
+            let size_val = res.get("Size");
+            let size_bytes: u64 = match size_val {
+                Some(serde_json::Value::Number(n)) => n.as_u64().unwrap_or(0),
+                Some(serde_json::Value::String(s)) => s.parse::<u64>().unwrap_or(0),
+                _ => 0,
+            };
+
+            if size_bytes > 0 {
+                total_bytes += size_bytes;
+                found_any = true;
+            }
+        }
+
+        if found_any && total_bytes > 0 {
+            return Some(format_bytes_commercial(total_bytes));
+        }
+    }
+    None
 }
 
 /// Identifica la generación del procesador mediante expresiones regulares aplicadas al nombre del modelo.
