@@ -116,6 +116,7 @@
 }
 
 .landing-video-container {
+    position: relative;
     width: 100%;
     aspect-ratio: 16 / 9;
     border-radius: 32px;
@@ -133,12 +134,12 @@
 }
 
 .landing-video-container video {
-    width: 100%;
-    height: 100%;
+    position: absolute;
+    top: -1.5px;
+    left: -1.5px;
+    width: calc(100% + 3px);
+    height: calc(100% + 3px);
     object-fit: cover;
-    /* Perfect clipping to avoid border-radius anti-aliasing bleeding */
-    clip-path: inset(0 round 32px);
-    -webkit-clip-path: inset(0 round 32px);
     background: transparent;
     transform: translateZ(0);
 }

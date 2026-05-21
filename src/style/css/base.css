@@ -7,10 +7,11 @@
     --glass-border: rgba(255, 255, 255, 0.1);
     --text: var(--white);
     --text-muted: rgba(240, 240, 240, 0.6);
-    
+
     /* Price Tag Controls */
-    --price-primary-size: clamp(1.8rem, 2.5vw, 2.8rem);
-    --price-logo-size: clamp(1.35rem, 1.4vw, 1.6rem);
+    --price-primary-size: 56px;
+    --price-secondary-size: 48px;
+    --price-logo-size: 24px;
 
     /* OLED Pixel Shift */
     --shift-x: 0px;
@@ -44,7 +45,8 @@ html {
     padding: 0;
 }
 
-#app, [data-v-app] {
+#app,
+[data-v-app] {
     height: 100%;
     width: 100%;
     display: flex;
@@ -67,12 +69,27 @@ body {
 }
 
 @keyframes fadeIn {
-    from { opacity: 0; }
-    to { opacity: 1; }
+    from {
+        opacity: 0;
+    }
+
+    to {
+        opacity: 1;
+    }
 }
 
 @keyframes shake {
-    0%, 100% { transform: translateX(0); }
-    25% { transform: translateX(-5px); }
-    75% { transform: translateX(5px); }
+
+    0%,
+    100% {
+        transform: translateX(0);
+    }
+
+    25% {
+        transform: translateX(-5px);
+    }
+
+    75% {
+        transform: translateX(5px);
+    }
 }
