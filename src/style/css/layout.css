@@ -4,6 +4,7 @@
     position: absolute;
     top: 50%;
     left: 50%;
+    /* Centrado absoluto estándar + Escalado dinámico (Pixel Shift eliminado) */
     transform: translate(-50%, -50%) scale(var(--scale-x, 1), var(--scale-y, 1));
     transform-origin: center;
     display: flex;
@@ -12,8 +13,19 @@
     align-items: center;
     background: transparent;
     overflow: hidden;
+    will-change: transform;
     backface-visibility: hidden;
     z-index: 2;
+}
+
+#info-view {
+    /* Aplica el desplazamiento dinámico mediante tus variables */
+    transform: translate(var(--shift-x, 0px), var(--shift-y, 0px));
+    /* Forzar el uso de la tarjeta gráfica (GPU) para evitar tirones */
+    will-change: transform;
+    backface-visibility: hidden;
+    /* Transición de 10 segundos para que el movimiento sea imperceptible */
+    transition: transform 10s ease-in-out;
 }
 
 .background-wrapper {
@@ -35,7 +47,8 @@
     height: calc(100% + 4px);
     object-fit: cover;
     z-index: 0;
-    transform: translateZ(0); /* Hardware acceleration */
+    transform: translateZ(0);
+    /* Hardware acceleration */
 }
 
 .bg-blur {
@@ -44,7 +57,7 @@
     left: -2px;
     right: -2px;
     bottom: -2px;
-background: radial-gradient(ellipse at top, var(--bg-overlay-start) 0% 65%, var(--bg-overlay-end) 110%);
+    background: radial-gradient(ellipse at top, var(--bg-overlay-start) 0% 65%, var(--bg-overlay-end) 110%);
     z-index: 1;
 }
 
@@ -79,7 +92,8 @@ background: radial-gradient(ellipse at top, var(--bg-overlay-start) 0% 65%, var(
 .main-content {
     flex: 1;
     display: grid;
-    grid-template-columns: 530px 1fr; /* Fijado a 450px para evitar oscilaciones de ancho al escalar */
+    grid-template-columns: 530px 1fr;
+    /* Fijado a 450px para evitar oscilaciones de ancho al escalar */
     gap: 30px;
     padding: 0 60px 15px;
     width: 100%;
@@ -93,10 +107,12 @@ background: radial-gradient(ellipse at top, var(--bg-overlay-start) 0% 65%, var(
     display: flex;
     flex-direction: column;
     align-items: flex-end;
-    justify-content: center; /* Center the group (Video + Price) */
+    justify-content: center;
+    /* Center the group (Video + Price) */
     width: 100%;
     height: 100%;
-    gap: 20px; /* Fixed distance below the video */
+    gap: 20px;
+    /* Fixed distance below the video */
 }
 
 .landing-video-container {
@@ -112,7 +128,7 @@ background: radial-gradient(ellipse at top, var(--bg-overlay-start) 0% 65%, var(
     mask-image: -webkit-radial-gradient(white, black);
     -webkit-mask-image: -webkit-radial-gradient(white, black);
     isolation: isolate;
-    transform: translateZ(0); 
+    transform: translateZ(0);
     will-change: transform;
 }
 
@@ -133,8 +149,10 @@ background: radial-gradient(ellipse at top, var(--bg-overlay-start) 0% 65%, var(
     justify-content: center;
     width: 100%;
     max-height: 100%;
-    overflow-y: auto; /* Evita desbordamiento en alturas de pantalla reducidas */
-    padding: 12px 16px 28px 16px; /* Espaciado de seguridad para que el glow y las sombras respiren sin cortarse */
+    overflow-y: auto;
+    /* Evita desbordamiento en alturas de pantalla reducidas */
+    padding: 12px 16px 28px 16px;
+    /* Espaciado de seguridad para que el glow y las sombras respiren sin cortarse */
     box-sizing: border-box;
 }
 

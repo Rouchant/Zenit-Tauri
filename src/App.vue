@@ -480,11 +480,6 @@ onUnmounted(() => {
   overflow: hidden;
   position: relative;
   background: var(--bg-dark);
-  /* Proteccion OLED Pixel Shift integrada de forma independiente */
-  transform: translate(var(--shift-x, 0px), var(--shift-y, 0px));
-  transition: transform 10s ease-in-out;
-  will-change: transform;
-  backface-visibility: hidden;
 }
 
 /* Global styles are imported in main.js */
