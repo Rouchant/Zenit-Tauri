@@ -4,17 +4,24 @@
     display: none;
     width: 100%;
     height: 100%;
-    transition: opacity 0.3s ease-in-out;
-    opacity: 0;
 }
 
 .view.active {
     display: flex;
     flex-direction: column;
-    opacity: 1;
 }
 
 /* Video View (Promo) */
+#video-view.physical-fullscreen {
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 100vw;
+    height: 100vh;
+    z-index: 90;
+    background: #000;
+}
+
 #video-view video {
     width: 100%;
     height: 100%;

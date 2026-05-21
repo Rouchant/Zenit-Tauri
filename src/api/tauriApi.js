@@ -35,6 +35,7 @@ export const tauriAPI = {
   quitApp: () => safeInvoke('quit_app'),
   setAlwaysOnTop: (onTop) => safeInvoke('set_always_on_top', { onTop }),
   setMaxBrightness: () => safeInvoke('set_max_brightness'),
+  inferProcessorInfo: (name) => safeInvoke('infer_processor_info', { name }),
 };
 
 /**

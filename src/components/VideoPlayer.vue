@@ -1,5 +1,5 @@
 <script setup>
-import { computed, onMounted, ref, watch } from 'vue';
+import { computed, onMounted, onUnmounted, ref, watch, nextTick } from 'vue';
 import { useSpecsStore } from '../store/specs';
 
 const store = useSpecsStore();
@@ -67,10 +67,10 @@ const onVideoError = (e) => {
     // Force re-mount the video element
     videoKey.value++;
     
-    // Attempt play after a short delay
-    setTimeout(() => {
+    // Esperar al siguiente tick de Vue (cuando el nuevo elemento ya está montado e hidratado en el DOM)
+    nextTick(() => {
       playVideo();
-    }, 1000);
+    });
   } else {
     console.error('[VideoPlayer] Max retries reached, exiting video mode.');
     // Failsafe: Si el video falla definitivamente, volver a specs para no dejar pantalla negra
@@ -138,7 +138,6 @@ onMounted(() => {
   playVideo();
 });
 
-import { onUnmounted } from 'vue';
 onUnmounted(() => {
   clearSafetyTimer();
 });

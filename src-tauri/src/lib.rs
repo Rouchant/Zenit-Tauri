@@ -165,65 +165,8 @@ pub fn run() {
                 let _ = app.autolaunch().enable();
             }
 
-            // 7. Vigilancia de Foco (Watchdog): Reclama el foco cada 2s para evitar bypass del modo quiosco.
-            let handle = app.handle().clone();
-            let state = app.state::<AppState>();
-            let enforce_flag = Arc::clone(&state.enforce_always_on_top);
-            
-            tauri::async_runtime::spawn(async move {
-                // Periodo de gracia inicial (5s) para permitir que entornos lentos (VMs) se estabilicen
-                tokio::time::sleep(std::time::Duration::from_secs(5)).await;
 
-                let mut interval = tokio::time::interval(std::time::Duration::from_secs(2));
-                loop {
-                    interval.tick().await;
-                    
-                    // Solo intentar reclamar foco si la vigilancia está activa (no estamos en personalización)
-                    let should_enforce = {
-                        let guard = enforce_flag.lock().await;
-                        *guard
-                    };
-
-                    if !should_enforce { continue; }
-
-                    if let Some(window) = handle.get_webview_window("main") {
-                        let is_minimized = window.is_minimized().unwrap_or(false);
-                        let is_visible = window.is_visible().unwrap_or(true);
-                        
-                        // Si la app está en primer plano y no minimizada, reforzamos el foco
-                        if !is_minimized && is_visible {
-                            let _ = window.set_focus();
-                            // Asegurar que no haya bordes residuales de Windows
-                            let _ = window.set_resizable(false);
-                            let _ = window.set_decorations(false);
-                        }
-                    }
-
-                    // Asegurar que la ventana de retorno esté siempre arriba de todo si está activa/visible (sin robar el foco)
-                    if let Some(ret_window) = handle.get_webview_window("return") {
-                        if ret_window.is_visible().unwrap_or(false) {
-                            let _ = ret_window.set_always_on_top(true);
-                            if let Ok(hwnd) = ret_window.hwnd() {
-                                unsafe {
-                                    use windows_sys::Win32::UI::WindowsAndMessaging::{
-                                        SetWindowPos, SWP_NOMOVE, SWP_NOSIZE, SWP_NOACTIVATE, SWP_SHOWWINDOW
-                                    };
-                                    use windows_sys::Win32::Foundation::HWND;
-                                    
-                                    SetWindowPos(
-                                        hwnd.0 as HWND,
-                                        -1isize as HWND, // HWND_TOPMOST
-                                        0, 0, 0, 0,
-                                        SWP_NOMOVE | SWP_NOSIZE | SWP_NOACTIVATE | SWP_SHOWWINDOW
-                                    );
-                                }
-                            }
-                        }
-                    }
-                }
-            });
-
-            // 8. Limpiar archivos huérfanos de videos borrados
+            // 7. Limpiar archivos huérfanos de videos borrados
             vault::cleanup_orphan_videos(app.handle());
 
             Ok(())
@@ -234,6 +177,7 @@ pub fn run() {
             system::get_system_specs,
             system::get_video_path,
             system::set_max_brightness,
+            system::infer_processor_info,
             vault::select_video,
             vault::save_custom_video,
             vault::list_custom_videos,
@@ -284,10 +228,37 @@ pub fn run() {
                         }
                     });
                 }
-                // Detectar cuando la ventana se restaura desde la barra de tareas (Windows nativo)
+                // Detectar cuando el foco de la ventana cambia (Windows nativo)
                 tauri::WindowEvent::Focused(focused) => {
-                    if *focused && window.label() == "main" {
-                        let _ = window.emit("app-restored", ());
+                    if window.label() == "main" {
+                        if *focused {
+                            // Salvaguarda absoluta: Ocultar la ventana de retorno y quitar alwaysOnTop cuando la principal gana foco
+                            if let Some(ret_win) = window.app_handle().get_webview_window("return") {
+                                let _ = ret_win.hide();
+                                let _ = ret_win.set_always_on_top(false);
+                            }
+                            let _ = window.emit("app-restored", ());
+                        } else {
+                            // Vigilancia reactiva de foco: Si pierde el foco y el modo Kiosk está activo, reclamarlo al instante
+                            let handle = window.app_handle().clone();
+                            let state = handle.state::<AppState>();
+                            let enforce_flag = Arc::clone(&state.enforce_always_on_top);
+                            let window_clone = window.clone();
+
+                            tauri::async_runtime::spawn(async move {
+                                let should_enforce = {
+                                    let guard = enforce_flag.lock().await;
+                                    *guard
+                                };
+
+                                let is_minimized = window_clone.is_minimized().unwrap_or(false);
+                                let is_visible = window_clone.is_visible().unwrap_or(true);
+
+                                if should_enforce && !is_minimized && is_visible {
+                                    let _ = window_clone.set_focus();
+                                }
+                            });
+                        }
                     }
                 }
                 _ => {}

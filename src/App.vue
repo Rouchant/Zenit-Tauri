@@ -45,11 +45,24 @@
     <!-- Background Overlay -->
     <div class="bg-blur"></div>
 
+    <!-- Header siempre pegado arriba y al ancho de la ventana -->
+    <Transition name="fade">
+      <Header v-if="!store.isVideoMode && !store.isLoading" />
+    </Transition>
+
+    <!-- Video View (Inactivity) - Fuera de app-container para ocupar pantalla completa real -->
+    <Transition name="fade">
+      <div id="video-view" v-show="store.isVideoMode && !store.isLoading" class="view active physical-fullscreen">
+         <VideoPlayer v-if="store.isVideoMode" />
+      </div>
+    </Transition>
+
     <!-- Contenedor Escalable del Contenido (Transparente y centrado en la pantalla física) -->
     <div class="app-container" :class="{ 'is-loading': store.isLoading }">
       <!-- Info View -->
       <div id="info-view" v-show="!store.isVideoMode && !store.isLoading" class="view active">
-        <Header />
+        <!-- Espaciador invisible para preservar la alineación exacta de las especificaciones -->
+        <div class="header-placeholder" style="height: 117px; width: 100%; visibility: hidden; pointer-events: none;"></div>
 
         <main class="main-content">
           <SpecsGrid @open-specs="showSpecsModal = true" />
@@ -106,28 +119,25 @@
         <footer class="footer"></footer>
       </div>
 
-      <!-- Video View (Inactivity) -->
-      <div id="video-view" v-show="store.isVideoMode && !store.isLoading" class="view active">
-         <VideoPlayer v-if="store.isVideoMode" />
-      </div>
-
       <!-- Modals -->
-      <PasswordModal 
-        v-if="showPasswordModal" 
-        :mode="passwordMode"
-        @close="showPasswordModal = false"
-        @verified="onPasswordVerified"
-      />
+      <Teleport to="body">
+        <PasswordModal 
+          v-if="showPasswordModal" 
+          :mode="passwordMode"
+          @close="showPasswordModal = false"
+          @verified="onPasswordVerified"
+        />
 
-      <AdminModal 
-        v-if="showAdminModal"
-        @close="showAdminModal = false"
-      />
+        <AdminModal 
+          v-if="showAdminModal"
+          @close="showAdminModal = false"
+        />
 
-      <SpecsModal 
-        v-if="showSpecsModal"
-        @close="showSpecsModal = false"
-      />
+        <SpecsModal 
+          v-if="showSpecsModal"
+          @close="showSpecsModal = false"
+        />
+      </Teleport>
     </div>
 
     <Teleport to="body">
@@ -138,7 +148,7 @@
 </template>
 
 <script setup>
-import { onMounted, onUnmounted, ref, watch, reactive, computed } from 'vue';
+import { onMounted, onUnmounted, ref, watch, reactive } from 'vue';
 import { useSpecsStore } from './store/specs';
 import { tauriAPI } from './api/tauriApi';
 import { listen } from '@tauri-apps/api/event';
@@ -172,10 +182,15 @@ watch([showPasswordModal, showAdminModal, showSpecsModal], ([p, a, s]) => {
   store.isModalOpen = p || a || s;
 });
 
-// Throttled reset timer for mousemove
+// Throttled reset timer for mousemove (max 1 vez/segundo para evitar presión en equipos de gama baja)
+let lastResetTime = 0;
 const throttledResetTimer = () => {
   if (isInternalFocusHack.value) return;
-  resetTimer();
+  const now = Date.now();
+  if (now - lastResetTime > 1000) {
+    lastResetTime = now;
+    resetTimer();
+  }
 };
 
 // Admin Hotspot Secrets
@@ -358,6 +373,7 @@ let unlistenInactivity = null;
 let unlistenActivity = null;
 let unlistenMinimized = null;
 let unlistenRestored = null;
+let onWindowFocus = null;
 
 const updateScale = () => {
   // Escalar de forma uniforme (contain) eligiendo la menor proporción
@@ -367,9 +383,10 @@ const updateScale = () => {
   document.documentElement.style.setProperty('--scale-y', scale);
 };
 
+let pixelShiftInterval = null;
 const initPixelShift = () => {
   // Move 1-2 pixels every 2 minutes to prevent OLED burn-in
-  setInterval(() => {
+  pixelShiftInterval = setInterval(() => {
     const x = (Math.random() * 4 - 2).toFixed(1) + 'px';
     const y = (Math.random() * 4 - 2).toFixed(1) + 'px';
     document.documentElement.style.setProperty('--shift-x', x);
@@ -429,12 +446,13 @@ onMounted(async () => {
     });
 
     // Refuerzo: Si el navegador detecta foco, intentar reanudar videos
-    window.addEventListener('focus', () => {
+    onWindowFocus = () => {
       console.log('Browser focus detected, checking video states...');
       if (!store.isModalOpen && !store.isVideoMode) {
         resumeInfoVideos();
       }
-    });
+    };
+    window.addEventListener('focus', onWindowFocus);
   }
 });
 
@@ -443,6 +461,7 @@ onUnmounted(() => {
   window.removeEventListener('mousemove', throttledResetTimer);
   window.removeEventListener('keydown', resetTimer);
   window.removeEventListener('mousedown', resetTimer);
+  if (onWindowFocus) window.removeEventListener('focus', onWindowFocus);
   
   if (unlistenMinimized) unlistenMinimized();
   if (unlistenInactivity) unlistenInactivity();
@@ -450,6 +469,7 @@ onUnmounted(() => {
   if (unlistenRestored) unlistenRestored();
   
   clearTimeout(inactivityTimer.value);
+  if (pixelShiftInterval) clearInterval(pixelShiftInterval);
 });
 </script>
 

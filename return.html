@@ -1,11 +1,12 @@
 <!DOCTYPE html>
 <html lang="es">
+
 <head>
     <meta charset="UTF-8">
     <link rel="icon" type="image/x-icon" href="/favicon.ico">
     <script>
         // Aplicar el tema lo antes posible para evitar parpadeos (FOUC)
-        (function() {
+        (function () {
             const urlParams = new URLSearchParams(window.location.search);
             const store = urlParams.get('store') || 'none';
             const theme = store === 'none' ? 'default' : store;
@@ -16,48 +17,53 @@
         @font-face {
             font-family: 'Outfit';
             src: url('public/fonts/outfit-300.ttf') format('truetype'),
-                 url('fonts/outfit-300.ttf') format('truetype'),
-                 url('/fonts/outfit-300.ttf') format('truetype');
+                url('fonts/outfit-300.ttf') format('truetype'),
+                url('/fonts/outfit-300.ttf') format('truetype');
             font-weight: 300;
             font-style: normal;
         }
+
         @font-face {
             font-family: 'Outfit';
             src: url('public/fonts/outfit-400.ttf') format('truetype'),
-                 url('fonts/outfit-400.ttf') format('truetype'),
-                 url('/fonts/outfit-400.ttf') format('truetype');
+                url('fonts/outfit-400.ttf') format('truetype'),
+                url('/fonts/outfit-400.ttf') format('truetype');
             font-weight: 400;
             font-style: normal;
         }
+
         @font-face {
             font-family: 'Outfit';
             src: url('public/fonts/outfit-600.ttf') format('truetype'),
-                 url('fonts/outfit-600.ttf') format('truetype'),
-                 url('/fonts/outfit-600.ttf') format('truetype');
+                url('fonts/outfit-600.ttf') format('truetype'),
+                url('/fonts/outfit-600.ttf') format('truetype');
             font-weight: 600;
             font-style: normal;
         }
+
         @font-face {
             font-family: 'Outfit';
             src: url('public/fonts/outfit-700.ttf') format('truetype'),
-                 url('fonts/outfit-700.ttf') format('truetype'),
-                 url('/fonts/outfit-700.ttf') format('truetype');
+                url('fonts/outfit-700.ttf') format('truetype'),
+                url('/fonts/outfit-700.ttf') format('truetype');
             font-weight: 700;
             font-style: normal;
         }
+
         @font-face {
             font-family: 'Antonio';
             src: url('public/fonts/Antonio-Variable.ttf') format('truetype'),
-                 url('fonts/Antonio-Variable.ttf') format('truetype'),
-                 url('/fonts/Antonio-Variable.ttf') format('truetype');
+                url('fonts/Antonio-Variable.ttf') format('truetype'),
+                url('/fonts/Antonio-Variable.ttf') format('truetype');
             font-weight: 400;
             font-style: normal;
         }
+
         @font-face {
             font-family: 'Antonio';
             src: url('public/fonts/Antonio-Variable.ttf') format('truetype'),
-                 url('fonts/Antonio-Variable.ttf') format('truetype'),
-                 url('/fonts/Antonio-Variable.ttf') format('truetype');
+                url('fonts/Antonio-Variable.ttf') format('truetype'),
+                url('/fonts/Antonio-Variable.ttf') format('truetype');
             font-weight: 700;
             font-style: normal;
         }
@@ -69,10 +75,25 @@
         }
 
         /* Themes matching style.css */
-        .theme-falabella { --primary: #B9D40D; --secondary: #8da10a; }
-        .theme-paris { --primary: #00D1FF; --secondary: #00A3C7; }
-        .theme-ripley { --primary: #AF47FF; --secondary: #FFB800; }
-        .theme-default { --primary: #00f2aa; --secondary: #007bb0; }
+        .theme-falabella {
+            --primary: #B9D40D;
+            --secondary: #8da10a;
+        }
+
+        .theme-paris {
+            --primary: #00D1FF;
+            --secondary: #00A3C7;
+        }
+
+        .theme-ripley {
+            --primary: #AF47FF;
+            --secondary: #FFB800;
+        }
+
+        .theme-default {
+            --primary: #00f2aa;
+            --secondary: #007bb0;
+        }
 
         html {
             background: transparent;
@@ -81,6 +102,7 @@
             margin: 0;
             padding: 0;
         }
+
         body {
             margin: 0;
             padding: 0;
@@ -94,10 +116,17 @@
             font-family: 'Outfit', sans-serif;
             user-select: none;
             box-sizing: border-box;
+            /* OLED Protection: Pixel Shift (Mueve sutilmente el botón para prevenir quemado) */
+            transform: translate(var(--shift-x, 0px), var(--shift-y, 0px));
+            transition: transform 10s ease-in-out;
+            will-change: transform;
+            backface-visibility: hidden;
         }
+
         .return-btn {
             font-family: 'Antonio', sans-serif;
-            background: transparent; /* Transparent base to eliminate outer gray anti-aliasing halo */
+            background: transparent;
+            /* Transparent base to eliminate outer gray anti-aliasing halo */
             color: #1A1A1A;
             border: none;
             width: 95%;
@@ -112,7 +141,7 @@
             text-transform: uppercase;
             cursor: pointer;
             transition: all 0.1s cubic-bezier(0.4, 0, 0.2, 1);
-            -webkit-app-region: no-drag; 
+            -webkit-app-region: no-drag;
             display: flex;
             flex-direction: column;
             justify-content: center;
@@ -134,17 +163,16 @@
             width: 150vmax;
             height: 150vmax;
             transform: translate(-50%, -50%);
-            background: conic-gradient(
-                var(--primary) 0%,
-                #FFFFFF 25%,
-                var(--secondary) 50%,
-                #FFFFFF 75%,
-                var(--primary) 100%
-            );
+            background: conic-gradient(var(--primary) 0%,
+                    #FFFFFF 25%,
+                    var(--secondary) 50%,
+                    #FFFFFF 75%,
+                    var(--primary) 100%);
             animation: rotate-border 4s linear infinite;
             pointer-events: none;
             z-index: 1;
-            will-change: transform; /* Promotes to dedicated GPU layer for 60fps at 0% CPU */
+            will-change: transform;
+            /* Promotes to dedicated GPU layer for 60fps at 0% CPU */
             transform-style: preserve-3d;
             backface-visibility: hidden;
         }
@@ -158,7 +186,8 @@
             bottom: 2.2px;
             right: 2.2px;
             background: linear-gradient(50deg, var(--secondary), var(--primary));
-            border-radius: 13.8px; /* Mathematically concentric to the outer 16px radius (16 - 2.2) */
+            border-radius: 13.8px;
+            /* Mathematically concentric to the outer 16px radius (16 - 2.2) */
             pointer-events: none;
             z-index: 2;
             transition: all 0.1s cubic-bezier(0.4, 0, 0.2, 1);
@@ -168,11 +197,12 @@
             0% {
                 transform: translate(-50%, -50%) rotate(0deg);
             }
+
             100% {
                 transform: translate(-50%, -50%) rotate(360deg);
             }
         }
-        
+
         /* NO HOVER EFFECTS */
 
         /* Native active state and JS class active state */
@@ -180,43 +210,58 @@
         .return-btn.is-active {
             transform: scale(0.96);
             filter: brightness(0.85);
-            box-shadow: 0 2px 4px rgba(0,0,0,0.2);
+            box-shadow: 0 2px 4px rgba(0, 0, 0, 0.2);
         }
 
-        .btn-icon, .btn-text, .brand-logo-container {
+        .btn-icon,
+        .btn-text,
+        .brand-logo-container {
             pointer-events: none;
             position: relative;
             z-index: 3;
         }
+
         .btn-icon {
             opacity: 0.9;
             stroke: #1A1A1A !important;
             width: 20%;
-    height: auto;
+            height: auto;
         }
+
         .btn-text {
             line-height: 1.2;
             text-align: center;
             max-width: 85%;
             color: #1A1A1A !important;
         }
+
         .brand-logo-container {
             display: none;
         }
+
         .brand-logo-container img {
-            max-height: 15cqh;
+            max-height: 14cqh;
             opacity: 0.9;
             filter: brightness(0) invert(10.2%);
         }
+
         .brand-logo-container img.brand-hp {
-            max-height: 19cqh; /* Aumentado de 16px a 25px para compensar visualmente su forma circular */
+            max-height: 19cqh;
+            /* Aumentado de 16px a 25px para compensar visualmente su forma circular */
         }
     </style>
 </head>
+
 <body>
     <button id="restore-btn" class="return-btn">
         <span class="btn-text">VER DETALLES</span>
-        <svg xmlns="http://www.w3.org/2000/svg" width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" class="lucide lucide-laptop-icon lucide-laptop btn-icon"><path d="M18 5a2 2 0 0 1 2 2v8.526a2 2 0 0 0 .212.897l1.068 2.127a1 1 0 0 1-.9 1.45H3.62a1 1 0 0 1-.9-1.45l1.068-2.127A2 2 0 0 0 4 15.526V7a2 2 0 0 1 2-2z"/><path d="M20.054 15.987H3.946"/></svg>
+        <svg xmlns="http://www.w3.org/2000/svg" width="48" height="48" viewBox="0 0 24 24" fill="none"
+            stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"
+            class="lucide lucide-laptop-icon lucide-laptop btn-icon">
+            <path
+                d="M18 5a2 2 0 0 1 2 2v8.526a2 2 0 0 0 .212.897l1.068 2.127a1 1 0 0 1-.9 1.45H3.62a1 1 0 0 1-.9-1.45l1.068-2.127A2 2 0 0 0 4 15.526V7a2 2 0 0 1 2-2z" />
+            <path d="M20.054 15.987H3.946" />
+        </svg>
         <div id="brand-logo-container" class="brand-logo-container">
             <img id="brand-logo-img" src="" alt="Brand Logo" />
         </div>
@@ -224,6 +269,7 @@
 
     <script type="module">
         import { invoke } from '@tauri-apps/api/core';
+        import { listen } from '@tauri-apps/api/event';
 
         const btn = document.getElementById('restore-btn');
         const logoContainer = document.getElementById('brand-logo-container');
@@ -234,7 +280,7 @@
             // Actualizar tema
             const theme = store === 'none' ? 'default' : store;
             document.documentElement.className = 'theme-' + theme;
-            
+
             // Actualizar logo
             if (brand && brand !== 'none' && brand !== 'null' && brand !== '') {
                 logoImg.src = '/assets/logos/' + brand + '.svg';
@@ -245,6 +291,14 @@
                 logoContainer.style.display = 'none';
             }
         };
+
+        // Escuchar el evento nativo de Tauri para recibir el contexto de forma segura y tipada
+        listen('set-return-context', (event) => {
+            if (event && event.payload) {
+                const { store, brand } = event.payload;
+                window.setReturnContext(store || 'none', brand || '');
+            }
+        });
 
         // Soporte fallback para parámetros URL si se recarga
         const urlParams = new URLSearchParams(window.location.search);
@@ -263,7 +317,7 @@
         document.addEventListener('visibilitychange', () => {
             if (document.hidden) resetState();
         });
-        
+
         window.addEventListener('focus', resetState);
         window.addEventListener('blur', resetState);
 
@@ -277,6 +331,18 @@
                 resetState();
             }
         });
+
+        // OLED Protection: Pixel Shift (Mueve 1-2px cada 2 minutos)
+        const initPixelShift = () => {
+            setInterval(() => {
+                const x = (Math.random() * 4 - 2).toFixed(1) + 'px';
+                const y = (Math.random() * 4 - 2).toFixed(1) + 'px';
+                document.body.style.setProperty('--shift-x', x);
+                document.body.style.setProperty('--shift-y', y);
+            }, 120000);
+        };
+        initPixelShift();
     </script>
 </body>
+
 </html>

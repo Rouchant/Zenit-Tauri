@@ -49,13 +49,18 @@ background: radial-gradient(ellipse at top, var(--bg-overlay-start) 0% 65%, var(
 }
 
 .header {
-    width: 100%;
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: calc(100% / var(--scale-x, 1));
+    transform: scale(var(--scale-x, 1));
+    transform-origin: top left;
     padding: 20px 60px;
     display: flex;
     justify-content: space-between;
     align-items: center;
-    position: relative;
-    z-index: 10;
+    z-index: 100;
+    box-sizing: border-box;
 }
 
 .header-branding {

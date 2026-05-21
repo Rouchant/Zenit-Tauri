@@ -15,6 +15,7 @@ const CREATE_NO_WINDOW: u32 = 0x08000000;
 static RE_INTEL: OnceLock<Regex> = OnceLock::new();
 static RE_INTEL_CORE: OnceLock<Regex> = OnceLock::new();
 static RE_RYZEN: OnceLock<Regex> = OnceLock::new();
+static RE_N_SERIES: OnceLock<Regex> = OnceLock::new();
 static CACHED_SPECS: OnceLock<SystemSpecs> = OnceLock::new();
 static NVIDIA_POWER_LIMIT: OnceLock<Option<String>> = OnceLock::new();
 
@@ -368,22 +369,37 @@ fn get_storage_info_wmi(wmi: &wmi::WMIConnection) -> Option<String> {
 
 /// Identifica la generación del procesador mediante expresiones regulares aplicadas al nombre del modelo.
 fn detect_generation(name: &str) -> String {
-    let re_intel = RE_INTEL.get_or_init(|| Regex::new(r"i[3579]-(\d+)").unwrap());
-    let re_intel_core = RE_INTEL_CORE.get_or_init(|| Regex::new(r"Core\s+[3579]\s+(\d)").unwrap());
-    let re_ryzen = RE_RYZEN.get_or_init(|| Regex::new(r"Ryzen\s+[3579]\s+(\d)(\d{2,3})").unwrap());
+    let n = name.to_lowercase();
+    let re_intel = RE_INTEL.get_or_init(|| Regex::new(r"i[3579]-(\d{1,2})").unwrap());
+    let re_intel_core = RE_INTEL_CORE.get_or_init(|| Regex::new(r"core\s+[3579]\s+(\d)").unwrap());
+    let re_ryzen = RE_RYZEN.get_or_init(|| Regex::new(r"ryzen\s+[3579]\s+(\d)(\d{2,3})").unwrap());
+    let re_n_series = RE_N_SERIES.get_or_init(|| Regex::new(r"n\d{3}").unwrap());
 
-    if let Some(cap) = re_intel.captures(name) { format!("{}a Gen", &cap[1]) }
-    else if let Some(cap) = re_intel_core.captures(name) { format!("Serie {}", &cap[1]) }
-    else if name.contains("Ultra") { "Core Ultra".to_string() }
-    else if name.contains("Ryzen AI") { "Ryzen AI".to_string() }
-    else if let Some(cap) = re_ryzen.captures(name) { 
+    if let Some(cap) = re_intel.captures(&n) { 
+        format!("{}ª Gen", &cap[1]) 
+    }
+    else if let Some(cap) = re_intel_core.captures(&n) { 
+        format!("Serie {}", &cap[1]) 
+    }
+    else if n.contains("ultra") { 
+        "Core Ultra".to_string() 
+    }
+    else if n.contains("ryzen ai") { 
+        "Ryzen AI".to_string() 
+    }
+    else if let Some(cap) = re_ryzen.captures(&n) { 
         if cap[2].len() == 2 {
             format!("{}00 Series", &cap[1])
         } else {
             format!("{}000 Series", &cap[1])
         }
     }
-    else { "Desconocida".to_string() }
+    else if re_n_series.is_match(&n) {
+        "N-Series".to_string()
+    }
+    else { 
+        "Desconocida".to_string() 
+    }
 }
 
 /// Formatea la capacidad de RAM, redondeando para absorber la memoria reservada por hardware.
@@ -480,7 +496,81 @@ pub fn set_max_brightness() {
     let _ = Command::new("powershell.exe").args(["-ExecutionPolicy", "Bypass", "-WindowStyle", "Hidden", "-Command", script]).creation_flags(CREATE_NO_WINDOW).spawn();
 }
 
+#[derive(Debug, Serialize, Deserialize, Clone)]
+pub struct ProcessorInfo {
+    pub vendor: String,
+    pub gen: String,
+}
+
+/// Infiere el fabricante y la generación de un procesador a partir de su nombre utilizando la lógica robusta del backend.
+#[tauri::command]
+pub fn infer_processor_info(name: String) -> ProcessorInfo {
+    let clean_name = name.replace("(R)", "").replace("(TM)", "").replace("  ", " ");
+    let vendor = if clean_name.to_uppercase().contains("INTEL") {
+        "Intel".to_string()
+    } else if clean_name.to_uppercase().contains("AMD") {
+        "AMD".to_string()
+    } else {
+        "Generic".to_string()
+    };
+    let gen = detect_generation(&clean_name);
+    ProcessorInfo { vendor, gen }
+}
+
 #[cfg(not(windows))]
 fn get_wmi_details() -> Result<WmiData, Box<dyn std::error::Error>> {
     Ok(default_wmi_fallback())
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn test_cpu_detection() {
+        let cases = vec![
+            // Intel Core i-Series
+            ("Intel Core i7-12700H", "12ª Gen"),
+            ("Intel Core i5-1135G7", "11ª Gen"),
+            ("Intel Core i9-10900K", "10ª Gen"),
+            ("Intel Core i7-9750H", "9ª Gen"),
+            ("intel core i5-8250u", "8ª Gen"), // Minúsculas
+            
+            // Intel Core (Series)
+            ("Intel Core 5 120U", "Serie 1"),
+            ("Intel Core 7 150U", "Serie 1"),
+            ("intel core 3 100u", "Serie 1"),
+            
+            // Intel Ultra
+            ("Intel Core Ultra 7 155H", "Core Ultra"),
+            ("intel core ultra 9 185h", "Core Ultra"),
+            
+            // Intel N-Series
+            ("Intel Processor N100", "N-Series"),
+            ("Intel Processor N200", "N-Series"),
+            ("intel processor n305", "N-Series"),
+            
+            // AMD Ryzen AI
+            ("AMD Ryzen AI 9 HX 370", "Ryzen AI"),
+            ("amd ryzen ai 7 pro 360", "Ryzen AI"),
+            
+            // AMD Ryzen Clásico
+            ("AMD Ryzen 7 5700U", "5000 Series"),
+            ("AMD Ryzen 5 5600X", "5000 Series"),
+            ("AMD Ryzen 9 7900X", "7000 Series"),
+            ("AMD Ryzen 5 7520U", "7000 Series"),
+            ("amd ryzen 3 3250u", "3000 Series"),
+            ("AMD Ryzen 7 270U", "200 Series"), // 3 dígitos (ej: X00 Series)
+            ("AMD Ryzen 5 350U", "300 Series"),
+            
+            // Genéricos / Desconocidos
+            ("Intel Pentium Gold 7505", "Desconocida"),
+            ("AMD Athlon Gold 3150U", "Desconocida"),
+        ];
+
+        for (input, expected) in cases {
+            let res = detect_generation(input);
+            assert_eq!(res, expected, "Failed for CPU: {}", input);
+        }
+    }
 }

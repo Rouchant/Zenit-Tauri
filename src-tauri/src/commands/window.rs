@@ -71,8 +71,13 @@ pub async fn restore_app_logic(app: &AppHandle) -> Result<(), String> {
         *guard = true;
     }
 
-    main_window.unminimize().map_err(|e| e.to_string())?;
-    main_window.show().map_err(|e| e.to_string())?;
+    // Ocultar la ventana flotante de retorno de inmediato y desactivar alwaysOnTop
+    let _ = return_window.hide();
+    let _ = return_window.set_always_on_top(false);
+
+    // Intentamos restaurar la ventana principal sin salir prematuramente en caso de fallos menores
+    let res_unmin = main_window.unminimize();
+    let res_show = main_window.show();
 
     // Simular pulsación de Escape para asegurar que el sistema "despierte" y otorgue foco real.
     unsafe {
@@ -83,9 +88,11 @@ pub async fn restore_app_logic(app: &AppHandle) -> Result<(), String> {
     // Forzado agresivo a primer plano vía Win32
     force_window_to_foreground(&main_window).await;
     
-    // Ocultar la ventana flotante de retorno
-    let _ = return_window.hide();
     let _ = app.emit("app-restored", ());
+
+    // Propagar errores de restauración si ocurrieron
+    res_unmin.map_err(|e| e.to_string())?;
+    res_show.map_err(|e| e.to_string())?;
 
     Ok(())
 }
@@ -120,13 +127,20 @@ async fn position_return_window(main: &tauri::WebviewWindow, ret: &tauri::Webvie
         let _ = ret.set_position(LogicalPosition::new(x, y));
     }
 
-    // Pasar el contexto de la tienda y marca a la ventana de retorno
-    let store_str = store.unwrap_or_else(|| "none".to_string());
-    let brand_str = brand.unwrap_or_else(|| "".to_string());
-    let _ = ret.eval(&format!(
-        "if (window.setReturnContext) {{ window.setReturnContext('{}', '{}'); }} else {{ window.location.search = 'store={}&brand={}'; }}",
-        store_str, brand_str, store_str, brand_str
-    ));
+    // Pasar el contexto de la tienda y marca a la ventana de retorno mediante eventos nativos seguros
+    #[derive(serde::Serialize, Clone)]
+    struct ReturnContext {
+        store: String,
+        brand: String,
+    }
+    
+    let _ = ret.emit(
+        "set-return-context",
+        ReturnContext {
+            store: store.unwrap_or_else(|| "none".to_string()),
+            brand: brand.unwrap_or_else(|| "".to_string()),
+        },
+    );
 
     ret.show().map_err(|e| e.to_string())?;
     ret.set_always_on_top(true).map_err(|e| e.to_string())?;

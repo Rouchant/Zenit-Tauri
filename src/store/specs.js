@@ -64,44 +64,24 @@ export const useSpecsStore = defineStore('specs', () => {
   const saveCustom = async (specs) => {
     if (!specs) return;
     
-    // Infer logic
-    const inferVendor = (name) => {
-      const n = (name || '').toLowerCase();
-      if (n.includes('intel')) return 'Intel';
-      if (n.includes('amd')) return 'AMD';
-      return 'Generic';
-    };
-
-    const inferGen = (name) => {
-      const n = (name || '').toLowerCase().replace(/\(r\)/g, '').replace(/\(tm\)/g, '');
-      if (n.includes('ultra')) return 'Core Ultra';
-      
-      const coreMatch = n.match(/core\s+[3579]\s+(\d)/);
-      if (coreMatch) return `Serie ${coreMatch[1]}`;
-      
-      const intelMatch = n.match(/i[3579]-(\d{1,2})/);
-      if (intelMatch) return intelMatch[1] + 'ª Gen';
-      
-      // AMD Ryzen AI (ej: Ryzen AI 5 340, Ryzen AI 9 HX 370)
-      if (n.includes('ryzen') && n.includes('ai')) return 'Ryzen AI';
-
-      // AMD Ryzen clásico: 4+ dígitos = X000 Series, 3 dígitos = X00 Series
-      const amdMatch = n.match(/ryzen\s+[3579]\s+(\d)(\d{2,3})/);
-      if (amdMatch) {
-        const firstDigit = amdMatch[1];
-        const rest = amdMatch[2];
-        // 3 dígitos total (ej: 270) → 200 Series | 4+ dígitos (ej: 7800) → 7000 Series
-        return rest.length === 2
-          ? firstDigit + '00 Series'
-          : firstDigit + '000 Series';
+    // Infiere fabricante y generación usando la lógica centralizada del backend (Rust)
+    if (window.__TAURI_INTERNALS__ && specs.processor) {
+      try {
+        const info = await tauriAPI.inferProcessorInfo(specs.processor);
+        if (info) {
+          specs.vendor = info.vendor;
+          specs.gen = info.gen;
+        }
+      } catch (err) {
+        console.error('Error inferring processor info:', err);
       }
+    } else {
+      // Fallback simple por si corre en un navegador (mock)
+      const n = (specs.processor || '').toLowerCase();
+      specs.vendor = n.includes('intel') ? 'Intel' : n.includes('amd') ? 'AMD' : 'Generic';
+      specs.gen = 'Desconocida';
+    }
 
-      if (n.match(/n\d{3}/)) return 'N-Series';
-      return '';
-    };
-
-    specs.vendor = inferVendor(specs.processor);
-    specs.gen = inferGen(specs.processor);
     if (!specs.os) specs.os = 'Windows 11 Home';
 
     // Merge to avoid losing non-editable fields (like auto-detected ones)

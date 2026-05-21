@@ -1,11 +1,9 @@
 <script setup>
-import {  } from 'vue';
-
-const props = defineProps({
-  icon: String,
+defineProps({
   label: String,
-  value: String,
+  value: [String, Number],
   subValue: String,
+  icon: String,
   tag: String,
   id: String
 });
