@@ -78,8 +78,19 @@ export const useSpecsStore = defineStore('specs', () => {
     } else {
       // Fallback simple por si corre en un navegador (mock)
       const n = (specs.processor || '').toLowerCase();
-      specs.vendor = n.includes('intel') ? 'Intel' : n.includes('amd') ? 'AMD' : 'Generic';
-      specs.gen = 'Desconocida';
+      if (n.includes('intel')) {
+        specs.vendor = 'Intel';
+        specs.gen = 'Desconocida';
+      } else if (n.includes('amd')) {
+        specs.vendor = 'AMD';
+        specs.gen = 'Desconocida';
+      } else if (n.includes('snapdragon') || n.includes('qualcomm')) {
+        specs.vendor = 'Snapdragon';
+        specs.gen = n.includes('x elite') || n.includes('x plus') ? 'Snapdragon X' : 'Qualcomm ARM';
+      } else {
+        specs.vendor = 'Generic';
+        specs.gen = 'Desconocida';
+      }
     }
 
     if (!specs.os) specs.os = 'Windows 11 Home';

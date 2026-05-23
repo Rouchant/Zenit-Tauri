@@ -11,8 +11,8 @@ const specs = computed(() => store.currentSpecs);
 
 const procIcon = computed(() => {
   const v = (specs.value.vendor || '').toLowerCase();
-  const folder = (v === 'intel' || v === 'amd') ? 'logos' : 'ui';
-  const icon = (v === 'intel' || v === 'amd') ? v : 'cpu';
+  const folder = (v === 'intel' || v === 'amd' || v === 'snapdragon') ? 'logos' : 'ui';
+  const icon = (v === 'intel' || v === 'amd' || v === 'snapdragon') ? v : 'cpu';
   return `/assets/${folder}/${icon}.svg`;
 });
 

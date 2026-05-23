@@ -56,7 +56,15 @@ pub async fn get_system_specs() -> Result<SystemSpecs, String> {
     // 1. Detección básica de CPU vía sysinfo
     let cpu = sys.cpus().first().ok_or("No se detectó CPU")?;
     let proc_name = cpu.brand().trim().replace("(R)", "").replace("(TM)", "").replace("  ", " ");
-    let vendor = if proc_name.contains("Intel") { "Intel" } else if proc_name.contains("AMD") { "AMD" } else { "Generic" };
+    let vendor = if proc_name.contains("Intel") {
+        "Intel"
+    } else if proc_name.contains("AMD") {
+        "AMD"
+    } else if proc_name.to_lowercase().contains("snapdragon") || proc_name.to_lowercase().contains("qualcomm") {
+        "Snapdragon"
+    } else {
+        "Generic"
+    };
     let gen = detect_generation(&proc_name);
 
     // 2. RAM (Formateo comercial)
@@ -370,13 +378,25 @@ fn get_storage_info_wmi(wmi: &wmi::WMIConnection) -> Option<String> {
 /// Identifica la generación del procesador mediante expresiones regulares aplicadas al nombre del modelo.
 fn detect_generation(name: &str) -> String {
     let n = name.to_lowercase();
-    let re_intel = RE_INTEL.get_or_init(|| Regex::new(r"i[3579]-(\d{1,2})").unwrap());
+    let re_intel = RE_INTEL.get_or_init(|| Regex::new(r"i[3579]-(\d+)").unwrap());
     let re_intel_core = RE_INTEL_CORE.get_or_init(|| Regex::new(r"core\s+[3579]\s+(\d)").unwrap());
     let re_ryzen = RE_RYZEN.get_or_init(|| Regex::new(r"ryzen\s+[3579]\s+(\d)(\d{2,3})").unwrap());
     let re_n_series = RE_N_SERIES.get_or_init(|| Regex::new(r"n\d{3}").unwrap());
 
     if let Some(cap) = re_intel.captures(&n) { 
-        format!("{}ª Gen", &cap[1]) 
+        let digits = &cap[1];
+        let gen = if digits.len() >= 5 {
+            &digits[0..2]
+        } else if digits.len() == 4 {
+            if n.contains(&format!("{}g", digits)) || n.contains(&format!("{} g", digits)) {
+                &digits[0..2]
+            } else {
+                &digits[0..1]
+            }
+        } else {
+            digits
+        };
+        format!("{}ª Gen", gen) 
     }
     else if let Some(cap) = re_intel_core.captures(&n) { 
         format!("Serie {}", &cap[1]) 
@@ -396,6 +416,13 @@ fn detect_generation(name: &str) -> String {
     }
     else if re_n_series.is_match(&n) {
         "N-Series".to_string()
+    }
+    else if n.contains("snapdragon") || n.contains("qualcomm") {
+        if n.contains("x elite") || n.contains("x plus") {
+            "Snapdragon X".to_string()
+        } else {
+            "Qualcomm ARM".to_string()
+        }
     }
     else { 
         "Desconocida".to_string() 
@@ -510,6 +537,8 @@ pub fn infer_processor_info(name: String) -> ProcessorInfo {
         "Intel".to_string()
     } else if clean_name.to_uppercase().contains("AMD") {
         "AMD".to_string()
+    } else if clean_name.to_uppercase().contains("SNAPDRAGON") || clean_name.to_uppercase().contains("QUALCOMM") {
+        "Snapdragon".to_string()
     } else {
         "Generic".to_string()
     };
@@ -562,6 +591,11 @@ mod tests {
             ("amd ryzen 3 3250u", "3000 Series"),
             ("AMD Ryzen 7 270U", "200 Series"), // 3 dígitos (ej: X00 Series)
             ("AMD Ryzen 5 350U", "300 Series"),
+            
+            // Snapdragon / Qualcomm
+            ("Snapdragon X Elite X1E-84-100", "Snapdragon X"),
+            ("Qualcomm Snapdragon X Plus X1P-64-100", "Snapdragon X"),
+            ("Qualcomm Snapdragon 8cx Gen 3", "Qualcomm ARM"),
             
             // Genéricos / Desconocidos
             ("Intel Pentium Gold 7505", "Desconocida"),

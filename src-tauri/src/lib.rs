@@ -39,9 +39,6 @@ pub fn run() {
         "--media-cache-size=1",
         "--aggressive-cache-discard",
 
-        // V8: Subimos un poco para evitar micro-stuttering por Garbage Collection en equipos con 8GB+ RAM
-        "--js-flags=--max-old-space-size=256",
-
         // Red: Desactivar subsistemas de networking innecesarios
         "--disable-background-networking",
         "--disable-domain-reliability",

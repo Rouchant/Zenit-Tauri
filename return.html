@@ -116,11 +116,6 @@
             font-family: 'Outfit', sans-serif;
             user-select: none;
             box-sizing: border-box;
-            /* OLED Protection: Pixel Shift (Mueve sutilmente el botón para prevenir quemado) */
-            transform: translate(var(--shift-x, 0px), var(--shift-y, 0px));
-            transition: transform 10s ease-in-out;
-            will-change: transform;
-            backface-visibility: hidden;
         }
 
         .return-btn {
@@ -155,16 +150,19 @@
             overflow: hidden;
         }
 
+        @property --angle {
+            syntax: '<angle>';
+            initial-value: 0deg;
+            inherits: false;
+        }
+
         /* The rotating border beam */
         .return-btn::before {
             content: '';
             position: absolute;
-            top: 50%;
-            left: 50%;
-            width: 150vmax;
-            height: 150vmax;
-            transform: translate(-50%, -50%);
-            background: conic-gradient(var(--primary) 0%,
+            inset: 0;
+            background: conic-gradient(from var(--angle),
+                    var(--primary) 0%,
                     #FFFFFF 25%,
                     var(--secondary) 50%,
                     #FFFFFF 75%,
@@ -172,10 +170,6 @@
             animation: rotate-border 4s linear infinite;
             pointer-events: none;
             z-index: 1;
-            will-change: transform;
-            /* Promotes to dedicated GPU layer for 60fps at 0% CPU */
-            transform-style: preserve-3d;
-            backface-visibility: hidden;
         }
 
         /* The solid button background, inset by 2.2px to create a 0.3px overlap that masks the anti-aliasing seam */
@@ -195,12 +189,8 @@
         }
 
         @keyframes rotate-border {
-            0% {
-                transform: translate(-50%, -50%) rotate(0deg);
-            }
-
-            100% {
-                transform: translate(-50%, -50%) rotate(360deg);
+            to {
+                --angle: 360deg;
             }
         }
 
@@ -333,16 +323,7 @@
             }
         });
 
-        // OLED Protection: Pixel Shift (Mueve 1-2px cada 2 minutos)
-        const initPixelShift = () => {
-            setInterval(() => {
-                const x = (Math.random() * 4 - 2).toFixed(1) + 'px';
-                const y = (Math.random() * 4 - 2).toFixed(1) + 'px';
-                document.body.style.setProperty('--shift-x', x);
-                document.body.style.setProperty('--shift-y', y);
-            }, 120000);
-        };
-        initPixelShift();
+        // Pixel Shift removed to avoid border alignment issues and visual glitches
     </script>
 </body>
 
