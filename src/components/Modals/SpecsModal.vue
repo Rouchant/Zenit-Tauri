@@ -76,7 +76,7 @@ const tryPc = (e) => {
               style="max-width: 400px;" 
               @click="tryPc($event)"
             >
-              Prueba esta PC
+              <span class="btn-text">Prueba esta PC</span>
             </button>
         </div>
     </div>

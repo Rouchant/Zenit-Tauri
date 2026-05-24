@@ -83,7 +83,7 @@ const tryPc = (e) => {
       class="view-pc-btn" 
       @click="tryPc($event)"
     >
-      Prueba esta PC
+      <span class="btn-text">Prueba esta PC</span>
     </button>
   </div>
 </template>

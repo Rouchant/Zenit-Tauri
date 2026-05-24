@@ -201,6 +201,9 @@ const hotspotCounts = reactive({
 let hotspotTimeout = null;
 
 const handleHotspotClick = (mode) => {
+  // Ignorar clics si ya hay un modal abierto para evitar duplicaciones
+  if (store.isModalOpen) return;
+
   // Clear previous reset timer
   if (hotspotTimeout) clearTimeout(hotspotTimeout);
 
