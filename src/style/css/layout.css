@@ -36,6 +36,7 @@
     height: 100%;
     z-index: 0;
     overflow: hidden;
+    isolation: isolate;
 }
 
 #bg-video,
@@ -59,6 +60,7 @@
     bottom: -2px;
     background: radial-gradient(ellipse at top, var(--bg-overlay-start) 0% 65%, var(--bg-overlay-end) 110%);
     z-index: 1;
+    pointer-events: none;
 }
 
 .header {
@@ -68,7 +70,7 @@
     width: calc(100% / var(--scale-x, 1));
     transform: scale(var(--scale-x, 1));
     transform-origin: top left;
-    padding: 1cqw 3cqw;
+    padding: 20px 58px;
     display: flex;
     justify-content: space-between;
     align-items: center;
@@ -152,7 +154,7 @@
     max-height: 100%;
     overflow-y: auto;
     /* Evita desbordamiento en alturas de pantalla reducidas */
-    padding: 0px 0px 28px 0px;
+    padding: 28px 0px 28px 0px;
     /* Espaciado de seguridad para que el glow y las sombras respiren sin cortarse */
     box-sizing: border-box;
 }

@@ -40,10 +40,10 @@
         @playing="bgRetryCount = 0"
       >
       </video>
+
+      <!-- Background Overlay (Moved inside to unify GPU compositing) -->
+      <div class="bg-blur"></div>
     </div>
-    
-    <!-- Background Overlay -->
-    <div class="bg-blur"></div>
 
     <!-- Header siempre pegado arriba y al ancho de la ventana -->
     <Transition name="fade">

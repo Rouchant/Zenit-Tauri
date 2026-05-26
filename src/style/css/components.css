@@ -207,7 +207,7 @@
     border: none;
     outline: none;
     color: var(--bg-dark);
-    padding: 20px 40px;
+    padding: 27px 40px;
     border-radius: 24px;
     font-family: 'Antonio', sans-serif;
     text-transform: uppercase;
@@ -239,11 +239,13 @@
     position: absolute;
     inset: 0;
     background: conic-gradient(from var(--angle),
-            var(--primary) 0%,
-            #FFFFFF 25%,
-            var(--secondary) 50%,
-            #FFFFFF 75%,
-            var(--primary) 100%);
+    #FFFFFF 0%,
+    var(--primary) 10%,
+    /* El blanco se apaga rápidamente aquí */
+    var(--secondary) 50%,
+    var(--primary) 90%,
+    /* El blanco recién empieza a aparecer aquí */
+    #FFFFFF 100%);
     animation: rotate-border 4s linear infinite;
     pointer-events: none;
     z-index: 1;
