@@ -53,9 +53,10 @@
 }
 
 .admin-modal-content {
+    width: 950px;
     max-width: 950px;
     height: 920px;
-    max-height: 95%;
+    max-height: 920px;
 }
 
 .modal-header-main {
@@ -130,8 +131,8 @@
     display: block;
     margin-bottom: 6px;
     color: var(--text-muted);
-    font-size: 0.85rem;
-    font-weight: 600;
+    font-size: 16px;
+    font-weight: 400;
 }
 
 .input-with-action {
@@ -150,7 +151,7 @@
     padding: 0 16px;
     border-radius: 10px;
     color: var(--white);
-    font-size: 0.95rem;
+    font-size: 16px;
     outline: none;
     transition: border-color 0.2s;
 }
@@ -457,64 +458,4 @@
     background: var(--white);
 }
 
-@media (max-width: 1536px) {
-    .modal-content.wide-modal {
-        max-width: 1200px;
-        padding: 15px;
-    }
-    .admin-modal-content {
-        max-width: 920px;
-        height: 920px;
-        max-height: 95%;
-    }
-    .settings-grid { gap: 20px; }
-    .input-group { margin-bottom: 10px; }
-    .section-title { margin-bottom: 12px; }
-    .hardware-grid { gap: 10px 20px; }
-    .input-with-action input, .custom-select select {
-        padding: 6px 12px;
-        font-size: 0.85rem;
-    }
-    .modal-header-main h2 { font-size: 1.3rem; }
-    .section-title { font-size: 0.9rem; }
-    .input-group label { font-size: 0.8rem; }
-}
 
-@media (max-width: 1024px) {
-    .modal-content.wide-modal {
-        max-height: 95%;
-        width: 98%;
-    }
-    .settings-grid { 
-        flex-direction: column; 
-        gap: 30px; 
-    }
-    .modal-pane-left { padding-right: 0; }
-    .modal-pane-right { min-width: 0; width: 100%; }
-    .modal-pane-divider { display: none; }
-    .video-settings-grid { grid-template-columns: 1fr; gap: 20px; }
-}
-
-@media (max-width: 768px) {
-    .modal-content { 
-        width: 100%; 
-        height: 100%; 
-        max-height: 100%; 
-        border-radius: 0; 
-        padding: 15px;
-    }
-    .modal-header-main { margin-bottom: 20px; }
-    .modal-header-main h2 { font-size: 1.4rem; }
-    .hardware-grid { grid-template-columns: 1fr; gap: 12px; }
-    .specs-full-grid { grid-template-columns: 1fr; max-height: 60vh; overflow-y: auto; }
-    .section-title { font-size: 1rem; }
-}
-
-@media (max-height: 800px) {
-    .modal-content.wide-modal {
-        max-height: 98%;
-    }
-    .input-group { margin-bottom: 8px; }
-    .settings-section { margin-top: 10px; }
-    .mt-lg { margin-top: 20px; }
-}
