@@ -157,7 +157,7 @@ onUnmounted(() => {
       @ended="onVideoEnded"
       @error="onVideoError"
       @loadedmetadata="onMetadataLoaded"
-      style="transform: translateZ(0); will-change: transform;"
+      style="transform: translateZ(0); will-change: transform, opacity;"
     ></video>
     <div class="video-overlay">
       <div class="video-caption"></div>

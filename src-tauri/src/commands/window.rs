@@ -155,6 +155,28 @@ async fn position_return_window(main: &tauri::WebviewWindow, ret: &tauri::Webvie
             );
         }
     }
+
+    // --- Z-Order Restoring Loop ---
+    let ret_clone = ret.clone();
+    tauri::async_runtime::spawn(async move {
+        // Ejecutamos el refuerzo periódico mientras la ventana de retorno sea visible.
+        // Cuando se restaure la app principal, la ventana se oculta (visible=false) y este hilo termina.
+        while ret_clone.is_visible().unwrap_or(false) {
+            tokio::time::sleep(tokio::time::Duration::from_millis(500)).await;
+            if let Ok(hwnd) = ret_clone.hwnd() {
+                unsafe {
+                    SetWindowPos(
+                        hwnd.0 as HWND,
+                        -1isize as HWND, // HWND_TOPMOST
+                        0, 0, 0, 0,
+                        // SWP_NOACTIVATE es CRÍTICO para no robar el foco del usuario (ej. escribiendo en otra app)
+                        SWP_NOMOVE | SWP_NOSIZE | SWP_NOACTIVATE | SWP_SHOWWINDOW
+                    );
+                }
+            }
+        }
+    });
+
     Ok(())
 }
 

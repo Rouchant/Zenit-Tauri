@@ -84,7 +84,8 @@
       }
     },
     "resources": {
-      "resources/assets/*": ""
+      "resources/assets/*": "",
+      "Install-Kiosk.ps1": ""
     }
   }
 }
