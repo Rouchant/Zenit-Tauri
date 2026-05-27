@@ -163,6 +163,12 @@ async fn position_return_window(main: &tauri::WebviewWindow, ret: &tauri::Webvie
         // Cuando se restaure la app principal, la ventana se oculta (visible=false) y este hilo termina.
         while ret_clone.is_visible().unwrap_or(false) {
             tokio::time::sleep(tokio::time::Duration::from_millis(500)).await;
+            
+            // Volvemos a comprobar la visibilidad tras el sleep para evitar condiciones de carrera
+            if !ret_clone.is_visible().unwrap_or(false) {
+                break;
+            }
+
             if let Ok(hwnd) = ret_clone.hwnd() {
                 unsafe {
                     SetWindowPos(
@@ -170,7 +176,8 @@ async fn position_return_window(main: &tauri::WebviewWindow, ret: &tauri::Webvie
                         -1isize as HWND, // HWND_TOPMOST
                         0, 0, 0, 0,
                         // SWP_NOACTIVATE es CRÍTICO para no robar el foco del usuario (ej. escribiendo en otra app)
-                        SWP_NOMOVE | SWP_NOSIZE | SWP_NOACTIVATE | SWP_SHOWWINDOW
+                        // NO usar SWP_SHOWWINDOW aquí para evitar mostrarla si se acaba de ocultar
+                        SWP_NOMOVE | SWP_NOSIZE | SWP_NOACTIVATE
                     );
                 }
             }
