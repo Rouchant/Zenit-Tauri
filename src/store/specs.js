@@ -43,7 +43,7 @@ export const useSpecsStore = defineStore('specs', () => {
   const isVideoMode = ref(false);
   const isModalOpen = ref(false);
   const isLoading = ref(true);
-  const theme = ref(localStorage.getItem('zenit-theme') || 'default');
+  const theme = ref(typeof localStorage !== 'undefined' && typeof localStorage.getItem === 'function' ? (localStorage.getItem('zenit-theme') || 'default') : 'default');
   // Aplicar clase al body inmediatamente para evitar parpadeos
   if (typeof document !== 'undefined') document.documentElement.className = `theme-${theme.value}`;
   const resolvedPaths = ref({});
@@ -57,8 +57,12 @@ export const useSpecsStore = defineStore('specs', () => {
   const updateTheme = (storeName) => {
     const s = (storeName || 'none').toLowerCase();
     theme.value = s === 'none' ? 'default' : s;
-    localStorage.setItem('zenit-theme', theme.value);
-    document.documentElement.className = `theme-${theme.value}`;
+    if (typeof localStorage !== 'undefined' && typeof localStorage.setItem === 'function') {
+      localStorage.setItem('zenit-theme', theme.value);
+    }
+    if (typeof document !== 'undefined') {
+      document.documentElement.className = `theme-${theme.value}`;
+    }
   };
 
   const saveCustom = async (specs) => {
