@@ -562,6 +562,7 @@ const isHardwareLimitReached = computed(() => {
                                     placeholder="inserte SKU"
                                     @input="editableSpecs.sku = editableSpecs.sku.replace(/\D/g, '')"
                                     autocomplete="off"
+                                    maxlength="80"
                                 >
                             </div>
                         </div>
@@ -588,6 +589,30 @@ const isHardwareLimitReached = computed(() => {
                                 Limpiar Precios
                             </button>
                         </div>
+                    </div>
+                </section>
+
+                <section class="settings-section" style="margin-top: 25px; border-top: 1px solid rgba(255, 255, 255, 0.05); padding-top: 20px;">
+                    <h3 class="section-title" style="display: flex; align-items: center; gap: 10px; margin-bottom: 15px;">
+                        <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" style="color: var(--primary);"><rect width="18" height="11" x="3" y="11" rx="2" ry="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/></svg>
+                        Seguridad y Acceso
+                    </h3>
+                    <div class="input-group">
+                        <label for="admin-password-input">Código de Acceso (Admin)</label>
+                        <div class="input-with-action">
+                            <input 
+                                id="admin-password-input" 
+                                name="adminPassword" 
+                                type="text" 
+                                v-model="editableSpecs.adminPassword" 
+                                placeholder="Ej: demo" 
+                                autocomplete="off"
+                                maxlength="30"
+                            >
+                        </div>
+                        <span style="font-size: 0.75rem; color: var(--text-muted, #888); margin-top: 6px; display: block;">
+                            Este código protege el panel de configuración de Zenit y te permite salir del modo kiosko.
+                        </span>
                     </div>
                 </section>
             </div>

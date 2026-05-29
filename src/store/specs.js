@@ -161,9 +161,19 @@ export const useSpecsStore = defineStore('specs', () => {
         ...(storedSpecs || {}) 
       };
       
+      // Si ya existen especificaciones guardadas en disco (instalaciones existentes), asumimos primer inicio completo
+      if (storedSpecs && Object.keys(storedSpecs).length > 0) {
+        currentSpecs.value.firstStartCompleted = true;
+      }
+      
       // Default store a 'none' si no existe
       if (!currentSpecs.value.store) {
         currentSpecs.value.store = 'none';
+      }
+
+      // Inicializar contraseña si no existe
+      if (currentSpecs.value.adminPassword === undefined) {
+        currentSpecs.value.adminPassword = CONFIG.PASSWORD;
       }
 
       // Asegurar que los tipos de video tengan valores por defecto

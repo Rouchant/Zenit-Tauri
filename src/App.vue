@@ -137,6 +137,11 @@
           v-if="showSpecsModal"
           @close="showSpecsModal = false"
         />
+
+        <FirstStartModal 
+          v-if="showFirstStartModal"
+          @completed="onFirstStartCompleted"
+        />
       </Teleport>
     </div>
 
@@ -160,12 +165,14 @@ import VideoPlayer from './components/VideoPlayer.vue';
 import AdminModal from './components/Modals/AdminModal.vue';
 import PasswordModal from './components/Modals/PasswordModal.vue';
 import SpecsModal from './components/Modals/SpecsModal.vue';
+import FirstStartModal from './components/Modals/FirstStartModal.vue';
 
 const store = useSpecsStore();
 const inactivityTimer = ref(null);
 const showPasswordModal = ref(false);
 const showAdminModal = ref(false);
 const showSpecsModal = ref(false);
+const showFirstStartModal = ref(false);
 const passwordMode = ref('settings');
 
 const bgVideo = ref(null);
@@ -178,8 +185,8 @@ const bgRetryCount = ref(0);
 const landingRetryCount = ref(0);
 
 // Sincronizar estado global de modales
-watch([showPasswordModal, showAdminModal, showSpecsModal], ([p, a, s]) => {
-  store.isModalOpen = p || a || s;
+watch([showPasswordModal, showAdminModal, showSpecsModal, showFirstStartModal], ([p, a, s, f]) => {
+  store.isModalOpen = p || a || s || f;
 });
 
 // Throttled reset timer for mousemove (max 1 vez/segundo para evitar presión en equipos de gama baja)
@@ -301,6 +308,12 @@ const closeAllModals = () => {
   showPasswordModal.value = false;
   showAdminModal.value = false;
   showSpecsModal.value = false;
+  showFirstStartModal.value = false;
+};
+
+const onFirstStartCompleted = () => {
+  showFirstStartModal.value = false;
+  resetTimer();
 };
 
 // 2. Gestión de Modo Video (Screensaver)
@@ -343,6 +356,7 @@ watch(() => store.isLoading, (loading) => {
 const resetTimer = (event) => {
   if (event && event.key === 'Escape') return;
   if (isInternalFocusHack.value) return;
+  if (showFirstStartModal.value) return;
 
   clearTimeout(inactivityTimer.value);
   inactivityTimer.value = null;
@@ -402,7 +416,12 @@ onMounted(async () => {
   window.addEventListener('resize', updateScale);
   
   await store.loadSpecs();
-  resetTimer();
+  
+  if (!store.currentSpecs.firstStartCompleted) {
+    showFirstStartModal.value = true;
+  } else {
+    resetTimer();
+  }
   initPixelShift();
 
   window.addEventListener('mousemove', throttledResetTimer);
