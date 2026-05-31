@@ -551,31 +551,37 @@ const isHardwareLimitReached = computed(() => {
             <div v-if="activeTab === 'tienda'" class="tab-content">
                 <section class="settings-section">
                     <div class="price-settings-zone">
-                        <div class="input-group">
-                            <label for="sku-input">SKU del Producto</label>
-                            <div class="input-with-action">
-                                <input 
-                                    id="sku-input" 
-                                    name="sku" 
-                                    type="text" 
-                                    v-model="editableSpecs.sku" 
-                                    placeholder="inserte SKU"
-                                    @input="editableSpecs.sku = editableSpecs.sku.replace(/\D/g, '')"
-                                    autocomplete="off"
-                                    maxlength="80"
-                                >
+                        <div class="hardware-grid" style="margin-bottom: 10px;">
+                            <div class="input-group">
+                                <label for="sku-input">SKU del Producto</label>
+                                <div class="input-with-action">
+                                    <input 
+                                        id="sku-input" 
+                                        name="sku" 
+                                        type="text" 
+                                        v-model="editableSpecs.sku" 
+                                        placeholder="inserte SKU"
+                                        @input="editableSpecs.sku = editableSpecs.sku.replace(/\D/g, '')"
+                                        autocomplete="off"
+                                        maxlength="80"
+                                    >
+                                </div>
                             </div>
                         </div>
-                        <div class="input-group">
-                            <label for="price-primary">Precio con Tarjeta</label>
-                            <div class="input-with-action">
-                                <input id="price-primary" name="pricePrimary" type="text" v-model="editableSpecs.pricePrimary" placeholder="Ej: $899.990" maxlength="28" autocomplete="off">
+                        <div class="hardware-grid" style="margin-bottom: 10px;">
+                            <div class="input-group">
+                                <label for="price-primary">Precio con Tarjeta</label>
+                                <div class="input-with-action">
+                                    <input id="price-primary" name="pricePrimary" type="text" v-model="editableSpecs.pricePrimary" placeholder="Ej: $899.990" maxlength="28" autocomplete="off">
+                                </div>
                             </div>
                         </div>
-                        <div class="input-group">
-                            <label for="price-secondary">Precio Todo Medio de Pago</label>
-                            <div class="input-with-action">
-                                <input id="price-secondary" name="priceSecondary" type="text" v-model="editableSpecs.priceSecondary" placeholder="Ej: $1.099.990" maxlength="28" autocomplete="off">
+                        <div class="hardware-grid">
+                            <div class="input-group">
+                                <label for="price-secondary">Precio Todo Medio de Pago</label>
+                                <div class="input-with-action">
+                                    <input id="price-secondary" name="priceSecondary" type="text" v-model="editableSpecs.priceSecondary" placeholder="Ej: $1.099.990" maxlength="28" autocomplete="off">
+                                </div>
                             </div>
                         </div>
 
@@ -583,7 +589,7 @@ const isHardwareLimitReached = computed(() => {
                             ⚠️ Máximo 28 caracteres permitidos en el precio
                         </div>
 
-                        <div style="margin-top: 25px; display: flex; justify-content: flex-end;">
+                        <div style="display: flex; justify-content: flex-start;">
                             <button class="btn-clean-action" @click="clearPrices">
                                 <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="lucide lucide-eraser"><path d="m7 21-4.3-4.3c-1-1-1-2.5 0-3.4l9.9-9.9c1-1 2.5-1 3.4 0l4.4 4.4c1 1 1 2.5 0 3.4L7 21Z"/><path d="m22 21-5.9-5.9"/><path d="m11 5 9 9"/></svg>
                                 Limpiar Precios
@@ -597,22 +603,24 @@ const isHardwareLimitReached = computed(() => {
                         <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" style="color: var(--primary);"><rect width="18" height="11" x="3" y="11" rx="2" ry="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/></svg>
                         Seguridad y Acceso
                     </h3>
-                    <div class="input-group">
-                        <label for="admin-password-input">Código de Acceso (Admin)</label>
-                        <div class="input-with-action">
-                            <input 
-                                id="admin-password-input" 
-                                name="adminPassword" 
-                                type="text" 
-                                v-model="editableSpecs.adminPassword" 
-                                placeholder="Ej: demo" 
-                                autocomplete="off"
-                                maxlength="30"
-                            >
+                    <div class="hardware-grid">
+                        <div class="input-group">
+                            <label for="admin-password-input">Código de Acceso (Admin)</label>
+                            <div class="input-with-action">
+                                <input 
+                                    id="admin-password-input" 
+                                    name="adminPassword" 
+                                    type="text" 
+                                    v-model="editableSpecs.adminPassword" 
+                                    placeholder="Ej: demo" 
+                                    autocomplete="off"
+                                    maxlength="30"
+                                >
+                            </div>
+                            <span style="font-size: 0.75rem; color: var(--text-muted, #888); margin-top: 6px; display: block;">
+                                Este código protege el panel de configuración de Zenit y te permite salir del modo kiosko.
+                            </span>
                         </div>
-                        <span style="font-size: 0.75rem; color: var(--text-muted, #888); margin-top: 6px; display: block;">
-                            Este código protege el panel de configuración de Zenit y te permite salir del modo kiosko.
-                        </span>
                     </div>
                 </section>
             </div>
