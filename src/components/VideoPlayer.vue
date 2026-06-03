@@ -133,24 +133,75 @@ const onVideoEnded = () => {
   }
 };
 
+const boxPosition = ref('top-right'); // 'top-right' | 'top-left'
+const boxVisible = ref(false);
+const isDimmed = ref(false);
+let cycleTimeout = null;
+
+const runOverlayCycle = () => {
+  // 1. Enter/Stay at 100% opacity
+  boxVisible.value = true;
+  isDimmed.value = false;
+  
+  // Stays at 100% opacity for 10 seconds
+  cycleTimeout = setTimeout(() => {
+    // 2. Dim to 50% opacity
+    isDimmed.value = true;
+    
+    // Stays dimmed for 15 seconds
+    cycleTimeout = setTimeout(() => {
+      // 3. Hide completely to change position
+      boxVisible.value = false;
+      
+      // Wait for hide transition to finish (800ms)
+      cycleTimeout = setTimeout(() => {
+        // 4. Reposition, reset dim state, and loop
+        boxPosition.value = boxPosition.value === 'top-right' ? 'top-left' : 'top-right';
+        isDimmed.value = false;
+        
+        // Wait a tiny bit offscreen before sliding/fading in
+        cycleTimeout = setTimeout(() => {
+          runOverlayCycle();
+        }, 300);
+      }, 800);
+    }, 15000);
+  }, 10000);
+};
+
+const stopOverlayCycle = () => {
+  if (cycleTimeout) {
+    clearTimeout(cycleTimeout);
+    cycleTimeout = null;
+  }
+  boxVisible.value = false;
+  isDimmed.value = false;
+};
+
 watch(() => store.isModalOpen, (isOpen) => {
   if (isOpen) {
     videoRef.value?.pause();
     clearSafetyTimer();
+    stopOverlayCycle();
   } else {
     videoRef.value?.play().catch(() => {});
     if (videoRef.value) {
       startSafetyTimer(videoRef.value.duration - videoRef.value.currentTime);
     }
+    // Restart cycle when closing modals
+    boxPosition.value = 'top-right';
+    runOverlayCycle();
   }
 });
 
 onMounted(() => {
   playVideo();
+  // Start overlay movement cycle on mount
+  runOverlayCycle();
 });
 
 onUnmounted(() => {
   clearSafetyTimer();
+  stopOverlayCycle();
 });
 </script>
 
@@ -170,7 +221,14 @@ onUnmounted(() => {
       @loadedmetadata="onMetadataLoaded"
       style="transform: translateZ(0); will-change: transform, opacity;"
     ></video>
-    <div class="video-overlay">
+    <div 
+      class="video-overlay"
+      :class="[
+        boxPosition === 'top-right' ? 'pos-top-right' : 'pos-top-left',
+        boxVisible ? 'state-visible' : 'state-hidden',
+        { 'state-dimmed': isDimmed }
+      ]"
+    >
       <div class="inactivity-info-box" v-if="store.currentSpecs?.model">
         <div class="inactivity-layout">
           <!-- Columna Izquierda: Marca -->
@@ -217,6 +275,18 @@ onUnmounted(() => {
           </div>
         </div>
       </div>
+
+      <!-- Store Status Inactivity Visual Pill -->
+      <div v-if="store.currentSpecs?.model && store.currentSpecs.storeBadge && store.currentSpecs.storeBadge !== 'none'" class="store-status-inactivity" :class="{ 'status-no-stock': store.currentSpecs.storeBadge === 'no-stock' }">
+        <template v-if="store.currentSpecs.storeBadge === 'delivery'">
+          <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="lucide lucide-truck-icon lucide-truck"><path d="M14 18V6a2 2 0 0 0-2-2H4a2 2 0 0 0-2 2v11a1 1 0 0 0 1 1h2"/><path d="M15 18H9"/><path d="M19 18h2a1 1 0 0 0 1-1v-3.65a1 1 0 0 0-.22-.624l-3.48-4.35A1 1 0 0 0 17.52 8H14"/><circle cx="17" cy="18" r="2"/><circle cx="7" cy="18" r="2"/></svg>
+          <span>Solo Despacho</span>
+        </template>
+        <template v-else-if="store.currentSpecs.storeBadge === 'no-stock'">
+          <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="lucide lucide-package-x-icon lucide-package-x"><path d="M12 22V12"/><path d="m16.5 14.5 5 5"/><path d="m16.5 19.5 5-5"/><path d="M21 10.5V8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.729l7 4a2 2 0 0 0 2 .001l.13-.074"/><path d="M3.29 7 12 12l8.71-5"/><path d="m7.5 4.27 8.997 5.148"/></svg>
+          <span>Sin Stock</span>
+        </template>
+      </div>
     </div>
   </div>
 </template>
@@ -234,39 +304,68 @@ video {
   object-fit: cover;
 }
 
-/* Posicionamiento del Recuadro en la Esquina Superior Derecha */
+/* Posicionamiento dinámico del overlay */
 .video-overlay {
   position: absolute;
-  top: 3vw;
   right: 3vw;
-  bottom: auto;
   left: auto;
   z-index: 3;
+  will-change: transform, opacity;
+  transition: transform 0.6s cubic-bezier(0.16, 1, 0.3, 1), opacity 0.8s ease;
+  display: flex;
+  flex-direction: column;
+  align-items: flex-end;
+  gap: 0.4vw;
+  
+  /* Apply pixel shift on top of current transitions */
+  --pixel-shift: translate(var(--shift-x, 0px), var(--shift-y, 0px));
+}
+
+.video-overlay.pos-top-right {
+  top: 3vw;
+  bottom: auto;
+  left: auto;
+  right: 3vw;
+}
+
+.video-overlay.pos-top-left {
+  top: 3vw;
+  bottom: auto;
+  left: 3vw;
+  right: auto;
+}
+
+/* Transiciones de entrada y salida deslizándose por la derecha */
+.video-overlay.state-visible {
+  opacity: 1;
+  transform: translateX(0) var(--pixel-shift);
+}
+
+.video-overlay.state-visible.state-dimmed {
+  opacity: 0.5;
+}
+
+.video-overlay.pos-top-right.state-hidden {
+  opacity: 0;
+  transform: translateX(35vw) var(--pixel-shift);
+}
+
+.video-overlay.pos-top-left.state-hidden {
+  opacity: 0;
+  transform: translateX(-35vw) var(--pixel-shift);
 }
 
 /* Recuadro de Informacion Premium en Inactividad */
 .inactivity-info-box {
+  position: relative;
+  z-index: 1;
   width: 28vw;
   background: rgba(10, 10, 10, 0.72);
-  backdrop-filter: blur(1vw) saturate(120%);
-  -webkit-backdrop-filter: blur(1vw) saturate(120%);
   border: 0.08vw solid rgba(255, 255, 255, 0.1);
   border-radius: 0.8vw;
   padding: 1.0vw;
-  box-shadow: 0 0.6vw 2vw rgba(0, 0, 0, 0.6);
-  animation: slideInBox 0.6s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+  box-shadow: 0 0.4vw 1.5vw rgba(0, 0, 0, 0.4);
   box-sizing: border-box;
-}
-
-@keyframes slideInBox {
-  from {
-    opacity: 0;
-    transform: translateY(-1.5vw) scale(0.96);
-  }
-  to {
-    opacity: 1;
-    transform: translateY(0) scale(1);
-  }
 }
 
 .inactivity-layout {
@@ -324,25 +423,25 @@ video {
 
 .prices-container {
   display: flex;
-  flex-direction: row;
-  justify-content: space-between;
+  flex-direction: column;
   align-items: flex-start;
-  gap: 1.2vw;
+  gap: 0.6vw;
+  width: 100%;
 }
 
 .price-item {
   display: flex;
-  flex-direction: column;
-  align-items: flex-start;
-  gap: 0.4vw;
-  flex: 1;
+  flex-direction: row;
+  align-items: center;
+  gap: 0.6vw;
+  width: 100%;
 }
 
 .price-val-wrapper {
   display: flex;
   align-items: center;
   gap: 0.5vw;
-  flex-wrap: wrap;
+  flex-wrap: nowrap;
 }
 
 .retail-badge {
@@ -354,6 +453,7 @@ video {
   letter-spacing: 0.02vw;
   line-height: 1.2;
   white-space: nowrap;
+  flex-shrink: 0;
 }
 
 .badge-card {
@@ -373,13 +473,13 @@ video {
 }
 
 .price-primary-val {
-  font-size: 1.6vw;
+  font-size: 1.4vw;
   color: var(--primary, #00f2ff);
   letter-spacing: -0.02vw;
 }
 
 .price-secondary-val {
-  font-size: 1.6vw;
+  font-size: 1.4vw;
   color: rgba(255, 255, 255, 0.9);
   letter-spacing: -0.015vw;
 }
@@ -389,6 +489,7 @@ video {
   align-items: center;
   justify-content: center;
   margin-left: 0.1vw;
+  flex-shrink: 0;
 }
 
 .store-logo-sub {
@@ -427,5 +528,40 @@ video {
 
 .prices-container.single-price-layout .store-logo-sub {
   height: 1.05vw;
+}
+
+/* Store Status Inactivity Styling (Floating Glassmorphic Pill) */
+.store-status-inactivity {
+  position: relative;
+  z-index: 2;
+  display: inline-flex;
+  align-items: center;
+  gap: 0.5vw;
+  color: var(--primary, #00f2ff);
+  font-weight: 700;
+  font-size: 0.9vw;
+  padding: 0.5vw 1.2vw;
+  background: rgba(10, 10, 10, 0.72);
+  border: 0.08vw solid rgba(255, 255, 255, 0.1);
+  border-radius: 999vw;
+  backdrop-filter: blur(0.6vw);
+  -webkit-backdrop-filter: blur(0.6vw);
+  box-shadow: 0 0.4vw 1.5vw rgba(0, 0, 0, 0.4);
+}
+
+.store-status-inactivity svg {
+  width: 1.2vw;
+  height: 1.2vw;
+  stroke: var(--primary, #00f2ff);
+}
+
+.store-status-inactivity.status-no-stock {
+  color: #D70040;
+  border-color: rgba(215, 0, 64, 0.25);
+  background: rgba(15, 0, 4, 0.75);
+}
+
+.store-status-inactivity.status-no-stock svg {
+  stroke: #D70040;
 }
 </style>

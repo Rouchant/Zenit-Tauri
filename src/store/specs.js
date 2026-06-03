@@ -193,6 +193,16 @@ export const useSpecsStore = defineStore('specs', () => {
       if (currentSpecs.value.fixedBackground === undefined) {
         currentSpecs.value.fixedBackground = false;
       }
+      if (currentSpecs.value.storeBadge === undefined) {
+        if (currentSpecs.value.onlyDelivery) {
+          currentSpecs.value.storeBadge = 'delivery';
+        } else {
+          currentSpecs.value.storeBadge = 'none';
+        }
+      }
+      if (currentSpecs.value.onlyDelivery !== undefined) {
+        delete currentSpecs.value.onlyDelivery;
+      }
 
       // Migrar path viejo a array si existe
       if (currentSpecs.value.customVideoPath && !currentSpecs.value.customVideoPaths) {
