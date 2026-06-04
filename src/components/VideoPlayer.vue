@@ -277,7 +277,7 @@ onUnmounted(() => {
       </div>
 
       <!-- Store Status Inactivity Visual Pill -->
-      <div v-if="store.currentSpecs?.model && store.currentSpecs.storeBadge && store.currentSpecs.storeBadge !== 'none'" class="store-status-inactivity" :class="{ 'status-no-stock': store.currentSpecs.storeBadge === 'no-stock' }">
+      <div v-if="store.currentSpecs?.model && store.currentSpecs.storeBadge && store.currentSpecs.storeBadge !== 'none'" class="store-status-inactivity" :class="{ 'status-no-stock': store.currentSpecs.storeBadge === 'no-stock', 'status-delivery': store.currentSpecs.storeBadge === 'delivery', 'status-last-unit': store.currentSpecs.storeBadge === 'last-unit' }">
         <template v-if="store.currentSpecs.storeBadge === 'delivery'">
           <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="lucide lucide-truck-icon lucide-truck"><path d="M14 18V6a2 2 0 0 0-2-2H4a2 2 0 0 0-2 2v11a1 1 0 0 0 1 1h2"/><path d="M15 18H9"/><path d="M19 18h2a1 1 0 0 0 1-1v-3.65a1 1 0 0 0-.22-.624l-3.48-4.35A1 1 0 0 0 17.52 8H14"/><circle cx="17" cy="18" r="2"/><circle cx="7" cy="18" r="2"/></svg>
           <span>Solo Despacho</span>
@@ -285,6 +285,10 @@ onUnmounted(() => {
         <template v-else-if="store.currentSpecs.storeBadge === 'no-stock'">
           <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="lucide lucide-package-x-icon lucide-package-x"><path d="M12 22V12"/><path d="m16.5 14.5 5 5"/><path d="m16.5 19.5 5-5"/><path d="M21 10.5V8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.729l7 4a2 2 0 0 0 2 .001l.13-.074"/><path d="M3.29 7 12 12l8.71-5"/><path d="m7.5 4.27 8.997 5.148"/></svg>
           <span>Sin Stock</span>
+        </template>
+        <template v-else-if="store.currentSpecs.storeBadge === 'last-unit'">
+          <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="lucide lucide-box-icon lucide-box"><path d="M21 8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73l7 4a2 2 0 0 0 2 0l7-4A2 2 0 0 0 21 16Z"/><path d="m3.3 7 8.7 5 8.7-5"/><path d="M12 22V12"/></svg>
+          <span>Última unidad</span>
         </template>
       </div>
     </div>
@@ -333,6 +337,7 @@ video {
   bottom: auto;
   left: 3vw;
   right: auto;
+  align-items: flex-start;
 }
 
 /* Transiciones de entrada y salida deslizándose por la derecha */
@@ -556,12 +561,32 @@ video {
 }
 
 .store-status-inactivity.status-no-stock {
-  color: #D70040;
-  border-color: rgba(215, 0, 64, 0.25);
+  color: #B81B0E;
+  border-color: rgba(184, 27, 14, 0.25);
   background: rgba(15, 0, 4, 0.75);
 }
 
 .store-status-inactivity.status-no-stock svg {
-  stroke: #D70040;
+  stroke: #B81B0E;
+}
+
+.store-status-inactivity.status-delivery {
+  color: #FDDA0D;
+  border-color: rgba(253, 218, 13, 0.25);
+  background: rgba(10, 8, 0, 0.72);
+}
+
+.store-status-inactivity.status-delivery svg {
+  stroke: #FDDA0D;
+}
+
+.store-status-inactivity.status-last-unit {
+  color: #FF6B00;
+  border-color: rgba(255, 107, 0, 0.25);
+  background: rgba(15, 6, 0, 0.72);
+}
+
+.store-status-inactivity.status-last-unit svg {
+  stroke: #FF6B00;
 }
 </style>

@@ -616,6 +616,11 @@ const isHardwareLimitReached = computed(() => {
                                             <span class="checkmark" style="border-radius: 50%; height: 20px; width: 20px;"></span>
                                             Sin Stock
                                         </label>
+                                        <label class="checkbox-container" style="color: var(--white); cursor: pointer; padding-left: 30px; font-size: 0.95rem;">
+                                            <input type="radio" value="last-unit" v-model="editableSpecs.storeBadge">
+                                            <span class="checkmark" style="border-radius: 50%; height: 20px; width: 20px;"></span>
+                                            Última unidad
+                                        </label>
                                     </div>
                                 </div>
                             </div>
