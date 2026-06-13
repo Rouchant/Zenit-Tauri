@@ -52,8 +52,8 @@
 
     <!-- Video View (Inactivity) - Fuera de app-container para ocupar pantalla completa real -->
     <Transition name="fade">
-      <div id="video-view" v-show="store.isVideoMode && !store.isLoading" class="view active physical-fullscreen">
-         <VideoPlayer v-if="store.isVideoMode" />
+      <div id="video-view" v-if="store.isVideoMode && !store.isLoading" class="view active physical-fullscreen">
+         <VideoPlayer />
       </div>
     </Transition>
 

@@ -8,7 +8,6 @@ const store = useSpecsStore();
 // Estados reactivos locales
 const selectedStore = ref(store.currentSpecs.store || 'none'); // none maps to default
 const password = ref(store.currentSpecs.adminPassword || 'demo');
-const showPassword = ref(false);
 const errorMsg = ref('');
 
 // Lista de temas del retail
@@ -51,10 +50,6 @@ const themesList = [
 const selectTheme = (themeId) => {
   selectedStore.value = themeId;
   store.updateTheme(themeId);
-};
-
-const togglePasswordVisibility = () => {
-  showPassword.value = !showPassword.value;
 };
 
 // Guardar y completar primer inicio
@@ -140,31 +135,14 @@ const finishSetup = async () => {
           <div class="password-setup-group">
             <div class="password-input-wrapper">
               <input 
-                :type="showPassword ? 'text' : 'password'"
+                type="text"
                 v-model="password"
                 class="premium-password-input"
                 placeholder="Ingresa un código de acceso..."
                 autocomplete="off"
                 maxlength="30"
+                style="padding-right: 20px;"
               />
-              <button 
-                type="button" 
-                class="toggle-visible-btn" 
-                @click="togglePasswordVisibility"
-                :title="showPassword ? 'Ocultar' : 'Ver'"
-              >
-                <!-- SVG de Ojo para visibilidad -->
-                <svg v-if="!showPassword" xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="eye-icon">
-                  <path d="M2.062 12.348a1 1 0 0 1 0-.696 10.75 10.75 0 0 1 19.876 0 1 1 0 0 1 0 .696 10.75 10.75 0 0 1-19.876 0z"/>
-                  <circle cx="12" cy="12" r="3"/>
-                </svg>
-                <svg v-else xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="eye-icon">
-                  <path d="M9.88 9.88a3 3 0 1 0 4.24 4.24"/>
-                  <path d="M10.73 5.08A10.43 10.43 0 0 1 12 5c7 0 10 7 10 7a13.16 13.16 0 0 1-1.67 2.68"/>
-                  <path d="M6.61 6.61A13.52 13.52 0 0 0 2 12s3 7 10 7a9.74 9.74 0 0 0 5.39-1.61"/>
-                  <line x1="2" y1="2" x2="22" y2="22"/>
-                </svg>
-              </button>
             </div>
             <p class="password-helper-text">Valor por defecto preconfigurado: <span class="highlight-code">demo</span>. Puedes conservarlo o cambiarlo.</p>
             <div v-if="errorMsg" class="setup-error-msg">{{ errorMsg }}</div>

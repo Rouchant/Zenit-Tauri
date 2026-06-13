@@ -364,7 +364,9 @@ video {
 .inactivity-info-box {
   position: relative;
   z-index: 1;
-  width: 28vw;
+  width: auto;
+  min-width: 16vw;
+  max-width: 28vw;
   background: rgba(10, 10, 10, 0.72);
   border: 0.08vw solid rgba(255, 255, 255, 0.1);
   border-radius: 0.8vw;
@@ -546,11 +548,9 @@ video {
   font-weight: 700;
   font-size: 0.9vw;
   padding: 0.5vw 1.2vw;
-  background: rgba(10, 10, 10, 0.72);
+  background: rgba(10, 10, 10, 0.82);
   border: 0.08vw solid rgba(255, 255, 255, 0.1);
   border-radius: 999vw;
-  backdrop-filter: blur(0.6vw);
-  -webkit-backdrop-filter: blur(0.6vw);
   box-shadow: 0 0.4vw 1.5vw rgba(0, 0, 0, 0.4);
 }
 
