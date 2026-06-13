@@ -158,7 +158,7 @@ const onVaultSelectionChange = (slot, type = 'inactivity') => {
             return;
         }
         // Buscar primero en internos
-        const internal = LANDING_INTERNAL_OPTIONS.find(v => v.path === editableSpecs.customLandingVideoPath);
+        const internal = LANDING_INTERNAL_OPTIONS.value.find(v => v.path === editableSpecs.customLandingVideoPath);
         if (internal) {
             editableSpecs.customLandingVideoName = internal.name;
             return;
