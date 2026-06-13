@@ -279,12 +279,12 @@ fn format_display_resolution(wmi: &wmi::WMIConnection, video_results: &[HashMap<
 }
 
 #[cfg(windows)]
-/// Detecta el tipo de tecnología de RAM (DDR4, DDR5, LPDDR5, etc.) usando los códigos SMBIOS.
+/// Detecta el tipo de tecnología de RAM (DDR4, DDR5, LPDDR5, etc.) y su velocidad usando SMBIOS y la propiedad Speed.
 fn detect_ram_type(wmi: &wmi::WMIConnection) -> String {
-    if let Ok(results) = wmi.raw_query("SELECT SMBIOSMemoryType FROM Win32_PhysicalMemory") {
+    if let Ok(results) = wmi.raw_query("SELECT SMBIOSMemoryType, Speed FROM Win32_PhysicalMemory") {
         let results: Vec<HashMap<String, serde_json::Value>> = results;
         if let Some(res) = results.first() {
-            return match res.get("SMBIOSMemoryType").and_then(|v| v.as_u64()).unwrap_or(0) {
+            let ram_type = match res.get("SMBIOSMemoryType").and_then(|v| v.as_u64()).unwrap_or(0) {
                 20 => "DDR",
                 21 | 22 => "DDR2",
                 24 => "DDR3",
@@ -294,7 +294,16 @@ fn detect_ram_type(wmi: &wmi::WMIConnection) -> String {
                 34 => "DDR5",
                 35 => "LPDDR5",
                 _ => "DDR4"
-            }.to_string();
+            };
+            let speed = match res.get("Speed") {
+                Some(serde_json::Value::Number(n)) => n.as_u64().unwrap_or(0),
+                Some(serde_json::Value::String(s)) => s.parse::<u64>().unwrap_or(0),
+                _ => 0,
+            };
+            if speed > 0 {
+                return format!("{} - {} MT/s", ram_type, speed);
+            }
+            return ram_type.to_string();
         }
     }
     "DDR4".to_string()

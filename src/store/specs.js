@@ -69,7 +69,11 @@ export const useSpecsStore = defineStore('specs', () => {
     if (!specs) return;
     
     // Infiere fabricante y generación usando la lógica centralizada del backend (Rust)
-    if (window.__TAURI_INTERNALS__ && specs.processor) {
+    // Solo inferimos si el procesador cambió respecto a lo que tenemos guardado, o si specs.gen está vacío.
+    const processorChanged = specs.processor !== currentSpecs.value.processor;
+    const needsInfer = processorChanged || !specs.gen;
+
+    if (window.__TAURI_INTERNALS__ && specs.processor && needsInfer) {
       try {
         const info = await tauriAPI.inferProcessorInfo(specs.processor);
         if (info) {
@@ -79,7 +83,7 @@ export const useSpecsStore = defineStore('specs', () => {
       } catch (err) {
         console.error('Error inferring processor info:', err);
       }
-    } else {
+    } else if (specs.processor && needsInfer) {
       // Fallback simple por si corre en un navegador (mock)
       const n = (specs.processor || '').toLowerCase();
       if (n.includes('intel')) {

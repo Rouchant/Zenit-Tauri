@@ -87,8 +87,18 @@ const formatPath = (fullPath) => {
     // Eliminar prefijo de timestamp generado por el backend (ej: 1716480938325_)
     fileName = fileName.replace(/^\d{10,}_/, '');
 
+    // Eliminar la extensión .mp4
+    fileName = fileName.replace(/\.mp4$/i, '');
+
     if (fileName.length <= 35) return fileName;
     return fileName.substring(0, 32) + '...';
+};
+
+const getVideoDisplayName = (path) => {
+    if (!path) return '';
+    const internal = SYSTEM_VIDEOS_CATALOG.find(v => v.path === path);
+    if (internal) return internal.name;
+    return formatPath(path);
 };
 
 const save = () => {
@@ -153,21 +163,7 @@ const selectVideo = async (type, index = null) => {
 
 const onVaultSelectionChange = (slot, type = 'inactivity') => {
     if (type === 'landing') {
-        if (!editableSpecs.customLandingVideoPath) {
-            editableSpecs.customLandingVideoName = '';
-            return;
-        }
-        // Buscar primero en internos
-        const internal = LANDING_INTERNAL_OPTIONS.value.find(v => v.path === editableSpecs.customLandingVideoPath);
-        if (internal) {
-            editableSpecs.customLandingVideoName = internal.name;
-            return;
-        }
-        // Buscar en la bóveda
-        const matched = savedVideos.value.find(v => v.path === editableSpecs.customLandingVideoPath);
-        if (matched) {
-            editableSpecs.customLandingVideoName = matched.name;
-        }
+        editableSpecs.customLandingVideoName = getVideoDisplayName(editableSpecs.customLandingVideoPath);
         return;
     }
 
@@ -176,43 +172,7 @@ const onVaultSelectionChange = (slot, type = 'inactivity') => {
         return;
     }
 
-    // Buscar primero en internos
-    const options = type === 'landing' ? LANDING_INTERNAL_OPTIONS.value : INTERNAL_OPTIONS.value;
-    const internal = options.find(v => v.path === slot.path);
-    if (internal) {
-        slot.name = internal.name;
-        return;
-    }
-
-    // Buscar en la bóveda
-    const matched = savedVideos.value.find(v => v.path === slot.path);
-    if (matched) {
-        slot.name = matched.name;
-    } else {
-        slot.name = '';
-    }
-};
-
-const renameInVault = async (slot, type = 'inactivity') => {
-    const path = type === 'landing' ? editableSpecs.customLandingVideoPath : slot.path;
-    const name = type === 'landing' ? editableSpecs.customLandingVideoName : slot.name;
-
-    if (path && name) {
-        // No permitir renombrar videos internos en el catálogo físico
-        if (Object.values(INTERNAL_VIDEOS).includes(path)) return;
-
-        isProcessing.value = true;
-        try {
-            await tauriAPI.renameCustomVideo(path, name);
-            notify('Zenit', 'Nombre actualizado en la Bóveda ✓');
-            const videos = await tauriAPI.listCustomVideos();
-            if (videos) savedVideos.value = videos;
-        } catch (err) {
-            notify('Error', err);
-        } finally {
-            isProcessing.value = false;
-        }
-    }
+    slot.name = getVideoDisplayName(slot.path);
 };
 
 const removeVideo = (index) => {
@@ -296,7 +256,7 @@ const clearPrices = () => {
 };
 
 const isHardwareLimitReached = computed(() => {
-    const fields = ['model', 'processor', 'ram', 'ramType', 'storage', 'gpu', 'display', 'os'];
+    const fields = ['model', 'processor', 'gen', 'ram', 'ramType', 'storage', 'gpu', 'display', 'os'];
     return fields.some(f => editableSpecs[f] && editableSpecs[f].length >= 80);
 });
 </script>
@@ -340,6 +300,13 @@ const isHardwareLimitReached = computed(() => {
                             <div class="input-with-action">
                                 <input id="processor-input" name="processor" type="text" v-model="editableSpecs.processor" autocomplete="off" maxlength="80">
                                 <button class="restore-btn" @click="restoreField('processor')" title="Restaurar">↺</button>
+                            </div>
+                        </div>
+                        <div class="input-group">
+                            <label for="gen-input">Generación / Tag</label>
+                            <div class="input-with-action">
+                                <input id="gen-input" name="gen" type="text" v-model="editableSpecs.gen" autocomplete="off" maxlength="80">
+                                <button class="restore-btn" @click="restoreField('gen')" title="Restaurar">↺</button>
                             </div>
                         </div>
                         <div class="input-group">
@@ -437,7 +404,7 @@ const isHardwareLimitReached = computed(() => {
                                                 <option v-for="v in LANDING_INTERNAL_OPTIONS" :key="v.path" :value="v.path">{{ v.name }}</option>
                                             </optgroup>
                                             <optgroup label="Bóveda (Subidos)" v-if="savedVideos.length > 0">
-                                                <option v-for="v in savedVideos" :key="v.path" :value="v.path">{{ v.name }}</option>
+                                                <option v-for="v in savedVideos" :key="v.path" :value="v.path">{{ formatPath(v.path) }}</option>
                                             </optgroup>
                                         </select>
                                     </div>
@@ -456,18 +423,9 @@ const isHardwareLimitReached = computed(() => {
                             <!-- Metadata Overlay del Home (Ancho completo) -->
                             <div v-if="editableSpecs.customLandingVideoPath" class="input-group no-margin mt-lg" style="background: rgba(0,0,0,0.25); padding: 15px; border-radius: 8px; border: 1px solid rgba(255,255,255,0.05);">
                                 <label style="color: var(--primary);">Video Activo en Visualización (Home)</label>
-                                <div style="display: flex; gap: 10px; align-items: center; margin-top: 5px;">
-                                    <input 
-                                        type="text" 
-                                        v-model="editableSpecs.customLandingVideoName" 
-                                        placeholder="Alias de Home" 
-                                        class="alias-input"
-                                        :disabled="Object.values(INTERNAL_VIDEOS).includes(editableSpecs.customLandingVideoPath)"
-                                        autocomplete="off"
-                                    >
-                                    <button v-if="!Object.values(INTERNAL_VIDEOS).includes(editableSpecs.customLandingVideoPath) && savedVideos.some(v => v.path === editableSpecs.customLandingVideoPath)" class="btn btn-secondary select-file-btn" @click="renameInVault(null, 'landing')" title="Guardar este nombre en el catálogo">✏️ Renombrar</button>
+                                <div style="font-size: 0.95rem; font-weight: 600; color: var(--white); margin-top: 5px; word-break: break-all;">
+                                    {{ getVideoDisplayName(editableSpecs.customLandingVideoPath) }}
                                 </div>
-                                <div style="font-size: 0.75rem; margin-top: 8px; opacity: 0.5; word-break: break-all; font-family: monospace;">Fuente: {{ formatPath(editableSpecs.customLandingVideoPath) }}</div>
                             </div>
                         </div>
                     </div>
@@ -500,7 +458,7 @@ const isHardwareLimitReached = computed(() => {
                                                     <option v-for="v in INTERNAL_OPTIONS" :key="v.path" :value="v.path">{{ v.name }}</option>
                                                 </optgroup>
                                                 <optgroup label="Bóveda (Subidos)" v-if="savedVideos.length > 0">
-                                                    <option v-for="v in savedVideos" :key="v.path" :value="v.path">{{ v.name }}</option>
+                                                    <option v-for="v in savedVideos" :key="v.path" :value="v.path">{{ formatPath(v.path) }}</option>
                                                 </optgroup>
                                             </select>
                                         </div>
@@ -523,22 +481,12 @@ const isHardwareLimitReached = computed(() => {
                                 <!-- Metadata Overlay del Slot -->
                                 <div v-if="slot.path" class="input-group no-margin mt-lg" style="background: rgba(0,0,0,0.25); padding: 15px; border-radius: 8px; border: 1px solid rgba(255,255,255,0.05);">
                                     <label style="color: var(--primary);">Video Activo en Visualización</label>
-                                    <div style="display: flex; gap: 10px; align-items: center; margin-top: 5px;">
-                                        <input 
-                                            type="text" 
-                                            v-model="slot.name" 
-                                            placeholder="Alias de Marketing" 
-                                            class="alias-input" 
-                                            title="Renombrar temporalmente"
-                                            :disabled="Object.values(INTERNAL_VIDEOS).includes(slot.path)"
-                                            autocomplete="off"
-                                        >
-                                        
-                                        <button v-if="savedVideos.some(v => v.path === slot.path) && !Object.values(INTERNAL_VIDEOS).includes(slot.path)" class="btn btn-secondary select-file-btn" @click="renameInVault(slot)" title="Guardar este nombre en el catálogo para el futuro">✏️ Renombrar</button>
-                                        
-                                        <button class="btn btn-danger select-file-btn danger-btn" title="Quitar de Slot" @click="removeVideo(index)">Limpiar Slot (X)</button>
+                                    <div style="display: flex; gap: 10px; align-items: center; justify-content: space-between; margin-top: 5px;">
+                                        <div style="font-size: 0.95rem; font-weight: 600; color: var(--white); word-break: break-all;">
+                                            {{ getVideoDisplayName(slot.path) }}
+                                        </div>
+                                        <button class="btn btn-danger select-file-btn danger-btn" style="flex-shrink: 0;" title="Quitar de Slot" @click="removeVideo(index)">Limpiar Slot (X)</button>
                                     </div>
-                                    <div style="font-size: 0.75rem; margin-top: 8px; opacity: 0.5; word-break: break-all; font-family: monospace;">Fuente: {{ formatPath(slot.path) }}</div>
                                 </div>
                                 
                             </div>
