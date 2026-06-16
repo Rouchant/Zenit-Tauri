@@ -197,6 +197,9 @@ export const useSpecsStore = defineStore('specs', () => {
       if (currentSpecs.value.fixedBackground === undefined) {
         currentSpecs.value.fixedBackground = false;
       }
+      if (currentSpecs.value.showAsusWarrantyTicker === undefined) {
+        currentSpecs.value.showAsusWarrantyTicker = false;
+      }
       if (currentSpecs.value.storeBadge === undefined) {
         if (currentSpecs.value.onlyDelivery) {
           currentSpecs.value.storeBadge = 'delivery';

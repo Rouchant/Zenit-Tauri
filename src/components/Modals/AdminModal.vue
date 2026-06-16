@@ -51,8 +51,15 @@ const initCustomVideoPaths = () => {
 const editableSpecs = reactive({ 
     videoType: 'default',
     landingVideoType: 'default',
+    showAsusWarrantyTicker: store.currentSpecs.showAsusWarrantyTicker !== undefined ? store.currentSpecs.showAsusWarrantyTicker : false,
     ...store.currentSpecs,
     customVideoPaths: initCustomVideoPaths()
+});
+
+const isAsus = computed(() => {
+    const b = (editableSpecs.brand || '').toLowerCase();
+    const m = (editableSpecs.model || '').toLowerCase();
+    return b.includes('asus') || m.includes('asus');
 });
 
 // Opciones filtradas según hardware (dependen de editableSpecs)
@@ -377,11 +384,16 @@ const isHardwareLimitReached = computed(() => {
                         </div>
                         <div class="background-config">
                             <label>Configuración de Pantalla</label>
-                            <div class="input-group checkbox-group fixed-bg-group" style="padding-top: 5px;">
+                            <div class="input-group checkbox-group fixed-bg-group" style="padding-top: 5px; display: flex; flex-direction: column; gap: 10px;">
                                 <label for="fixed-bg-checkbox" class="checkbox-container">
                                     <input id="fixed-bg-checkbox" name="fixedBackground" type="checkbox" v-model="editableSpecs.fixedBackground">
                                     <span class="checkmark"></span>
                                     Fondo Fijo Uniforme (Imagen Estática)
+                                </label>
+                                <label for="asus-ticker-checkbox" class="checkbox-container" v-if="isAsus">
+                                    <input id="asus-ticker-checkbox" name="showAsusWarrantyTicker" type="checkbox" v-model="editableSpecs.showAsusWarrantyTicker">
+                                    <span class="checkmark"></span>
+                                    Mostrar Cintillo de Garantía Perfecta ASUS
                                 </label>
                             </div>
                         </div>

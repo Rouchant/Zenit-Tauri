@@ -129,7 +129,7 @@ fn get_wmi_details() -> Result<WmiData, Box<dyn std::error::Error>> {
     let (brand, model) = detect_brand_and_model(&wmi_con)?;
     
     let video_results: Vec<HashMap<String, serde_json::Value>> = wmi_con
-        .raw_query("SELECT Name, CurrentHorizontalResolution, CurrentVerticalResolution FROM Win32_VideoController")
+        .raw_query("SELECT Name, CurrentHorizontalResolution, CurrentVerticalResolution, CurrentRefreshRate FROM Win32_VideoController")
         .unwrap_or_default();
 
     let gpu = detect_best_gpu(&video_results);
@@ -239,14 +239,38 @@ fn get_nvidia_watts() -> Option<String> {
 #[cfg(windows)]
 /// Determina la resolución de pantalla actual buscando el valor máximo entre todos los controladores.
 /// Incluye etiquetas comerciales como (Full HD), (2K), etc.
+fn approximate_refresh_rate(hz: u64) -> u64 {
+    let commercial_rates = [60, 75, 90, 100, 120, 144, 165, 240, 360, 480, 540];
+    let mut closest = hz;
+    let mut min_diff = i64::MAX;
+    for &r in &commercial_rates {
+        let diff = (hz as i64 - r as i64).abs();
+        if diff < min_diff {
+            min_diff = diff;
+            closest = r;
+        }
+    }
+    if min_diff <= 10 {
+        closest
+    } else {
+        hz
+    }
+}
+
 fn format_display_resolution(wmi: &wmi::WMIConnection, video_results: &[HashMap<String, serde_json::Value>]) -> String {
     let mut max_h = 0;
     let mut max_v = 0;
+    let mut max_hz = 0;
 
     for res in video_results {
         let h = res.get("CurrentHorizontalResolution").and_then(|v| v.as_u64()).unwrap_or(0);
         let v = res.get("CurrentVerticalResolution").and_then(|v| v.as_u64()).unwrap_or(0);
-        if h > max_h { max_h = h; max_v = v; }
+        let hz = res.get("CurrentRefreshRate").and_then(|v| v.as_u64()).unwrap_or(0);
+        if h > max_h {
+            max_h = h;
+            max_v = v;
+            max_hz = hz;
+        }
     }
 
     if max_h == 0 {
@@ -275,7 +299,12 @@ fn format_display_resolution(wmi: &wmi::WMIConnection, video_results: &[HashMap<
         _ => ""
     };
 
-    format!("{} x {}{}", max_h, max_v, label)
+    if max_hz > 0 {
+        let hz_val = approximate_refresh_rate(max_hz);
+        format!("{} x {}{} - {}Hz", max_h, max_v, label, hz_val)
+    } else {
+        format!("{} x {}{}", max_h, max_v, label)
+    }
 }
 
 #[cfg(windows)]
@@ -284,7 +313,7 @@ fn detect_ram_type(wmi: &wmi::WMIConnection) -> String {
     if let Ok(results) = wmi.raw_query("SELECT SMBIOSMemoryType, Speed FROM Win32_PhysicalMemory") {
         let results: Vec<HashMap<String, serde_json::Value>> = results;
         if let Some(res) = results.first() {
-            let ram_type = match res.get("SMBIOSMemoryType").and_then(|v| v.as_u64()).unwrap_or(0) {
+            let mut ram_type = match res.get("SMBIOSMemoryType").and_then(|v| v.as_u64()).unwrap_or(0) {
                 20 => "DDR",
                 21 | 22 => "DDR2",
                 24 => "DDR3",
@@ -300,6 +329,9 @@ fn detect_ram_type(wmi: &wmi::WMIConnection) -> String {
                 Some(serde_json::Value::String(s)) => s.parse::<u64>().unwrap_or(0),
                 _ => 0,
             };
+            if ram_type == "LPDDR5" && speed >= 6000 {
+                ram_type = "LPDDR5X";
+            }
             if speed > 0 {
                 return format!("{} - {} MT/s", ram_type, speed);
             }
@@ -615,5 +647,18 @@ mod tests {
             let res = detect_generation(input);
             assert_eq!(res, expected, "Failed for CPU: {}", input);
         }
+    }
+
+    #[test]
+    fn test_approximate_refresh_rate() {
+        assert_eq!(approximate_refresh_rate(59), 60);
+        assert_eq!(approximate_refresh_rate(60), 60);
+        assert_eq!(approximate_refresh_rate(74), 75);
+        assert_eq!(approximate_refresh_rate(143), 144);
+        assert_eq!(approximate_refresh_rate(165), 165);
+        assert_eq!(approximate_refresh_rate(239), 240);
+        assert_eq!(approximate_refresh_rate(360), 360);
+        assert_eq!(approximate_refresh_rate(0), 0);
+        assert_eq!(approximate_refresh_rate(13), 13); // should not map since difference is > 10
     }
 }

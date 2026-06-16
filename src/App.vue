@@ -62,7 +62,11 @@
       <!-- Info View -->
       <div id="info-view" v-show="!store.isVideoMode && !store.isLoading" class="view active">
         <!-- Espaciador invisible para preservar la alineación exacta de las especificaciones -->
-        <div class="header-placeholder" style="height: 117px; width: 100%; visibility: hidden; pointer-events: none;"></div>
+        <div 
+          class="header-placeholder" 
+          :style="{ height: showAsusRibbon ? '157px' : '117px' }" 
+          style="width: 100%; visibility: hidden; pointer-events: none; transition: height 0.3s ease;"
+        ></div>
 
         <main class="main-content">
           <SpecsGrid @open-specs="showSpecsModal = true" />
@@ -151,11 +155,14 @@
       <div id="settings-hotspot" class="admin-hotspot top-right" @click="handleHotspotClick('settings')"></div>
       <div id="exit-hotspot" class="admin-hotspot bottom-right" @click="handleHotspotClick('exit')"></div>
     </Teleport>
+
+    <!-- Watermark -->
+    <div class="watermark-text">Developed by Juan Marchant</div>
   </div>
 </template>
 
 <script setup>
-import { onMounted, onUnmounted, ref, watch, reactive, nextTick } from 'vue';
+import { onMounted, onUnmounted, ref, watch, reactive, nextTick, computed } from 'vue';
 import { useSpecsStore } from './store/specs';
 import { tauriAPI } from './api/tauriApi';
 import { listen } from '@tauri-apps/api/event';
@@ -170,6 +177,9 @@ import SpecsModal from './components/Modals/SpecsModal.vue';
 import FirstStartModal from './components/Modals/FirstStartModal.vue';
 
 const store = useSpecsStore();
+const showAsusRibbon = computed(() => {
+  return store.isAsus && store.currentSpecs.showAsusWarrantyTicker;
+});
 const inactivityTimer = ref(null);
 const showPasswordModal = ref(false);
 const showAdminModal = ref(false);
@@ -603,5 +613,18 @@ onUnmounted(() => {
 .fade-enter-from,
 .fade-leave-to {
   opacity: 0;
+}
+
+.watermark-text {
+  position: fixed;
+  bottom: 5px;
+  right: 8px;
+  font-size: 11px;
+  color: #F4F5F0;
+  opacity: 0.05;
+  z-index: 80;
+  pointer-events: none;
+  user-select: none;
+  font-family: system-ui, -apple-system, sans-serif;
 }
 </style>
