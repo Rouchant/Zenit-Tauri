@@ -68,10 +68,22 @@
           style="width: 100%; visibility: hidden; pointer-events: none; transition: height 0.3s ease;"
         ></div>
 
-        <main class="main-content">
+        <main 
+          class="main-content"
+          :class="{ 
+            'has-prices': store.currentSpecs.pricePrimary || store.currentSpecs.priceSecondary,
+            'has-asus-ribbon': showAsusRibbon
+          }"
+        >
           <SpecsGrid @open-specs="showSpecsModal = true" />
           
-          <div class="landing-content-area">
+          <div 
+            class="landing-content-area" 
+            :class="{ 
+              'has-prices': store.currentSpecs.pricePrimary || store.currentSpecs.priceSecondary,
+              'has-asus-ribbon': showAsusRibbon
+            }"
+          >
             <div class="landing-video-container">
               <video 
                 id="landing-video" 
