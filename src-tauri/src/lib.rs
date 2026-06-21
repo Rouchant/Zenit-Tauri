@@ -6,7 +6,7 @@ mod guardian;
 use std::fs;
 use std::sync::Arc;
 use tokio::sync::Mutex;
-use tauri::{Manager, Emitter};
+use tauri::Manager;
 use tauri_plugin_store::StoreExt;
 use tauri_plugin_global_shortcut::{GlobalShortcutExt, Shortcut, Modifiers, Code};
 
@@ -126,6 +126,7 @@ pub fn run() {
             // 1. Gestionar el Estado Global de la aplicación
             app.manage(AppState {
                 maximize_timer: Arc::new(Mutex::new(None)), // Timer para auto-restaurar tras inactividad
+                restore_timer: Arc::new(Mutex::new(None)),  // Timer para vigilar la restauración
                 enforce_always_on_top: Arc::new(Mutex::new(true)), // Flag para vigilancia de foco
             });
 
@@ -240,6 +241,10 @@ pub fn run() {
                 tauri::WindowEvent::Focused(focused) => {
                     if window.label() == "main" {
                         if *focused {
+                            // Si la ventana principal está minimizada, ignorar el evento de foco
+                            if window.is_minimized().unwrap_or(false) {
+                                return;
+                            }
                             // Salvaguarda absoluta: Ocultar la ventana de retorno y quitar alwaysOnTop cuando la principal gana foco
                             if let Some(ret_win) = window.app_handle().get_webview_window("return") {
                                 let _ = ret_win.hide();
@@ -252,9 +257,13 @@ pub fn run() {
                                 let mut guard = state.enforce_always_on_top.lock().await;
                                 *guard = true;
                             });
-                            let _ = window.emit("app-restored", ());
+                            // Nota: NO emitimos play-info-videos aquí porque los videos
+                            // siempre deben reproducirse a menos que se haya llamado a minimize_app.
+                            // Emitirlo en cada ganancia de foco causaba reinicios innecesarios del compositor.
                         } else {
-                            // Vigilancia reactiva de foco: Si pierde el foco y el modo Kiosk está activo, reclamarlo al instante
+                            // Vigilancia reactiva de foco: Si pierde el foco y el modo Kiosk está activo, reclamarlo al instante.
+                            // SOLO en pantalla única — en multi-monitor (ZenBook Duo) el usuario puede interactuar
+                            // con la segunda pantalla y los videos deben seguir reproduciéndose sin interrupción.
                             let handle = window.app_handle().clone();
                             let state = handle.state::<AppState>();
                             let enforce_flag = Arc::clone(&state.enforce_always_on_top);
@@ -270,8 +279,6 @@ pub fn run() {
                                 let is_visible = window_clone.is_visible().unwrap_or(true);
 
                                 if should_enforce && !is_minimized && is_visible {
-                                    // Solo robar el foco si hay un único monitor conectado.
-                                    // Si hay multi-pantalla (ej: Zenbook Duo), permitir interactuar con la segunda pantalla.
                                     let monitor_count = window_clone.available_monitors()
                                         .map(|list| list.len())
                                         .unwrap_or(1);
@@ -279,6 +286,8 @@ pub fn run() {
                                         let _ = window_clone.set_focus();
                                     }
                                 }
+                                // Los videos NO se pausan al perder el foco.
+                                // Solo se pausan explícitamente vía minimize_app (botón "Prueba esta PC").
                             });
                         }
                     }

@@ -185,7 +185,9 @@ watch(() => store.isModalOpen, (isOpen) => {
   } else {
     videoRef.value?.play().catch(() => {});
     if (videoRef.value) {
-      startSafetyTimer(videoRef.value.duration - videoRef.value.currentTime);
+      const remaining = videoRef.value.duration - videoRef.value.currentTime;
+      // Si duration aún no cargó (NaN) o el resultado es inválido, usamos 60s por defecto
+      startSafetyTimer(isFinite(remaining) && remaining > 0 ? remaining : 60);
     }
     // Restart cycle when closing modals
     boxPosition.value = 'top-right';

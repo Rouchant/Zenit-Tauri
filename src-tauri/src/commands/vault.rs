@@ -75,8 +75,12 @@ pub async fn save_custom_video(app: AppHandle, source_path: String, custom_name:
         }
     }
 
-    // 2. Validar límite migración/capacidad (Máximo 5 videos) - Solo para NUEVOS videos
-    if meta.len() >= 5 {
+    // 2. Validar límite de capacidad (Máximo 5 videos) - Solo para NUEVOS videos
+    // Contar únicamente entradas cuyo archivo exista realmente en disco.
+    // Si hay entradas en meta.json apuntando a archivos borrados externamente,
+    // no deben bloquear la adición de nuevos videos.
+    let active_count = meta.iter().filter(|m| PathBuf::from(&m.path).exists()).count();
+    if active_count >= 5 {
         return Err("La bóveda está llena (máximo 5 videos). Elimina uno para continuar.".to_string());
     }
 

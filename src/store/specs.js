@@ -43,7 +43,11 @@ export const useSpecsStore = defineStore('specs', () => {
   const isVideoMode = ref(false);
   const isModalOpen = ref(false);
   const isLoading = ref(true);
-  const theme = ref(typeof localStorage !== 'undefined' && typeof localStorage.getItem === 'function' ? (localStorage.getItem('zenit-theme') || 'default') : 'default');
+  const theme = ref((() => {
+    try {
+      return (typeof localStorage !== 'undefined' && localStorage.getItem('zenit-theme')) || 'default';
+    } catch { return 'default'; }
+  })());
   // Aplicar clase al body inmediatamente para evitar parpadeos
   if (typeof document !== 'undefined') document.documentElement.className = `theme-${theme.value}`;
   const resolvedPaths = ref({});
@@ -57,9 +61,11 @@ export const useSpecsStore = defineStore('specs', () => {
   const updateTheme = (storeName) => {
     const s = (storeName || 'none').toLowerCase();
     theme.value = s === 'none' ? 'default' : s;
-    if (typeof localStorage !== 'undefined' && typeof localStorage.setItem === 'function') {
-      localStorage.setItem('zenit-theme', theme.value);
-    }
+    try {
+      if (typeof localStorage !== 'undefined') {
+        localStorage.setItem('zenit-theme', theme.value);
+      }
+    } catch { /* SecurityError en contextos restringidos */ }
     if (typeof document !== 'undefined') {
       document.documentElement.className = `theme-${theme.value}`;
     }
@@ -211,9 +217,12 @@ export const useSpecsStore = defineStore('specs', () => {
         delete currentSpecs.value.onlyDelivery;
       }
 
-      // Migrar path viejo a array si existe
+      // Migrar path viejo (string) a array si existe
       if (currentSpecs.value.customVideoPath && !currentSpecs.value.customVideoPaths) {
-        currentSpecs.value.customVideoPaths = [currentSpecs.value.customVideoPath];
+        const oldPath = currentSpecs.value.customVideoPath;
+        // Extraer nombre de archivo como nombre de display en la migración
+        const oldName = oldPath.split(/[\/\\]/).pop()?.replace(/\.[^.]+$/, '') || 'Video 1';
+        currentSpecs.value.customVideoPaths = [{ name: oldName, path: oldPath }];
         delete currentSpecs.value.customVideoPath;
       }
       if (!currentSpecs.value.customVideoPaths) {

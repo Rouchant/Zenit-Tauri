@@ -216,7 +216,8 @@ fn detect_best_gpu(video_results: &[HashMap<String, serde_json::Value>]) -> Stri
 fn rate_gpu(name: &str) -> i32 {
     let name_up = name.to_uppercase();
     if name_up.contains("NVIDIA") || name_up.contains("RTX") || name_up.contains("GTX") { 10 }
-    else if name_up.contains("RX ") { 8 }
+    // "RX " con espacio (ej: "Radeon RX 6600") o pegado a número (ej: "RX6600", "RX5700")
+    else if name_up.contains("RX ") || name_up.contains("RX6") || name_up.contains("RX7") || name_up.contains("RX5") || name_up.contains("RX4") { 8 }
     else if name_up.contains("ARC") { 5 }
     else if name_up.contains("UHD") || name_up.contains("RADEON") || name_up.contains("IRIS") { 2 }
     else { 1 }
@@ -552,6 +553,7 @@ pub fn get_video_path(app: AppHandle) -> String {
 #[tauri::command]
 pub fn set_max_brightness() {
     let script = r#"
+        $ErrorActionPreference = 'SilentlyContinue'
         try {
             Get-CimInstance -Namespace root/WMI -ClassName WmiMonitorBrightnessMethods | Invoke-CimMethod -MethodName WmiSetBrightness -Arguments @{ Timeout = 1; Brightness = 100 }
             powercfg /setacvalueindex SCHEME_CURRENT SUB_VIDEO ADAPTBRIGHT 0
@@ -562,7 +564,12 @@ pub fn set_max_brightness() {
             powercfg /s SCHEME_CURRENT
         } catch {}
     "#;
-    let _ = Command::new("powershell.exe").args(["-ExecutionPolicy", "Bypass", "-WindowStyle", "Hidden", "-Command", script]).creation_flags(CREATE_NO_WINDOW).spawn();
+    let _ = Command::new("powershell.exe")
+        .args(["-ExecutionPolicy", "Bypass", "-WindowStyle", "Hidden", "-Command", script])
+        .stdout(std::process::Stdio::null())
+        .stderr(std::process::Stdio::null())
+        .creation_flags(CREATE_NO_WINDOW)
+        .spawn();
 }
 
 #[derive(Debug, Serialize, Deserialize, Clone)]

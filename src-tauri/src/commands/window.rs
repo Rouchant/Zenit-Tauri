@@ -23,16 +23,16 @@ pub async fn minimize_app(app: AppHandle, state: tauri::State<'_, AppState>, sto
 
     // 1. Minimizar la ventana principal y notificar al frontend
     main_window.minimize().map_err(|e| e.to_string())?;
-    let _ = app.emit("app-minimized", ());
+    let _ = app.emit("pause-info-videos", ());
 
     // 2. Posicionar y configurar la ventana flotante de retorno
     position_return_window(&main_window, &return_window, store, brand).await?;
 
     // 3. Iniciar el monitor de inactividad en segundo plano (vía Win32 API)
-    start_idle_monitor(app.clone(), state).await;
+    start_idle_monitor(app.clone(), state.clone()).await;
 
     // 4. Iniciar el monitor de restauración para detectar clics nativos en la barra de tareas
-    start_restore_monitor(app);
+    start_restore_monitor(app, state).await;
 
     Ok(())
 }
@@ -41,6 +41,7 @@ pub async fn minimize_app(app: AppHandle, state: tauri::State<'_, AppState>, sto
 #[tauri::command]
 pub async fn restore_app(app: AppHandle, state: tauri::State<'_, AppState>) -> Result<(), String> {
     stop_idle_monitor(&state).await;
+    stop_restore_monitor(&state).await;
     restore_app_logic(&app).await
 }
 
@@ -80,11 +81,7 @@ pub async fn restore_app_logic(app: &AppHandle) -> Result<(), String> {
         *guard = true;
     }
 
-    // Ocultar la ventana flotante de retorno de inmediato y desactivar alwaysOnTop
-    let _ = return_window.hide();
-    let _ = return_window.set_always_on_top(false);
-
-    // Intentamos restaurar la ventana principal sin salir prematuramente en caso de fallos menores
+    // 1. Intentamos restaurar la ventana principal sin salir prematuramente en caso de fallos menores
     let res_unmin = main_window.unminimize();
     let res_show = main_window.show();
 
@@ -94,10 +91,14 @@ pub async fn restore_app_logic(app: &AppHandle) -> Result<(), String> {
         keybd_event(0x1B, 0, 0x0002, 0); 
     }
 
-    // Forzado agresivo a primer plano vía Win32
+    // 2. Forzar primer plano de la ventana principal mientras la de retorno aún posee los derechos de foco
     force_window_to_foreground(&main_window).await;
+
+    // 3. Ocultar la ventana flotante de retorno e ir al fondo
+    let _ = return_window.hide();
+    let _ = return_window.set_always_on_top(false);
     
-    let _ = app.emit("app-restored", ());
+    let _ = app.emit("play-info-videos", ());
 
     // Propagar errores de restauración si ocurrieron
     res_unmin.map_err(|e| e.to_string())?;
@@ -253,15 +254,29 @@ async fn stop_idle_monitor(state: &AppState) {
     }
 }
 
+/// Detiene el monitor de restauración actual.
+async fn stop_restore_monitor(state: &AppState) {
+    let mut timer_guard = state.restore_timer.lock().await;
+    if let Some(handle) = timer_guard.take() {
+        handle.abort();
+    }
+}
+
 /// Monitorea la ventana principal mientras está minimizada para detectar si el usuario
 /// la restaura manualmente haciendo clic en el icono de la barra de tareas.
-fn start_restore_monitor(app: AppHandle) {
-    tauri::async_runtime::spawn(async move {
-        let main_window = match app.get_webview_window("main") {
+async fn start_restore_monitor(app: AppHandle, state: tauri::State<'_, AppState>) {
+    let app_clone = app.clone();
+    let state_clone = Arc::clone(&state.restore_timer);
+
+    let mut timer_guard = state_clone.lock().await;
+    if let Some(handle) = timer_guard.take() { handle.abort(); }
+
+    let handle = tauri::async_runtime::spawn(async move {
+        let main_window = match app_clone.get_webview_window("main") {
             Some(w) => w,
             None => return,
         };
-        let return_window = match app.get_webview_window("return") {
+        let return_window = match app_clone.get_webview_window("return") {
             Some(w) => w,
             None => return,
         };
@@ -278,29 +293,44 @@ fn start_restore_monitor(app: AppHandle) {
         // Si la ventana de retorno sigue visible, hacemos una restauración y limpieza limpias.
         if return_window.is_visible().unwrap_or(false) {
             log::info!("[Zenit] Restore monitor: La ventana principal fue des-minimizada nativamente. Limpiando overlays.");
-            let _ = return_window.hide();
-            let _ = return_window.set_always_on_top(false);
+            let state_inside = app_clone.state::<AppState>();
 
-            let state = app.state::<AppState>();
-            stop_idle_monitor(&state).await;
+            // Detener el monitor de inactividad
+            stop_idle_monitor(&state_inside).await;
+
+            // IMPORTANTE: No llamar stop_restore_monitor() aquí porque ese método haría
+            // handle.abort() sobre el task actual, cancelándolo en el próximo .await y
+            // dejando sin ejecutar hide() y emit("play-info-videos").
+            // En cambio, eliminamos nuestro propio handle del registro directamente sin abortarlo.
+            {
+                let mut timer_guard = state_inside.restore_timer.lock().await;
+                timer_guard.take(); // Desregistrar sin abortar — ya estamos ejecutando
+            }
 
             // Asegurar que el comportamiento de quiosco (siempre arriba) se reactive
             {
-                let mut guard = state.enforce_always_on_top.lock().await;
+                let mut guard = state_inside.enforce_always_on_top.lock().await;
                 *guard = true;
             }
 
             // Simular pulsación de Escape para despertar foco en Windows
             unsafe {
-                keybd_event(0x1B, 0, 0, 0); 
-                keybd_event(0x1B, 0, 0x0002, 0); 
+                keybd_event(0x1B, 0, 0, 0);
+                keybd_event(0x1B, 0, 0x0002, 0);
             }
 
-            // Forzar primer plano
+            // Forzar primer plano de la ventana principal mientras la de retorno aún posee los derechos de foco
             force_window_to_foreground(&main_window).await;
-            let _ = app.emit("app-restored", ());
+
+            // Ocultar la ventana flotante de retorno e ir al fondo
+            let _ = return_window.hide();
+            let _ = return_window.set_always_on_top(false);
+
+            let _ = app_clone.emit("play-info-videos", ());
         }
     });
+
+    *timer_guard = Some(handle);
 }
 
 /// Calcula el tiempo en milisegundos desde la última interacción del usuario con el SO.
@@ -327,17 +357,30 @@ async fn force_window_to_foreground(window: &tauri::WebviewWindow) {
         unsafe {
             let foreground = GetForegroundWindow();
             if foreground != 0 && foreground != hwnd {
-                let foreground_thread = GetWindowThreadProcessId(foreground, std::ptr::null_mut());
-                let app_thread = GetCurrentThreadId();
+                let mut foreground_pid: u32 = 0;
+                let foreground_thread = GetWindowThreadProcessId(foreground, &mut foreground_pid);
+                let current_pid = GetCurrentProcessId();
                 
-                // Si el hilo que tiene el foco no es el nuestro, intentamos adjuntar la entrada
-                if foreground_thread != app_thread {
+                if foreground_pid == current_pid {
+                    // Si la ventana activa pertenece a nuestro propio proceso (ej. la ventana de retorno),
+                    // transferimos el foco directamente de forma segura sin usar AttachThreadInput.
+                    SetForegroundWindow(hwnd);
+                    SetFocus(hwnd);
+                    SetActiveWindow(hwnd);
+                } else {
+                    // Si pertenece a otro proceso, usamos AttachThreadInput como último recurso.
+                    let app_thread = GetCurrentThreadId();
                     let _ = AttachThreadInput(app_thread, foreground_thread, 1);
                     SetForegroundWindow(hwnd);
                     SetFocus(hwnd);
                     SetActiveWindow(hwnd);
                     let _ = AttachThreadInput(app_thread, foreground_thread, 0);
                 }
+            } else {
+                // Si ya somos la ventana activa, solo aseguramos el foco
+                SetForegroundWindow(hwnd);
+                SetFocus(hwnd);
+                SetActiveWindow(hwnd);
             }
             // Refuerzo de visibilidad y estado TopMost (Z-Order)
             ShowWindow(hwnd, SW_SHOW);

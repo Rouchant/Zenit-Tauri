@@ -78,8 +78,7 @@
           <div 
             class="landing-content-area" 
             :class="{ 
-              'has-prices': store.currentSpecs.pricePrimary || store.currentSpecs.priceSecondary,
-              'has-asus-ribbon': showAsusRibbon
+              'has-prices': store.currentSpecs.pricePrimary || store.currentSpecs.priceSecondary
             }"
           >
             <div class="landing-video-container">
@@ -100,7 +99,6 @@
                 }"
                 @error="handleLandingVideoError"
                 @playing="() => { isLandingReady = true; landingRetryCount = 0; }"
-                @loadstart="isLandingReady = false"
               >
               </video>
 
@@ -276,6 +274,11 @@ const showWarrantyOverlay = ref(false);
 const bgRetryCount = ref(0);
 const landingRetryCount = ref(0);
 
+// Registro del último timestamp de evento para evitar condiciones de carrera (IPC fuera de orden)
+let lastEventTime = 0;
+// Indica si el backend indica que los videos deberían estarse reproduciendo (ventana enfocada y no minimizada)
+const shouldBePlaying = ref(true);
+
 // Sincronizar estado global de modales
 watch([showPasswordModal, showAdminModal, showSpecsModal, showFirstStartModal], ([p, a, s, f]) => {
   store.isModalOpen = p || a || s || f;
@@ -322,9 +325,8 @@ const handleHotspotClick = (mode) => {
   }
 };
 
-// Pausar videos del info-view cuando no son visibles (modal abierto o modo video/screensaver).
-// Además de pausar, vaciamos el src para liberar los buffers de frames decodificados (~50-100MB cada uno).
-// Al reanudar, reasignamos el src original y damos play (más rápido que destruir/recrear el DOM).
+// Pausar o reanudar los videos del info-view según el estado de la app.
+// Solo se pausan al minimizar explícitamente (botón "Prueba esta PC") o al abrir modales.
 
 
 const pauseInfoVideos = () => {
@@ -337,13 +339,45 @@ const pauseInfoVideos = () => {
   }
 };
 
-const resumeInfoVideos = () => {
-  if (bgVideo.value) {
-    bgVideo.value.play().catch((e) => console.warn("Bg video play failed:", e));
-  }
-  
-  if (landingVideo.value && !(showWarrantyOverlay.value && store.isAsus)) {
-    landingVideo.value.play().catch((e) => console.warn("Landing video play failed:", e));
+const resumeInfoVideos = (delayMs = 0) => {
+  const triggerPlay = () => {
+    const shouldPlay = () => {
+      return !store.isModalOpen && !store.isVideoMode && shouldBePlaying.value;
+    };
+
+    const playVideo = (videoRef, name, attempt = 1) => {
+      const videoEl = videoRef.value;
+      if (!videoEl) return;
+      if (!shouldPlay()) {
+        console.log(`[Videos] Abortando intento de reproducción ${attempt} para ${name} porque el estado cambió.`);
+        return;
+      }
+
+      videoEl.play()
+        .then(() => {
+          console.log(`[Videos] ${name} reproduciéndose con éxito en intento ${attempt}.`);
+        })
+        .catch((e) => {
+          console.warn(`[Videos] Intento ${attempt} de reproducción falló para ${name}:`, e);
+          if (attempt < 5 && shouldPlay()) {
+            setTimeout(() => {
+              playVideo(videoRef, name, attempt + 1);
+            }, attempt * 150 + 100); // 250ms, 400ms, 550ms, 700ms...
+          }
+        });
+    };
+
+    playVideo(bgVideo, "bgVideo");
+
+    if (!(showWarrantyOverlay.value && store.isAsus)) {
+      playVideo(landingVideo, "landingVideo");
+    }
+  };
+
+  if (delayMs > 0) {
+    setTimeout(triggerPlay, delayMs);
+  } else {
+    triggerPlay();
   }
 };
 
@@ -380,20 +414,23 @@ const handleLandingVideoError = () => {
 const checkVideosPlayState = () => {
   if (store.isLoading) return;
   
+  // No reanudar videos si el backend indica que deben estar pausados
+  if (!shouldBePlaying.value) return;
+
   if (store.isVideoMode) {
     const promoVideo = document.getElementById('promo-video');
     if (promoVideo && promoVideo.paused && !store.isModalOpen) {
-      console.log('[Watchdog] promo-video is paused but should play. Resuming...');
+      console.warn('[Watchdog] promo-video estaba pausado pero debería reproducirse. Reanudando...');
       promoVideo.play().catch((e) => console.warn('[Watchdog] Failed to play promo-video:', e));
     }
   } else {
     if (!store.isModalOpen) {
       if (bgVideo.value && bgVideo.value.paused && !store.currentSpecs.fixedBackground) {
-        console.log('[Watchdog] bgVideo is paused but should play. Resuming...');
+        console.warn('[Watchdog] bgVideo estaba pausado pero debería reproducirse. Reanudando...');
         bgVideo.value.play().catch((e) => console.warn('[Watchdog] Failed to play bgVideo:', e));
       }
       if (landingVideo.value && landingVideo.value.paused && !(showWarrantyOverlay.value && store.isAsus)) {
-        console.log('[Watchdog] landingVideo is paused but should play. Resuming...');
+        console.warn('[Watchdog] landingVideo estaba pausado pero debería reproducirse. Reanudando...');
         landingVideo.value.play().catch((e) => console.warn('[Watchdog] Failed to play landingVideo:', e));
       }
     }
@@ -415,7 +452,9 @@ watch(() => store.isModalOpen, (isOpen) => {
     // Si cerramos modal y no estamos en modo video, restaurar
     if (!store.isVideoMode) {
       nextTick(() => {
-        resumeInfoVideos();
+        if (shouldBePlaying.value) {
+          resumeInfoVideos();
+        }
         resetTimer();
       });
     }
@@ -453,8 +492,10 @@ watch(() => store.isVideoMode, (isVideo) => {
       });
     }
   } else {
-    // Salir de modo video
+    // Salir de modo video: siempre marcar como reproducible y reanudar
+    // (shouldBePlaying puede haber quedado en false si se minimizó antes de entrar al screensaver)
     if (!store.isModalOpen) {
+      shouldBePlaying.value = true;
       resumeInfoVideos();
       resetTimer();
     }
@@ -475,6 +516,11 @@ const updateVideoSources = () => {
 
 watch(() => store.currentSpecs, updateVideoSources, { deep: true });
 watch(() => store.isAsus, updateVideoSources);
+
+// Desactivar estado listo únicamente si cambia la ruta real del video para evitar parpadeos/bloqueos visuales
+watch(currentLandingVideoSrc, () => {
+  isLandingReady.value = false;
+});
 
 // 3. Gestión de Carga Inicial
 watch(() => store.isLoading, (loading) => {
@@ -540,9 +586,8 @@ const onPasswordVerified = () => {
 
 let unlistenInactivity = null;
 let unlistenActivity = null;
-let unlistenMinimized = null;
-let unlistenRestored = null;
-let onWindowFocus = null;
+let unlistenPlay = null;
+let unlistenPause = null;
 let watchdogInterval = null;
 let timeDriftInterval = null;
 
@@ -613,24 +658,39 @@ onMounted(async () => {
   window.addEventListener('mousedown', createTouchRipple, { passive: true });
 
   if (window.__TAURI_INTERNALS__) {
-    // Cuando Rust minimiza la app: PAUSAR el timer de JS.
-    // Rust asume el control de la vigilancia de inactividad.
-    unlistenMinimized = await listen('app-minimized', () => {
-      console.log('App minimized: pausing JS inactivity timer and videos.');
+    // Cuando Rust le dice al frontend que reproduzca los videos
+    unlistenPlay = await listen('play-info-videos', () => {
+      console.log('[Tauri Event] play-info-videos recibido. Reanudando videos.');
+      shouldBePlaying.value = true;
+      if (!store.isModalOpen && !store.isVideoMode) {
+        // --- Webview2 GPU Compositor Repaint Fix ---
+        // Cuando Webview2 se restaura desde minimizado, el compositor D3D11 puede
+        // quedar congelado visualmente aunque JS reporte paused=false y currentTime avance.
+        // Forzamos un reflow del layout para despertar la capa de composición GPU.
+        const root = document.documentElement;
+        const originalTransform = root.style.transform;
+        root.style.transform = 'translateZ(0) scale(0.9999)';
+        // Forzar reflow síncrono leyendo una propiedad de layout
+        void root.offsetHeight;
+        // Después de un pequeño tick, revertir y disparar resize para re-composición total
+        setTimeout(() => {
+          root.style.transform = originalTransform;
+          window.dispatchEvent(new Event('resize'));
+          console.log('[Repaint] Compositor repaint forzado tras play-info-videos.');
+          resumeInfoVideos(100);
+        }, 150);
+      }
+    });
+
+    // Cuando Rust le dice al frontend que pause los videos
+    unlistenPause = await listen('pause-info-videos', () => {
+      console.log('[Tauri Event] pause-info-videos recibido. Pausando videos.');
+      shouldBePlaying.value = false;
       if (inactivityTimer.value) {
         clearTimeout(inactivityTimer.value);
         inactivityTimer.value = null;
       }
       pauseInfoVideos();
-    });
-
-    unlistenRestored = await listen('app-restored', () => {
-      console.log('App restored: resuming videos and resetting timer.');
-      tauriAPI.setMaxBrightness();
-      if (!store.isModalOpen && !store.isVideoMode) {
-        resumeInfoVideos();
-      }
-      resetTimer();
     });
 
     // Cuando Rust detecta 3 min de inactividad: activar modo video
@@ -651,17 +711,6 @@ onMounted(async () => {
       // Reanudar el timer de JS ahora que la app está de vuelta
       resetTimer();
     });
-
-    // Refuerzo: Si el navegador detecta foco, intentar reanudar videos y forzar brillo máximo
-    onWindowFocus = () => {
-      console.log('Browser focus detected, checking video states...');
-      tauriAPI.setMaxBrightness();
-      checkVideosPlayState();
-      if (!store.isModalOpen && !store.isVideoMode) {
-        resumeInfoVideos();
-      }
-    };
-    window.addEventListener('focus', onWindowFocus);
   }
 
   // Guardián de videos periódico (cada 10 segundos)
@@ -689,12 +738,11 @@ onUnmounted(() => {
   window.removeEventListener('mousedown', resetTimer);
   window.removeEventListener('touchstart', createTouchRipple);
   window.removeEventListener('mousedown', createTouchRipple);
-  if (onWindowFocus) window.removeEventListener('focus', onWindowFocus);
   
-  if (unlistenMinimized) unlistenMinimized();
   if (unlistenInactivity) unlistenInactivity();
   if (unlistenActivity) unlistenActivity();
-  if (unlistenRestored) unlistenRestored();
+  if (unlistenPlay) unlistenPlay();
+  if (unlistenPause) unlistenPause();
   
   if (watchdogInterval) clearInterval(watchdogInterval);
   if (timeDriftInterval) clearInterval(timeDriftInterval);

@@ -34,7 +34,17 @@ export const tauriAPI = {
   checkFileExists: (filePath) => safeInvoke('check_file_exists', { filePath }),
   quitApp: () => safeInvoke('quit_app'),
   setAlwaysOnTop: (onTop) => safeInvoke('set_always_on_top', { onTop }),
-  setMaxBrightness: () => safeInvoke('set_max_brightness'),
+  setMaxBrightness: (() => {
+    let lastCall = 0;
+    return () => {
+      const now = Date.now();
+      if (now - lastCall < 5000) {
+        return Promise.resolve(null);
+      }
+      lastCall = now;
+      return safeInvoke('set_max_brightness');
+    };
+  })(),
   inferProcessorInfo: (name) => safeInvoke('infer_processor_info', { name }),
 };
 
