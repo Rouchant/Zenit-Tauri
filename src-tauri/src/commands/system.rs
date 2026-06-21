@@ -429,7 +429,8 @@ fn detect_generation(name: &str) -> String {
         let gen = if digits.len() >= 5 {
             &digits[0..2]
         } else if digits.len() == 4 {
-            if n.contains(&format!("{}g", digits)) || n.contains(&format!("{} g", digits)) {
+            // Para procesadores Intel de 10ª a 15ª Gen con modelos de 4 dígitos sin sufijo G (ej: i5-1235U, i5-1334U)
+            if digits.starts_with('1') {
                 &digits[0..2]
             } else {
                 &digits[0..1]
@@ -600,6 +601,10 @@ mod tests {
     fn test_cpu_detection() {
         let cases = vec![
             // Intel Core i-Series
+            ("Intel Core i5-1334U", "13ª Gen"),
+            ("Intel Core i5-1335U", "13ª Gen"),
+            ("Intel Core i5-1235U", "12ª Gen"),
+            ("Intel Core i7-1355U", "13ª Gen"),
             ("Intel Core i7-12700H", "12ª Gen"),
             ("Intel Core i5-1135G7", "11ª Gen"),
             ("Intel Core i9-10900K", "10ª Gen"),

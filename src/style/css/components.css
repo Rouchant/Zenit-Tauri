@@ -217,8 +217,8 @@
     font-family: 'Antonio', sans-serif;
     text-transform: uppercase;
     letter-spacing: 2px;
-    font-size: 1.5rem;
-    font-weight: 700;
+    font-size: 38px;
+    font-weight: 600;
     cursor: pointer;
     transition: all 0.15s cubic-bezier(0.4, 0, 0.2, 1);
 

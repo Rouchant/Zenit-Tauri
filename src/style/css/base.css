@@ -93,3 +93,30 @@ body {
         transform: translateX(5px);
     }
 }
+
+/* --- Global Touch Feedback Ripple Effect --- */
+.touch-ripple {
+    position: fixed;
+    width: 100px;
+    height: 100px;
+    margin-left: -50px;
+    margin-top: -50px;
+    border-radius: 50%;
+    background: radial-gradient(circle, var(--primary) 0%, transparent 70%);
+    border: 2.5px solid var(--primary);
+    pointer-events: none;
+    z-index: 99999;
+    will-change: transform, opacity;
+    transform: scale(0.25);
+    animation: ripple-out 0.45s cubic-bezier(0.1, 0.8, 0.3, 1) forwards;
+}
+
+@keyframes ripple-out {
+    0% {
+        opacity: 0.8;
+    }
+    100% {
+        transform: scale(1.6);
+        opacity: 0;
+    }
+}

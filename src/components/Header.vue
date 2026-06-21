@@ -16,23 +16,7 @@ const storeLogo = computed(() => {
   return `/assets/logos/${s}.${ext}`;
 });
 
-const showTicker = computed(() => {
-  return store.isAsus && store.currentSpecs.showAsusWarrantyTicker;
-});
-
-// Horizontal Marquee Combined Message Logic
-const combinedMessage = computed(() => {
-  const dropletsSvg = `<svg xmlns='http://www.w3.org/2000/svg' width='24' height='24' viewBox='0 0 24 24' fill='none' stroke='currentColor' stroke-width='2' stroke-linecap='round' stroke-linejoin='round' class='lucide lucide-droplets-icon lucide-droplets ribbon-svg-icon'><path d='M7 16.3c2.2 0 4-1.83 4-4.05 0-1.16-.57-2.26-1.71-3.19S7.29 6.75 7 5.3c-.29 1.45-1.14 2.84-2.29 3.76S3 11.1 3 12.25c0 2.22 1.8 4.05 4 4.05z'/><path d='M12.56 6.6A10.97 10.97 0 0 0 14 3.02c.5 2.5 2 4.9 4 6.5s3 3.5 3 5.5a6.98 6.98 0 0 1-11.91 4.97'/></svg>`;
-  const plugZapSvg = `<svg xmlns='http://www.w3.org/2000/svg' width='24' height='24' viewBox='0 0 24 24' fill='none' stroke='currentColor' stroke-width='2' stroke-linecap='round' stroke-linejoin='round' class='lucide lucide-plug-zap-icon lucide-plug-zap ribbon-svg-icon'><path d='M6.3 20.3a2.4 2.4 0 0 0 3.4 0L12 18l-6-6-2.3 2.3a2.4 2.4 0 0 0 0 3.4Z'/><path d='m2 22 3-3'/><path d='M7.5 13.5 10 11'/><path d='M10.5 16.5 13 14'/><path d='m18 3-4 4h6l-4 4'/></svg>`;
-  const trendingDownSvg = `<svg xmlns='http://www.w3.org/2000/svg' width='24' height='24' viewBox='0 0 24 24' fill='none' stroke='currentColor' stroke-width='2' stroke-linecap='round' stroke-linejoin='round' class='lucide lucide-trending-down-icon lucide-trending-down ribbon-svg-icon'><path d='M16 17h6v-6'/><path d='m22 17-8.5-8.5-5 5L2 7'/></svg>`;
-
-  const separator = " &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;•&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; ";
-  return [
-    `¡Obtén 1 año de&nbsp;<span class='highlight-blue'>Garantía Perfecta ASUS</span>&nbsp;registrada!`,
-    `Cobertura contra:&nbsp;<span class='highlight-blue'>${dropletsSvg} derrames</span>,&nbsp;<span class='highlight-blue'>${plugZapSvg} sobretensiones</span>&nbsp;y&nbsp;<span class='highlight-blue'>${trendingDownSvg} caídas</span>.`,
-    `Regístrate dentro de los&nbsp;<span class='highlight-blue'>90 días</span>&nbsp;posteriores a la compra para activarla.`
-  ].join(separator) + separator;
-});
+// El cintillo de garantía perfecta ASUS ha sido eliminado por solicitud
 </script>
 
 <template>
@@ -48,10 +32,7 @@ const combinedMessage = computed(() => {
         </div>
       </div>
 
-      <!-- Escudo ASUS Perfect Warranty grande centrado en el header, arriba de la cinta -->
-      <div class="header-center-shield" v-if="showTicker">
-        <img src="/assets/images/apw.png" class="header-shield-large" />
-      </div>
+      <!-- Escudo ASUS Perfect Warranty eliminado -->
 
       <div class="brand-info-container">
         <div class="brand-model-row">
@@ -78,15 +59,7 @@ const combinedMessage = computed(() => {
         </div>
       </div>
 
-      <!-- Cinta Marquesina Horizontal Deslizante (Garantía Perfecta ASUS) -->
-      <div class="header-ribbon" v-if="showTicker">
-        <div class="marquee-container">
-          <div class="marquee-content">
-            <span class="marquee-text" v-html="combinedMessage"></span>
-            <span class="marquee-text" v-html="combinedMessage"></span>
-          </div>
-        </div>
-      </div>
+      <!-- Cinta Marquesina Horizontal Deslizante eliminada -->
     </header>
   </div>
 </template>

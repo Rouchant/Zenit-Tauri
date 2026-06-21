@@ -393,7 +393,7 @@ const isHardwareLimitReached = computed(() => {
                                 <label for="asus-ticker-checkbox" class="checkbox-container" v-if="isAsus">
                                     <input id="asus-ticker-checkbox" name="showAsusWarrantyTicker" type="checkbox" v-model="editableSpecs.showAsusWarrantyTicker">
                                     <span class="checkmark"></span>
-                                    Mostrar Cintillo de Garantía Perfecta ASUS
+                                    Mostrar publicidad garantía perfecta ASUS
                                 </label>
                             </div>
                         </div>

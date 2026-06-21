@@ -64,15 +64,13 @@
         <!-- Espaciador invisible para preservar la alineación exacta de las especificaciones -->
         <div 
           class="header-placeholder" 
-          :style="{ height: showAsusRibbon ? '157px' : '117px' }" 
-          style="width: 100%; visibility: hidden; pointer-events: none; transition: height 0.3s ease;"
+          style="width: 100%; height: 117px; visibility: hidden; pointer-events: none;"
         ></div>
 
         <main 
           class="main-content"
           :class="{ 
-            'has-prices': store.currentSpecs.pricePrimary || store.currentSpecs.priceSecondary,
-            'has-asus-ribbon': showAsusRibbon
+            'has-prices': store.currentSpecs.pricePrimary || store.currentSpecs.priceSecondary
           }"
         >
           <SpecsGrid @open-specs="showSpecsModal = true" />
@@ -105,9 +103,78 @@
                 @loadstart="isLandingReady = false"
               >
               </video>
+
+              <!-- Garantía Perfecta ASUS HTML Overlay -->
+              <Transition name="warranty-fade">
+                <div class="warranty-overlay-card" v-if="showWarrantyOverlay && store.isAsus">
+                  <button class="warranty-close-btn" @click="showWarrantyOverlay = false" aria-label="Cerrar">&times;</button>
+                  <div class="warranty-info-left">
+                    <div class="warranty-title-group">
+                      <h3 class="warranty-main-title">Garantía Perfecta ASUS</h3>
+                      <p class="warranty-subtitle">
+                        ASUS ofrece un año de Garantía Perfecta (protección complementaria contra daños accidentales) en ciertos productos. Complete el registro dentro de los primeros 90 días posteriores a la compra.
+                      </p>
+                    </div>
+                    <div class="warranty-pillars">
+                      <div class="warranty-pillar-item">
+                        <img src="/assets/images/icon1.png" alt="Derrames" class="warranty-pillar-icon" />
+                        <span class="warranty-pillar-text">Derrames de líquidos</span>
+                      </div>
+                      <div class="warranty-pillar-item">
+                        <img src="/assets/images/icon2.png" alt="Sobretensiones" class="warranty-pillar-icon" />
+                        <span class="warranty-pillar-text">Sobretensiones eléctricas</span>
+                      </div>
+                      <div class="warranty-pillar-item">
+                        <img src="/assets/images/icon3.png" alt="Caídas" class="warranty-pillar-icon" />
+                        <span class="warranty-pillar-text">Caídas accidentales</span>
+                      </div>
+                    </div>
+                    <div class="warranty-steps">
+                      <div class="warranty-step-item">
+                        <div class="warranty-step-num">1</div>
+                        <div class="warranty-step-info">
+                          <span class="warranty-step-title">Paso 1</span>
+                          <span class="warranty-step-desc">Regístrese como miembro ASUS</span>
+                        </div>
+                      </div>
+                      <div class="warranty-step-item">
+                        <div class="warranty-step-num">2</div>
+                        <div class="warranty-step-info">
+                          <span class="warranty-step-title">Paso 2</span>
+                          <span class="warranty-step-desc">Registre su producto en 90 días</span>
+                        </div>
+                      </div>
+                      <div class="warranty-step-item">
+                        <div class="warranty-step-num">3</div>
+                        <div class="warranty-step-info">
+                          <span class="warranty-step-title">Paso 3</span>
+                          <span class="warranty-step-desc">¡Disfrute de la tranquilidad!</span>
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+                  <div class="warranty-info-right">
+                    <img src="/assets/images/apw.png" alt="ASUS Perfect Warranty Shield" class="warranty-large-shield" />
+                  </div>
+                </div>
+              </Transition>
             </div>
-            <div class="price-status-wrapper" v-if="store.currentSpecs.pricePrimary || store.currentSpecs.priceSecondary">
-               <div id="display-price" class="price-tag-container">
+
+            <!-- Fila inferior: Botón Garantía (Izquierda) + Precios (Derecha) -->
+            <div class="landing-bottom-row">
+              <div class="warranty-btn-container">
+                <button 
+                  v-if="store.isAsus && store.currentSpecs.showAsusWarrantyTicker" 
+                  class="warranty-trigger-btn"
+                  @click="showWarrantyOverlay = !showWarrantyOverlay"
+                >
+                  <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="lucide lucide-shield-icon lucide-shield warranty-btn-shield"><path d="M20 13c0 5-3.5 7.5-7.66 8.95a1 1 0 0 1-.67-.01C7.5 20.5 4 18 4 13V6a1 1 0 0 1 1-1c2 0 4.5-1.2 6.24-2.72a1.17 1.17 0 0 1 1.52 0C14.51 3.81 17 5 19 5a1 1 0 0 1 1 1z"/></svg>
+                  <span>Ver Garantía Perfecta</span>
+                </button>
+              </div>
+
+              <div class="price-status-wrapper" v-if="store.currentSpecs.pricePrimary || store.currentSpecs.priceSecondary">
+                <div id="display-price" class="price-tag-container">
                   <div v-if="store.currentSpecs.pricePrimary" class="price-primary-group">
                      <div class="price-row">
                        <div class="retail-badge badge-card">EXCLUSIVO TARJETA</div>
@@ -129,7 +196,8 @@
                        </div>
                      </div>
                   </div>
-               </div>
+                </div>
+              </div>
             </div>
           </div>
         </main>
@@ -189,9 +257,6 @@ import SpecsModal from './components/Modals/SpecsModal.vue';
 import FirstStartModal from './components/Modals/FirstStartModal.vue';
 
 const store = useSpecsStore();
-const showAsusRibbon = computed(() => {
-  return store.isAsus && store.currentSpecs.showAsusWarrantyTicker;
-});
 const inactivityTimer = ref(null);
 const showPasswordModal = ref(false);
 const showAdminModal = ref(false);
@@ -205,6 +270,7 @@ const isInternalFocusHack = ref(false);
 const isLandingReady = ref(false);
 const currentBgVideoSrc = ref('');
 const currentLandingVideoSrc = ref('');
+const showWarrantyOverlay = ref(false);
 
 // Retry counters for video recovery
 const bgRetryCount = ref(0);
@@ -318,6 +384,8 @@ watch(() => store.isModalOpen, (isOpen) => {
   if (isOpen) {
     pauseInfoVideos();
     clearTimeout(inactivityTimer.value);
+    // Ocultar ventana de Garantía Perfecta si se abre un modal
+    showWarrantyOverlay.value = false;
     // Desactivar AlwaysOnTop para permitir diálogos del sistema (selectores de archivos, etc)
     if (showAdminModal.value) tauriAPI.setAlwaysOnTop(false);
   } else {
@@ -337,6 +405,7 @@ const closeAllModals = () => {
   showAdminModal.value = false;
   showSpecsModal.value = false;
   showFirstStartModal.value = false;
+  showWarrantyOverlay.value = false;
 };
 
 const onFirstStartCompleted = () => {
@@ -348,6 +417,8 @@ const onFirstStartCompleted = () => {
 watch(() => store.isVideoMode, (isVideo) => {
   if (isVideo) {
     pauseInfoVideos();
+    // Ocultar ventana de Garantía Perfecta al entrar en inactividad
+    showWarrantyOverlay.value = false;
     // Acciones de Kiosko
     tauriAPI.setMaxBrightness();
     
@@ -435,6 +506,23 @@ let unlistenMinimized = null;
 let unlistenRestored = null;
 let onWindowFocus = null;
 
+const createTouchRipple = (e) => {
+  if (store.isModalOpen) return;
+  const isTouch = e.type.startsWith('touch');
+  const targetEvent = isTouch ? e.touches[0] : e;
+  
+  const ripple = document.createElement('div');
+  ripple.className = 'touch-ripple';
+  ripple.style.left = `${targetEvent.clientX}px`;
+  ripple.style.top = `${targetEvent.clientY}px`;
+  
+  document.body.appendChild(ripple);
+  
+  ripple.addEventListener('animationend', () => {
+    ripple.remove();
+  });
+};
+
 const updateScale = () => {
   // Escalar de forma uniforme (contain) eligiendo la menor proporción
   // para evitar achatamiento en pantallas con relación de aspecto distinta de 16:9 (ej. 16:10 como 2880x1800)
@@ -471,6 +559,9 @@ onMounted(async () => {
   window.addEventListener('mousemove', throttledResetTimer);
   window.addEventListener('keydown', resetTimer);
   window.addEventListener('mousedown', resetTimer);
+  
+  window.addEventListener('touchstart', createTouchRipple, { passive: true });
+  window.addEventListener('mousedown', createTouchRipple, { passive: true });
 
   if (window.__TAURI_INTERNALS__) {
     // Cuando Rust minimiza la app: PAUSAR el timer de JS.
@@ -527,6 +618,8 @@ onUnmounted(() => {
   window.removeEventListener('mousemove', throttledResetTimer);
   window.removeEventListener('keydown', resetTimer);
   window.removeEventListener('mousedown', resetTimer);
+  window.removeEventListener('touchstart', createTouchRipple);
+  window.removeEventListener('mousedown', createTouchRipple);
   if (onWindowFocus) window.removeEventListener('focus', onWindowFocus);
   
   if (unlistenMinimized) unlistenMinimized();

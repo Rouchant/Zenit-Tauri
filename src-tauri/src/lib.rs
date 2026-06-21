@@ -33,6 +33,7 @@ pub fn run() {
         // Background Management (Avoid suspension for power saving)
         "--disable-backgrounding-occluded-windows",
         "--disable-renderer-backgrounding",
+        "--disable-background-media-suspend",
 
         // Cache: Desactivar caches HTTP (todo es local vía asset://)
         "--disk-cache-size=1",
@@ -52,7 +53,7 @@ pub fn run() {
 
         // Features: Desactivar funciones que consumen memoria sin beneficio en kiosk
         // UseSkiaRenderer se desactiva a veces para evitar flickering en integrados AMD
-        "--disable-features=BackForwardCache,TranslateUI,MediaRouter,Translate,AcceptCHFrame,AutofillServerCommunication,UseSkiaRenderer",
+        "--disable-features=BackForwardCache,TranslateUI,MediaRouter,Translate,AcceptCHFrame,AutofillServerCommunication,UseSkiaRenderer,CalculateWindowOcclusion",
         
         // Renderer: Limitar procesos de renderizado (main + return = 2 webviews)
         "--renderer-process-limit=1",
@@ -112,6 +113,16 @@ pub fn run() {
 
         // Configuración Inicial (Setup)
         .setup(|app| {
+            // Forzar que la ventana principal se ubique en la pantalla principal del sistema (ej. Zenbook Duo)
+            if let Some(main_window) = app.get_webview_window("main") {
+                if let Ok(Some(primary_monitor)) = main_window.primary_monitor() {
+                    let pos = primary_monitor.position();
+                    let _ = main_window.set_fullscreen(false);
+                    let _ = main_window.set_position(*pos);
+                    let _ = main_window.set_fullscreen(true);
+                }
+            }
+
             // 1. Gestionar el Estado Global de la aplicación
             app.manage(AppState {
                 maximize_timer: Arc::new(Mutex::new(None)), // Timer para auto-restaurar tras inactividad
@@ -234,6 +245,13 @@ pub fn run() {
                                 let _ = ret_win.hide();
                                 let _ = ret_win.set_always_on_top(false);
                             }
+                            // Re-activar la vigilancia de foco al recuperar el foco de la ventana principal
+                            let handle = window.app_handle().clone();
+                            tauri::async_runtime::spawn(async move {
+                                let state = handle.state::<AppState>();
+                                let mut guard = state.enforce_always_on_top.lock().await;
+                                *guard = true;
+                            });
                             let _ = window.emit("app-restored", ());
                         } else {
                             // Vigilancia reactiva de foco: Si pierde el foco y el modo Kiosk está activo, reclamarlo al instante
@@ -252,7 +270,14 @@ pub fn run() {
                                 let is_visible = window_clone.is_visible().unwrap_or(true);
 
                                 if should_enforce && !is_minimized && is_visible {
-                                    let _ = window_clone.set_focus();
+                                    // Solo robar el foco si hay un único monitor conectado.
+                                    // Si hay multi-pantalla (ej: Zenbook Duo), permitir interactuar con la segunda pantalla.
+                                    let monitor_count = window_clone.available_monitors()
+                                        .map(|list| list.len())
+                                        .unwrap_or(1);
+                                    if monitor_count <= 1 {
+                                        let _ = window_clone.set_focus();
+                                    }
                                 }
                             });
                         }

@@ -104,8 +104,8 @@ unsafe extern "system" fn low_level_keyboard_proc(n_code: i32, w_param: WPARAM, 
             // PERO permitir Ctrl+Shift+Esc (Administrador de tareas)
             (key == VK_ESCAPE && !shift) || (win && matches!(key, VK_LEFT | VK_RIGHT | VK_D | VK_F4))
         } else {
-            // Bloquear tecla Menú (Apps) y Shift+F10 (Context Menu)
-            key == VK_APPS || (shift && key == VK_F10)
+            // Bloquear tecla Menú (Apps), Shift+F10 (Context Menu) y Shift+Escape (Administrador de procesos de WebView2)
+            key == VK_APPS || (shift && (key == VK_F10 || key == VK_ESCAPE))
         };
 
         if should_block { return 1; }

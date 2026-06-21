@@ -15,6 +15,12 @@ pub async fn minimize_app(app: AppHandle, state: tauri::State<'_, AppState>, sto
     let main_window = app.get_webview_window("main").ok_or("Main window not found")?;
     let return_window = app.get_webview_window("return").ok_or("Return window not found")?;
 
+    // Desactivar temporalmente la vigilancia de foco para evitar bucles durante la minimización
+    {
+        let mut guard = state.enforce_always_on_top.lock().await;
+        *guard = false;
+    }
+
     // 1. Minimizar la ventana principal y notificar al frontend
     main_window.minimize().map_err(|e| e.to_string())?;
     let _ = app.emit("app-minimized", ());
@@ -23,7 +29,10 @@ pub async fn minimize_app(app: AppHandle, state: tauri::State<'_, AppState>, sto
     position_return_window(&main_window, &return_window, store, brand).await?;
 
     // 3. Iniciar el monitor de inactividad en segundo plano (vía Win32 API)
-    start_idle_monitor(app, state).await;
+    start_idle_monitor(app.clone(), state).await;
+
+    // 4. Iniciar el monitor de restauración para detectar clics nativos en la barra de tareas
+    start_restore_monitor(app);
 
     Ok(())
 }
@@ -31,7 +40,7 @@ pub async fn minimize_app(app: AppHandle, state: tauri::State<'_, AppState>, sto
 /// Restaura la aplicación al estado de pantalla completa, deteniendo el monitor de inactividad.
 #[tauri::command]
 pub async fn restore_app(app: AppHandle, state: tauri::State<'_, AppState>) -> Result<(), String> {
-    stop_idle_monitor(state).await;
+    stop_idle_monitor(&state).await;
     restore_app_logic(&app).await
 }
 
@@ -237,11 +246,61 @@ async fn start_idle_monitor(app: AppHandle, state: tauri::State<'_, AppState>) {
 }
 
 /// Detiene el monitor de inactividad actual.
-async fn stop_idle_monitor(state: tauri::State<'_, AppState>) {
+async fn stop_idle_monitor(state: &AppState) {
     let mut timer_guard = state.maximize_timer.lock().await;
     if let Some(handle) = timer_guard.take() {
         handle.abort();
     }
+}
+
+/// Monitorea la ventana principal mientras está minimizada para detectar si el usuario
+/// la restaura manualmente haciendo clic en el icono de la barra de tareas.
+fn start_restore_monitor(app: AppHandle) {
+    tauri::async_runtime::spawn(async move {
+        let main_window = match app.get_webview_window("main") {
+            Some(w) => w,
+            None => return,
+        };
+        let return_window = match app.get_webview_window("return") {
+            Some(w) => w,
+            None => return,
+        };
+
+        // Esperar a que se complete la minimización inicial para evitar falsos positivos
+        tokio::time::sleep(tokio::time::Duration::from_millis(800)).await;
+
+        // Bucle de monitoreo mientras la ventana principal esté minimizada
+        while main_window.is_minimized().unwrap_or(false) {
+            tokio::time::sleep(tokio::time::Duration::from_millis(200)).await;
+        }
+
+        // Si sale del bucle, la ventana fue des-minimizada.
+        // Si la ventana de retorno sigue visible, hacemos una restauración y limpieza limpias.
+        if return_window.is_visible().unwrap_or(false) {
+            log::info!("[Zenit] Restore monitor: La ventana principal fue des-minimizada nativamente. Limpiando overlays.");
+            let _ = return_window.hide();
+            let _ = return_window.set_always_on_top(false);
+
+            let state = app.state::<AppState>();
+            stop_idle_monitor(&state).await;
+
+            // Asegurar que el comportamiento de quiosco (siempre arriba) se reactive
+            {
+                let mut guard = state.enforce_always_on_top.lock().await;
+                *guard = true;
+            }
+
+            // Simular pulsación de Escape para despertar foco en Windows
+            unsafe {
+                keybd_event(0x1B, 0, 0, 0); 
+                keybd_event(0x1B, 0, 0x0002, 0); 
+            }
+
+            // Forzar primer plano
+            force_window_to_foreground(&main_window).await;
+            let _ = app.emit("app-restored", ());
+        }
+    });
 }
 
 /// Calcula el tiempo en milisegundos desde la última interacción del usuario con el SO.
