@@ -14,6 +14,97 @@ use crate::state::AppState;
 use crate::setup::run_system_setup;
 use crate::commands::{system, vault, window};
 
+/// Detecta si la GPU primaria del sistema es un AMD integrado de arquitectura GCN (legacy).
+/// Los APUs GCN (Ryzen 3000/Vega 3-8, pre-2020) tienen un bug conocido con el renderer Skia
+/// de Chromium que causa flickering visual. RDNA2/RDNA3 (Ryzen 5000/7000) NO tienen este problema.
+///
+/// Estrategia: Leer los PCI Vendor IDs de los adaptadores de video desde el registro de Windows.
+/// - AMD = 0x1002, pero solo desactivar Skia si NO hay GPU dedicada NVIDIA (0x10DE) ni AMD RX.
+/// - Intel (0x8086), NVIDIA (0x10DE), y AMD RDNA: Skia habilitado.
+/// Esta detección es pura lectura de registro: sin COM, sin WMI, sin spawning de procesos.
+#[cfg(windows)]
+fn has_legacy_amd_integrated_gpu() -> bool {
+    use windows_sys::Win32::System::Registry::*;
+    use std::ffi::OsString;
+    use std::os::windows::ffi::OsStringExt;
+
+    // Clave de dispositivos PCI de Windows: lista adaptadores de video por Vendor/Device ID
+    let key_path: Vec<u16> = "SYSTEM\\CurrentControlSet\\Control\\Class\\{4d36e968-e325-11ce-bfc1-08002be10318}"
+        .encode_utf16().chain(std::iter::once(0)).collect();
+
+    let mut h_class: isize = 0;
+    let opened = unsafe {
+        RegOpenKeyExW(
+            HKEY_LOCAL_MACHINE,
+            key_path.as_ptr(),
+            0,
+            KEY_READ,
+            &mut h_class,
+        )
+    };
+    if opened != 0 { return false; }
+
+    let mut has_amd = false;
+    let mut has_dedicated = false; // NVIDIA o AMD RX dedicada
+
+    // Iterar subclaves (0000, 0001, ...) — cada una es un adaptador de video
+    for idx in 0..16u32 {
+        let mut name_buf = [0u16; 64];
+        let mut name_len = 64u32;
+        let res = unsafe {
+            RegEnumKeyExW(h_class, idx, name_buf.as_mut_ptr(), &mut name_len, std::ptr::null_mut(), std::ptr::null_mut(), std::ptr::null_mut(), std::ptr::null_mut())
+        };
+        if res != 0 { break; }
+
+        let sub_name: Vec<u16> = name_buf[..name_len as usize].to_vec();
+
+        let mut h_adapter: isize = 0;
+        if unsafe { RegOpenKeyExW(h_class, sub_name.as_ptr(), 0, KEY_READ, &mut h_adapter) } != 0 { continue; }
+
+        // Leer MatchingDeviceId que contiene "pci\ven_XXXX" con el Vendor ID
+        let val_name: Vec<u16> = "MatchingDeviceId".encode_utf16().chain(std::iter::once(0)).collect();
+        let mut data_buf = [0u16; 256];
+        let mut data_len = (data_buf.len() * 2) as u32;
+        let mut data_type = 0u32;
+        let val_res = unsafe {
+            RegQueryValueExW(h_adapter, val_name.as_ptr(), std::ptr::null_mut(), &mut data_type, data_buf.as_mut_ptr() as *mut u8, &mut data_len)
+        };
+
+        if val_res == 0 {
+            let len_wchars = (data_len / 2).saturating_sub(1) as usize;
+            let device_id = OsString::from_wide(&data_buf[..len_wchars]).to_string_lossy().to_uppercase();
+            if device_id.contains("VEN_10DE") { has_dedicated = true; } // NVIDIA
+            if device_id.contains("VEN_1002") {
+                has_amd = true;
+                // AMD dedicada RX: DEV IDs de RDNA1+ empiezan en 0x7310+
+                // Detectamos por presencia de NVIDIA o simplemente chequeamos si es APU
+                // Una heurística más sencilla: leer ProviderName/DriverDesc
+                let desc_name: Vec<u16> = "DriverDesc".encode_utf16().chain(std::iter::once(0)).collect();
+                let mut desc_buf = [0u16; 256];
+                let mut desc_len = (desc_buf.len() * 2) as u32;
+                let mut desc_type = 0u32;
+                if unsafe { RegQueryValueExW(h_adapter, desc_name.as_ptr(), std::ptr::null_mut(), &mut desc_type, desc_buf.as_mut_ptr() as *mut u8, &mut desc_len) } == 0 {
+                    let d_len = (desc_len / 2).saturating_sub(1) as usize;
+                    let desc = OsString::from_wide(&desc_buf[..d_len]).to_string_lossy().to_uppercase();
+                    // Si tiene "RX " o es Radeon 680M/760M/etc (RDNA) → dedicada o moderna
+                    if desc.contains("RX ") || desc.contains("RADEON RX") || desc.contains("680M") || desc.contains("760M") || desc.contains("890M") {
+                        has_dedicated = true;
+                    }
+                }
+            }
+        }
+        unsafe { RegCloseKey(h_adapter); }
+    }
+
+    unsafe { RegCloseKey(h_class); }
+
+    // Solo deshabilitar Skia si hay AMD integrado SIN GPU dedicada moderna
+    has_amd && !has_dedicated
+}
+
+#[cfg(not(windows))]
+fn has_legacy_amd_integrated_gpu() -> bool { false }
+
 /// Punto de entrada principal de la aplicación Tauri.
 /// Configura plugins, estado global, handlers de comandos y eventos de ventana.
 #[cfg_attr(mobile, tauri::mobile_entry_point)]
@@ -23,7 +114,9 @@ pub fn run() {
     // así que podemos desactivar muchos subsistemas que desperdician RAM.
     let webview_args = [
         // GPU Performance & Stability
-        "--force-gpu-mem-available-mb=512", // Increased for 4K/high-bitrate fluidity
+        // Sin --force-gpu-mem-available-mb: WebView2 consulta el driver de GPU directamente
+        // y usa el presupuesto de VRAM que el sistema reporta (RTX 4060=8GB, UHD=compartido, etc.).
+        // Poner un valor fijo causaba stuttering en GPUs con más VRAM de la que el flag permitía usar.
         "--enable-accelerated-video-decode",
         "--enable-gpu-rasterization",
         "--enable-zero-copy", // Reduces CPU usage for video frames
@@ -35,10 +128,10 @@ pub fn run() {
         "--disable-renderer-backgrounding",
         "--disable-background-media-suspend",
 
-        // Cache: Desactivar caches HTTP (todo es local vía asset://)
+        // Cache: Desactivar caché HTTP en disco (todo el contenido es local vía asset://)
+        // NO limitamos media-cache-size: ese buffer mantiene frames de video en RAM,
+        // evitando re-lecturas desde disco en cada loop. Es memoria bien usada en un kiosk.
         "--disk-cache-size=1",
-        "--media-cache-size=1",
-        "--aggressive-cache-discard",
 
         // Red: Desactivar subsistemas de networking innecesarios
         "--disable-background-networking",
@@ -51,10 +144,6 @@ pub fn run() {
         "--disable-notifications",
         "--disable-breakpad",
 
-        // Features: Desactivar funciones que consumen memoria sin beneficio en kiosk
-        // UseSkiaRenderer se desactiva a veces para evitar flickering en integrados AMD
-        "--disable-features=BackForwardCache,TranslateUI,MediaRouter,Translate,AcceptCHFrame,AutofillServerCommunication,UseSkiaRenderer,CalculateWindowOcclusion",
-        
         // Renderer: Limitar procesos de renderizado (main + return = 2 webviews)
         "--renderer-process-limit=1",
         
@@ -63,14 +152,23 @@ pub fn run() {
         
         // Color: Forzar perfil sRGB para evitar inconsistencias entre monitores/HDR
         "--force-color-profile=srgb",
-
-        // Escala: Permitir escalado nativo del sistema para alta resolución (2K, 3K, 4K, 2880x1800).
-        // Forzar 1:1 causaba que la interfaz se viera microscópica y deformada en pantallas High-DPI.
-        // "--force-device-scale-factor=1",
     ];
+
+    // El flag --disable-features se construye en runtime según la GPU detectada
+    let base_features = "BackForwardCache,TranslateUI,MediaRouter,Translate,AcceptCHFrame,AutofillServerCommunication,CalculateWindowOcclusion";
+    let disable_features_str = if has_legacy_amd_integrated_gpu() {
+        log::info!("[Zenit] APU AMD GCN detectado: desactivando UseSkiaRenderer para evitar flickering.");
+        format!("--disable-features={},UseSkiaRenderer", base_features)
+    } else {
+        format!("--disable-features={}", base_features)
+    };
+
+    let mut all_args: Vec<String> = webview_args.iter().map(|s| s.to_string()).collect();
+    all_args.push(disable_features_str);
+
     std::env::set_var(
         "WEBVIEW2_ADDITIONAL_BROWSER_ARGUMENTS",
-        webview_args.join(" "),
+        all_args.join(" "),
     );
 
     tauri::Builder::default()
