@@ -518,7 +518,13 @@ const createTouchRipple = (e) => {
   
   document.body.appendChild(ripple);
   
+  // Salvaguarda absoluta: forzar eliminación a los 800ms si el evento de animación fallase
+  const safetyTimeout = setTimeout(() => {
+    ripple.remove();
+  }, 800);
+
   ripple.addEventListener('animationend', () => {
+    clearTimeout(safetyTimeout);
     ripple.remove();
   });
 };
