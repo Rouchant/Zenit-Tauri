@@ -377,6 +377,29 @@ const handleLandingVideoError = () => {
   }
 };
 
+const checkVideosPlayState = () => {
+  if (store.isLoading) return;
+  
+  if (store.isVideoMode) {
+    const promoVideo = document.getElementById('promo-video');
+    if (promoVideo && promoVideo.paused && !store.isModalOpen) {
+      console.log('[Watchdog] promo-video is paused but should play. Resuming...');
+      promoVideo.play().catch((e) => console.warn('[Watchdog] Failed to play promo-video:', e));
+    }
+  } else {
+    if (!store.isModalOpen) {
+      if (bgVideo.value && bgVideo.value.paused && !store.currentSpecs.fixedBackground) {
+        console.log('[Watchdog] bgVideo is paused but should play. Resuming...');
+        bgVideo.value.play().catch((e) => console.warn('[Watchdog] Failed to play bgVideo:', e));
+      }
+      if (landingVideo.value && landingVideo.value.paused) {
+        console.log('[Watchdog] landingVideo is paused but should play. Resuming...');
+        landingVideo.value.play().catch((e) => console.warn('[Watchdog] Failed to play landingVideo:', e));
+      }
+    }
+  }
+};
+
 // --- WATCHERS CONSOLIDADOS (ESTABILIDAD) ---
 
 // 1. Gestión de Modales
@@ -505,6 +528,8 @@ let unlistenActivity = null;
 let unlistenMinimized = null;
 let unlistenRestored = null;
 let onWindowFocus = null;
+let watchdogInterval = null;
+let timeDriftInterval = null;
 
 const createTouchRipple = (e) => {
   if (store.isModalOpen) return;
@@ -555,6 +580,9 @@ onMounted(async () => {
   await store.loadSpecs();
   updateVideoSources();
   
+  // Forzar brillo al 100% y desactivar suspensión de pantalla en AC al arrancar
+  tauriAPI.setMaxBrightness();
+  
   if (!store.currentSpecs.firstStartCompleted) {
     showFirstStartModal.value = true;
   } else {
@@ -583,6 +611,7 @@ onMounted(async () => {
 
     unlistenRestored = await listen('app-restored', () => {
       console.log('App restored: resuming videos and resetting timer.');
+      tauriAPI.setMaxBrightness();
       if (!store.isModalOpen && !store.isVideoMode) {
         resumeInfoVideos();
       }
@@ -608,15 +637,34 @@ onMounted(async () => {
       resetTimer();
     });
 
-    // Refuerzo: Si el navegador detecta foco, intentar reanudar videos
+    // Refuerzo: Si el navegador detecta foco, intentar reanudar videos y forzar brillo máximo
     onWindowFocus = () => {
       console.log('Browser focus detected, checking video states...');
+      tauriAPI.setMaxBrightness();
+      checkVideosPlayState();
       if (!store.isModalOpen && !store.isVideoMode) {
         resumeInfoVideos();
       }
     };
     window.addEventListener('focus', onWindowFocus);
   }
+
+  // Guardián de videos periódico (cada 10 segundos)
+  watchdogInterval = setInterval(checkVideosPlayState, 10000);
+
+  // Detección de retorno de suspensión (Time-drift detector)
+  let lastTime = Date.now();
+  timeDriftInterval = setInterval(() => {
+    const currentTime = Date.now();
+    const drift = currentTime - lastTime;
+    // Si el desfase es mayor de 20 segundos (esperado 10s), detecta suspensión
+    if (drift > 20000) {
+      console.log(`[Watchdog] Wake-from-sleep detected (drift: ${drift}ms). Restoring brightness and video states.`);
+      tauriAPI.setMaxBrightness();
+      checkVideosPlayState();
+    }
+    lastTime = currentTime;
+  }, 10000);
 });
 
 onUnmounted(() => {
@@ -632,6 +680,9 @@ onUnmounted(() => {
   if (unlistenInactivity) unlistenInactivity();
   if (unlistenActivity) unlistenActivity();
   if (unlistenRestored) unlistenRestored();
+  
+  if (watchdogInterval) clearInterval(watchdogInterval);
+  if (timeDriftInterval) clearInterval(timeDriftInterval);
   
   clearTimeout(inactivityTimer.value);
   if (pixelShiftInterval) clearInterval(pixelShiftInterval);
