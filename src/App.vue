@@ -342,7 +342,7 @@ const resumeInfoVideos = () => {
     bgVideo.value.play().catch((e) => console.warn("Bg video play failed:", e));
   }
   
-  if (landingVideo.value) {
+  if (landingVideo.value && !(showWarrantyOverlay.value && store.isAsus)) {
     landingVideo.value.play().catch((e) => console.warn("Landing video play failed:", e));
   }
 };
@@ -392,7 +392,7 @@ const checkVideosPlayState = () => {
         console.log('[Watchdog] bgVideo is paused but should play. Resuming...');
         bgVideo.value.play().catch((e) => console.warn('[Watchdog] Failed to play bgVideo:', e));
       }
-      if (landingVideo.value && landingVideo.value.paused) {
+      if (landingVideo.value && landingVideo.value.paused && !(showWarrantyOverlay.value && store.isAsus)) {
         console.log('[Watchdog] landingVideo is paused but should play. Resuming...');
         landingVideo.value.play().catch((e) => console.warn('[Watchdog] Failed to play landingVideo:', e));
       }
@@ -482,9 +482,24 @@ watch(() => store.isLoading, (loading) => {
     setTimeout(() => {
       if (!store.isModalOpen && !store.isVideoMode) {
         bgVideo.value?.play().catch(() => {});
-        landingVideo.value?.play().catch(() => {});
+        if (!(showWarrantyOverlay.value && store.isAsus)) {
+          landingVideo.value?.play().catch(() => {});
+        }
       }
     }, 100);
+  }
+});
+
+// Watcher para pausar/reanudar el video del landing al abrir/cerrar la Garantía Perfecta ASUS
+watch(showWarrantyOverlay, (isOpen) => {
+  if (isOpen && store.isAsus) {
+    if (landingVideo.value) {
+      landingVideo.value.pause();
+    }
+  } else {
+    if (landingVideo.value && !store.isLoading && !store.isModalOpen && !store.isVideoMode) {
+      landingVideo.value.play().catch((e) => console.warn("Landing video play failed:", e));
+    }
   }
 });
 

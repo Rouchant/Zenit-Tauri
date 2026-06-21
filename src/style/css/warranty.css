@@ -4,16 +4,16 @@
     align-items: center;
     gap: 12px;
     background-image: linear-gradient(to right, #005bac, #4d12e4);
-    border: 1px solid rgba(255, 255, 255, 0.2);
-    padding: 14px 28px;
-    border-radius: 50px;
+    border: none;
+    padding: 15.5px 29.5px;
+    border-radius: 24px;
     color: var(--white, #ffffff);
     font-family: 'Outfit', sans-serif;
     font-size: 24px;
     font-weight: 600;
     cursor: pointer;
     transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
-    box-shadow: 0 6px 16px rgba(0, 0, 0, 0.35);
+    box-shadow: 0 0 0 3px rgba(255, 255, 255, 0.45), 0 6px 16px rgba(0, 0, 0, 0.35);
     backdrop-filter: blur(10px);
     -webkit-backdrop-filter: blur(10px);
     transform: translateZ(0);
@@ -22,8 +22,7 @@
 
 .warranty-trigger-btn:hover {
     filter: brightness(1.15);
-    border-color: rgba(255, 255, 255, 0.4);
-    box-shadow: 0 6px 22px rgba(77, 18, 228, 0.45);
+    box-shadow: 0 0 0 3px rgba(255, 255, 255, 0.8), 0 6px 22px rgba(77, 18, 228, 0.45);
     transform: translateY(-2px) translateZ(0);
 }
 
