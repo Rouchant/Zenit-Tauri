@@ -205,6 +205,10 @@ onUnmounted(() => {
   clearSafetyTimer();
   stopOverlayCycle();
 });
+
+// Exponer el elemento <video> al componente padre (App.vue) para que el watchdog
+// pueda accederlo directamente sin getElementById, evitando consultas al DOM.
+defineExpose({ videoRef });
 </script>
 
 <template>

@@ -53,7 +53,7 @@
     <!-- Video View (Inactivity) - Fuera de app-container para ocupar pantalla completa real -->
     <Transition name="fade">
       <div id="video-view" v-if="store.isVideoMode && !store.isLoading" class="view active physical-fullscreen">
-         <VideoPlayer />
+       <VideoPlayer ref="videoPlayerRef" />
       </div>
     </Transition>
 
@@ -264,6 +264,7 @@ const passwordMode = ref('settings');
 
 const bgVideo = ref(null);
 const landingVideo = ref(null);
+const videoPlayerRef = ref(null); // Ref al componente VideoPlayer para acceso directo al elemento <video>
 const isInternalFocusHack = ref(false);
 const isLandingReady = ref(false);
 const currentBgVideoSrc = ref('');
@@ -418,7 +419,7 @@ const checkVideosPlayState = () => {
   if (!shouldBePlaying.value) return;
 
   if (store.isVideoMode) {
-    const promoVideo = document.getElementById('promo-video');
+    const promoVideo = videoPlayerRef.value?.videoRef?.value;
     if (promoVideo && promoVideo.paused && !store.isModalOpen) {
       console.warn('[Watchdog] promo-video estaba pausado pero debería reproducirse. Reanudando...');
       promoVideo.play().catch((e) => console.warn('[Watchdog] Failed to play promo-video:', e));
@@ -514,8 +515,12 @@ const updateVideoSources = () => {
   }
 };
 
-watch(() => store.currentSpecs, updateVideoSources, { deep: true });
-watch(() => store.isAsus, updateVideoSources);
+// Observar solo los campos que realmente determinan la URL del video,
+// evitando el costoso deep-watch sobre todo currentSpecs.
+watch([
+  () => store.isAsus,
+  () => store.currentSpecs.customLandingVideoPath,
+], updateVideoSources);
 
 // Desactivar estado listo únicamente si cambia la ruta real del video para evitar parpadeos/bloqueos visuales
 watch(currentLandingVideoSrc, () => {
@@ -589,7 +594,6 @@ let unlistenActivity = null;
 let unlistenPlay = null;
 let unlistenPause = null;
 let watchdogInterval = null;
-let timeDriftInterval = null;
 
 const createTouchRipple = (e) => {
   if (store.isModalOpen) return;
@@ -713,21 +717,21 @@ onMounted(async () => {
     });
   }
 
-  // Guardián de videos periódico (cada 10 segundos)
-  watchdogInterval = setInterval(checkVideosPlayState, 10000);
-
-  // Detección de retorno de suspensión (Time-drift detector)
-  let lastTime = Date.now();
-  timeDriftInterval = setInterval(() => {
-    const currentTime = Date.now();
-    const drift = currentTime - lastTime;
-    // Si el desfase es mayor de 20 segundos (esperado 10s), detecta suspensión
+  // Guardián unificado (cada 10 segundos): verifica estado de videos + detecta retorno de suspensión.
+  // Antes eran dos setInterval separados al mismo periodo; unificarlos reduce timer overhead.
+  let lastDriftTime = Date.now();
+  watchdogInterval = setInterval(() => {
+    // 1. Detección de retorno de suspensión (time-drift)
+    const now = Date.now();
+    const drift = now - lastDriftTime;
     if (drift > 20000) {
-      console.log(`[Watchdog] Wake-from-sleep detected (drift: ${drift}ms). Restoring brightness and video states.`);
+      console.log(`[Watchdog] Wake-from-sleep detected (drift: ${drift}ms). Restaurando brillo.`);
       tauriAPI.setMaxBrightness();
-      checkVideosPlayState();
     }
-    lastTime = currentTime;
+    lastDriftTime = now;
+
+    // 2. Verificar estado de reproducción de videos
+    checkVideosPlayState();
   }, 10000);
 });
 
@@ -745,7 +749,6 @@ onUnmounted(() => {
   if (unlistenPause) unlistenPause();
   
   if (watchdogInterval) clearInterval(watchdogInterval);
-  if (timeDriftInterval) clearInterval(timeDriftInterval);
   
   clearTimeout(inactivityTimer.value);
   if (pixelShiftInterval) clearInterval(pixelShiftInterval);
