@@ -23,7 +23,7 @@
 
       <!-- Video Layer (Active only if not in fixed background mode) -->
       <video 
-        v-if="!store.currentSpecs.fixedBackground"
+        v-if="!store.currentSpecs.fixedBackground && shouldBePlaying"
         id="bg-video" 
         autoplay 
         loop 
@@ -47,7 +47,7 @@
 
     <!-- Header siempre pegado arriba y al ancho de la ventana -->
     <Transition name="fade">
-      <Header v-if="!store.isVideoMode && !store.isLoading" />
+      <Header v-if="!store.isLoading" />
     </Transition>
 
     <!-- Video View (Inactivity) - Fuera de app-container para ocupar pantalla completa real -->
@@ -60,7 +60,7 @@
     <!-- Contenedor Escalable del Contenido (Transparente y centrado en la pantalla física) -->
     <div class="app-container" :class="{ 'is-loading': store.isLoading }">
       <!-- Info View -->
-      <div id="info-view" v-show="!store.isVideoMode && !store.isLoading" class="view active">
+      <div id="info-view" v-show="!store.isLoading" class="view active">
         <!-- Espaciador invisible para preservar la alineación exacta de las especificaciones -->
         <div 
           class="header-placeholder" 
@@ -73,7 +73,7 @@
             'has-prices': store.currentSpecs.pricePrimary || store.currentSpecs.priceSecondary
           }"
         >
-          <SpecsGrid @open-specs="showSpecsModal = true" />
+          <SpecsGrid />
           
           <div 
             class="landing-content-area" 
@@ -91,7 +91,7 @@
                 preload="auto"
                 :src="currentLandingVideoSrc"
                 ref="landingVideo"
-                v-if="!store.isLoading"
+                v-if="!store.isLoading && shouldBePlaying"
                 :style="{ 
                   transform: 'translateZ(0)',
                   opacity: isLandingReady ? 1 : 0,
@@ -152,7 +152,7 @@
                     </div>
                   </div>
                   <div class="warranty-info-right">
-                    <img src="/assets/images/apw.png" alt="ASUS Perfect Warranty Shield" class="warranty-large-shield" />
+                    <img src="/assets/images/apw.svg" alt="ASUS Perfect Warranty Shield" class="warranty-large-shield" />
                   </div>
                 </div>
               </Transition>
@@ -275,8 +275,7 @@ const showWarrantyOverlay = ref(false);
 const bgRetryCount = ref(0);
 const landingRetryCount = ref(0);
 
-// Registro del último timestamp de evento para evitar condiciones de carrera (IPC fuera de orden)
-let lastEventTime = 0;
+
 // Indica si el backend indica que los videos deberían estarse reproduciendo (ventana enfocada y no minimizada)
 const shouldBePlaying = ref(true);
 
@@ -348,7 +347,14 @@ const resumeInfoVideos = (delayMs = 0) => {
 
     const playVideo = (videoRef, name, attempt = 1) => {
       const videoEl = videoRef.value;
-      if (!videoEl) return;
+      if (!videoEl) {
+        if (attempt < 15 && shouldPlay()) {
+          setTimeout(() => {
+            playVideo(videoRef, name, attempt + 1);
+          }, 150);
+        }
+        return;
+      }
       if (!shouldPlay()) {
         console.log(`[Videos] Abortando intento de reproducción ${attempt} para ${name} porque el estado cambió.`);
         return;
@@ -360,19 +366,16 @@ const resumeInfoVideos = (delayMs = 0) => {
         })
         .catch((e) => {
           console.warn(`[Videos] Intento ${attempt} de reproducción falló para ${name}:`, e);
-          if (attempt < 5 && shouldPlay()) {
+          if (attempt < 15 && shouldPlay()) {
             setTimeout(() => {
               playVideo(videoRef, name, attempt + 1);
-            }, attempt * 150 + 100); // 250ms, 400ms, 550ms, 700ms...
+            }, attempt * 100 + 100);
           }
         });
     };
 
     playVideo(bgVideo, "bgVideo");
-
-    if (!(showWarrantyOverlay.value && store.isAsus)) {
-      playVideo(landingVideo, "landingVideo");
-    }
+    playVideo(landingVideo, "landingVideo");
   };
 
   if (delayMs > 0) {
@@ -430,10 +433,11 @@ const checkVideosPlayState = () => {
         console.warn('[Watchdog] bgVideo estaba pausado pero debería reproducirse. Reanudando...');
         bgVideo.value.play().catch((e) => console.warn('[Watchdog] Failed to play bgVideo:', e));
       }
-      if (landingVideo.value && landingVideo.value.paused && !(showWarrantyOverlay.value && store.isAsus)) {
+      if (landingVideo.value && landingVideo.value.paused) {
         console.warn('[Watchdog] landingVideo estaba pausado pero debería reproducirse. Reanudando...');
         landingVideo.value.play().catch((e) => console.warn('[Watchdog] Failed to play landingVideo:', e));
       }
+
     }
   }
 };
@@ -533,26 +537,15 @@ watch(() => store.isLoading, (loading) => {
     setTimeout(() => {
       if (!store.isModalOpen && !store.isVideoMode) {
         bgVideo.value?.play().catch(() => {});
-        if (!(showWarrantyOverlay.value && store.isAsus)) {
-          landingVideo.value?.play().catch(() => {});
-        }
+        landingVideo.value?.play().catch(() => {});
       }
     }, 100);
   }
 });
 
-// Watcher para pausar/reanudar el video del landing al abrir/cerrar la Garantía Perfecta ASUS
-watch(showWarrantyOverlay, (isOpen) => {
-  if (isOpen && store.isAsus) {
-    if (landingVideo.value) {
-      landingVideo.value.pause();
-    }
-  } else {
-    if (landingVideo.value && !store.isLoading && !store.isModalOpen && !store.isVideoMode) {
-      landingVideo.value.play().catch((e) => console.warn("Landing video play failed:", e));
-    }
-  }
-});
+// El landing video ya NO se pausa al abrir la Garantía Perfecta ASUS.
+// Sigue reproduciéndose debajo del overlay para evitar ciclos de pause/resume
+// que disparan el bug del compositor GPU de WebView2.
 
 // --- LÓGICA DE INACTIVIDAD ---
 
@@ -597,6 +590,12 @@ let watchdogInterval = null;
 
 const createTouchRipple = (e) => {
   if (store.isModalOpen) return;
+  
+  // Evitar duplicaciones: si es un mousedown generado por un toque físico, ignorar.
+  if (e.type === 'mousedown' && (e.sourceCapabilities?.firesTouchEvents || e.button !== 0)) {
+    return;
+  }
+
   const isTouch = e.type.startsWith('touch');
   const targetEvent = isTouch ? e.touches[0] : e;
   
@@ -664,32 +663,25 @@ onMounted(async () => {
   if (window.__TAURI_INTERNALS__) {
     // Cuando Rust le dice al frontend que reproduzca los videos
     unlistenPlay = await listen('play-info-videos', () => {
-      console.log('[Tauri Event] play-info-videos recibido. Reanudando videos.');
-      shouldBePlaying.value = true;
-      if (!store.isModalOpen && !store.isVideoMode) {
-        // --- Webview2 GPU Compositor Repaint Fix ---
-        // Cuando Webview2 se restaura desde minimizado, el compositor D3D11 puede
-        // quedar congelado visualmente aunque JS reporte paused=false y currentTime avance.
-        // Forzamos un reflow del layout para despertar la capa de composición GPU.
-        const root = document.documentElement;
-        const originalTransform = root.style.transform;
-        root.style.transform = 'translateZ(0) scale(0.9999)';
-        // Forzar reflow síncrono leyendo una propiedad de layout
-        void root.offsetHeight;
-        // Después de un pequeño tick, revertir y disparar resize para re-composición total
-        setTimeout(() => {
-          root.style.transform = originalTransform;
-          window.dispatchEvent(new Event('resize'));
-          console.log('[Repaint] Compositor repaint forzado tras play-info-videos.');
-          resumeInfoVideos(100);
-        }, 150);
-      }
+      console.log('[Tauri Event] play-info-videos recibido. Forzando remontaje de videos.');
+      shouldBePlaying.value = false;
+      isLandingReady.value = false;
+      nextTick(() => {
+        shouldBePlaying.value = true;
+        nextTick(() => {
+          if (!store.isModalOpen && !store.isVideoMode) {
+            resumeInfoVideos(100);
+          }
+        });
+      });
     });
 
     // Cuando Rust le dice al frontend que pause los videos
     unlistenPause = await listen('pause-info-videos', () => {
       console.log('[Tauri Event] pause-info-videos recibido. Pausando videos.');
       shouldBePlaying.value = false;
+      isLandingReady.value = false;
+      showWarrantyOverlay.value = false; // Cerrar overlay de garantía al ir a "Prueba esta PC"
       if (inactivityTimer.value) {
         clearTimeout(inactivityTimer.value);
         inactivityTimer.value = null;

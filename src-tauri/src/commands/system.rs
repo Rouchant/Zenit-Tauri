@@ -564,12 +564,16 @@ pub fn set_max_brightness() {
             powercfg /s SCHEME_CURRENT
         } catch {}
     "#;
-    let _ = Command::new("powershell.exe")
+    match Command::new("powershell.exe")
         .args(["-ExecutionPolicy", "Bypass", "-WindowStyle", "Hidden", "-Command", script])
         .stdout(std::process::Stdio::null())
         .stderr(std::process::Stdio::null())
         .creation_flags(CREATE_NO_WINDOW)
-        .spawn();
+        .spawn()
+    {
+        Ok(_) => {},
+        Err(e) => log::warn!("[Brightness] No se pudo lanzar PowerShell: {}", e),
+    }
 }
 
 #[derive(Debug, Serialize, Deserialize, Clone)]

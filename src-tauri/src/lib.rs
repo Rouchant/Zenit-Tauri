@@ -6,7 +6,7 @@ mod guardian;
 use std::fs;
 use std::sync::Arc;
 use tokio::sync::Mutex;
-use tauri::Manager;
+use tauri::{Manager, Emitter};
 use tauri_plugin_store::StoreExt;
 use tauri_plugin_global_shortcut::{GlobalShortcutExt, Shortcut, Modifiers, Code};
 
@@ -166,10 +166,14 @@ pub fn run() {
     let mut all_args: Vec<String> = webview_args.iter().map(|s| s.to_string()).collect();
     all_args.push(disable_features_str);
 
-    std::env::set_var(
-        "WEBVIEW2_ADDITIONAL_BROWSER_ARGUMENTS",
-        all_args.join(" "),
-    );
+    // SAFETY: Se ejecuta antes de que Tauri inicie cualquier hilo (antes de Builder::default()).
+    // set_var no es thread-safe, pero en este punto el proceso es single-threaded.
+    unsafe {
+        std::env::set_var(
+            "WEBVIEW2_ADDITIONAL_BROWSER_ARGUMENTS",
+            all_args.join(" "),
+        );
+    }
 
     tauri::Builder::default()
         // Configuración de Logs: Guarda logs en archivo y los muestra en consola/webview
@@ -343,10 +347,26 @@ pub fn run() {
                             if window.is_minimized().unwrap_or(false) {
                                 return;
                             }
-                            // Salvaguarda absoluta: Ocultar la ventana de retorno y quitar alwaysOnTop cuando la principal gana foco
+                            // Salvaguarda absoluta y detección de restauración nativa (barra de tareas):
+                            // Si la ventana de retorno estaba visible, significa que la app principal
+                            // fue des-minimizada nativamente por el usuario.
                             if let Some(ret_win) = window.app_handle().get_webview_window("return") {
-                                let _ = ret_win.hide();
-                                let _ = ret_win.set_always_on_top(false);
+                                if ret_win.is_visible().unwrap_or(false) {
+                                    let _ = ret_win.hide();
+                                    let _ = ret_win.set_always_on_top(false);
+                                    let _ = window.emit("play-info-videos", ());
+                                    
+                                    // Detener el monitor de inactividad
+                                    let handle = window.app_handle().clone();
+                                    tauri::async_runtime::spawn(async move {
+                                        let state = handle.state::<AppState>();
+                                        let mut timer_guard = state.maximize_timer.lock().await;
+                                        if let Some(h) = timer_guard.take() { h.abort(); }
+                                    });
+                                } else {
+                                    let _ = ret_win.hide();
+                                    let _ = ret_win.set_always_on_top(false);
+                                }
                             }
                             // Re-activar la vigilancia de foco al recuperar el foco de la ventana principal
                             let handle = window.app_handle().clone();
@@ -355,9 +375,6 @@ pub fn run() {
                                 let mut guard = state.enforce_always_on_top.lock().await;
                                 *guard = true;
                             });
-                            // Nota: NO emitimos play-info-videos aquí porque los videos
-                            // siempre deben reproducirse a menos que se haya llamado a minimize_app.
-                            // Emitirlo en cada ganancia de foco causaba reinicios innecesarios del compositor.
                         } else {
                             // Vigilancia reactiva de foco: Si pierde el foco y el modo Kiosk está activo, reclamarlo al instante.
                             // SOLO en pantalla única — en multi-monitor (ZenBook Duo) el usuario puede interactuar

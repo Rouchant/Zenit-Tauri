@@ -5,7 +5,6 @@ import SpecCard from './SpecCard.vue';
 import { tauriAPI } from '../api/tauriApi';
 
 const store = useSpecsStore();
-const emit = defineEmits(['open-specs']);
 
 const specs = computed(() => store.currentSpecs);
 
@@ -17,6 +16,14 @@ const procIcon = computed(() => {
 });
 
 const osLogo = computed(() => '/assets/ui/windows-11.svg');
+
+const gpuIcon = computed(() => {
+  const g = (specs.value.gpu || '').toLowerCase();
+  if (g.includes('nvidia') || g.includes('rtx') || g.includes('gtx')) {
+    return '/assets/logos/nvidia.svg';
+  }
+  return '/assets/ui/gpu.svg';
+});
 
 const tryPc = (e) => {
     if (e && e.target) e.target.blur();
@@ -67,7 +74,7 @@ const tryPc = (e) => {
         id="card-gpu"
         label="Gráficos"
         :value="specs.gpu"
-        icon="/assets/ui/gpu.svg"
+        :icon="gpuIcon"
       />
 
       <SpecCard 

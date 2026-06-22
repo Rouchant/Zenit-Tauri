@@ -2,7 +2,7 @@ use windows_sys::Win32::Foundation::*;
 use windows_sys::Win32::UI::WindowsAndMessaging::*;
 use windows_sys::Win32::UI::Input::KeyboardAndMouse::*;
 use windows_sys::Win32::System::LibraryLoader::GetModuleHandleW;
-use std::sync::atomic::{AtomicBool, Ordering};
+use std::sync::atomic::{AtomicBool, AtomicU32, Ordering};
 use std::sync::OnceLock;
 use std::ptr;
 use log::{info, error};
@@ -22,10 +22,17 @@ static LALT_DOWN: AtomicBool = AtomicBool::new(false);
 static RALT_DOWN: AtomicBool = AtomicBool::new(false);
 
 static HOOK_HANDLE: OnceLock<HHOOK> = OnceLock::new();
+static GUARDIAN_THREAD_ID: AtomicU32 = AtomicU32::new(0);
 
 pub fn start_keyboard_guardian() {
     std::thread::spawn(|| {
         unsafe {
+            // Almacenar el ID del hilo para poder enviar WM_QUIT desde stop_keyboard_guardian
+            GUARDIAN_THREAD_ID.store(
+                windows_sys::Win32::System::Threading::GetCurrentThreadId(),
+                Ordering::SeqCst,
+            );
+
             let h_instance = GetModuleHandleW(ptr::null());
             let hook = SetWindowsHookExW(WH_KEYBOARD_LL, Some(low_level_keyboard_proc), h_instance, 0);
 
@@ -48,6 +55,11 @@ pub fn stop_keyboard_guardian() {
     if let Some(&hook) = HOOK_HANDLE.get() {
         unsafe { 
             UnhookWindowsHookEx(hook);
+            // Enviar WM_QUIT al hilo del guardian para que salga del loop de GetMessageW limpiamente
+            let tid = GUARDIAN_THREAD_ID.load(Ordering::SeqCst);
+            if tid != 0 {
+                PostThreadMessageW(tid, WM_QUIT, 0, 0);
+            }
             info!("[Guardian] Hook de teclado desinstalado.");
         }
     }

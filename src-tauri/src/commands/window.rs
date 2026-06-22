@@ -3,7 +3,6 @@ use std::sync::Arc;
 use crate::state::AppState;
 use windows_sys::Win32::UI::WindowsAndMessaging::*;
 use windows_sys::Win32::UI::Input::KeyboardAndMouse::*;
-use windows_sys::Win32::System::Threading::*;
 use windows_sys::Win32::Foundation::*;
 
 // --- COMANDOS TAURI ---
@@ -75,32 +74,20 @@ pub async fn restore_app_logic(app: &AppHandle) -> Result<(), String> {
     let main_window = app.get_webview_window("main").ok_or("Main window not found")?;
     let return_window = app.get_webview_window("return").ok_or("Return window not found")?;
 
-    // Al restaurar, nos aseguramos de que el comportamiento de quiosco (siempre arriba) esté activo.
     {
         let mut guard = state.enforce_always_on_top.lock().await;
         *guard = true;
     }
 
-    // 1. Intentamos restaurar la ventana principal sin salir prematuramente en caso de fallos menores
     let res_unmin = main_window.unminimize();
     let res_show = main_window.show();
+    let _ = main_window.set_focus();
 
-    // Simular pulsación de Escape para asegurar que el sistema "despierte" y otorgue foco real.
-    unsafe {
-        keybd_event(0x1B, 0, 0, 0); 
-        keybd_event(0x1B, 0, 0x0002, 0); 
-    }
-
-    // 2. Forzar primer plano de la ventana principal mientras la de retorno aún posee los derechos de foco
-    force_window_to_foreground(&main_window).await;
-
-    // 3. Ocultar la ventana flotante de retorno e ir al fondo
     let _ = return_window.hide();
     let _ = return_window.set_always_on_top(false);
     
     let _ = app.emit("play-info-videos", ());
 
-    // Propagar errores de restauración si ocurrieron
     res_unmin.map_err(|e| e.to_string())?;
     res_show.map_err(|e| e.to_string())?;
 
@@ -290,6 +277,11 @@ async fn start_restore_monitor(app: AppHandle, state: tauri::State<'_, AppState>
         }
 
         // Si sale del bucle, la ventana fue des-minimizada.
+        // Pequeña espera para dar tiempo al handler de Focused (lib.rs) a procesar primero.
+        // Si el Focused handler ya ocultó la ventana de retorno y emitió play-info-videos,
+        // esta verificación será false y no se emitirá duplicado.
+        tokio::time::sleep(tokio::time::Duration::from_millis(300)).await;
+
         // Si la ventana de retorno sigue visible, hacemos una restauración y limpieza limpias.
         if return_window.is_visible().unwrap_or(false) {
             log::info!("[Zenit] Restore monitor: La ventana principal fue des-minimizada nativamente. Limpiando overlays.");
@@ -313,14 +305,7 @@ async fn start_restore_monitor(app: AppHandle, state: tauri::State<'_, AppState>
                 *guard = true;
             }
 
-            // Simular pulsación de Escape para despertar foco en Windows
-            unsafe {
-                keybd_event(0x1B, 0, 0, 0);
-                keybd_event(0x1B, 0, 0x0002, 0);
-            }
-
-            // Forzar primer plano de la ventana principal mientras la de retorno aún posee los derechos de foco
-            force_window_to_foreground(&main_window).await;
+            let _ = main_window.set_focus();
 
             // Ocultar la ventana flotante de retorno e ir al fondo
             let _ = return_window.hide();
@@ -349,42 +334,3 @@ fn get_system_idle_time(start_tick: u32) -> u32 {
     else { current.wrapping_sub(last_input) }
 }
 
-/// Forzado de ventana a primer plano utilizando técnicas agresivas de Win32 (AttachThreadInput).
-/// Necesario para sobrepasar restricciones de foco de Windows en modo quiosco.
-async fn force_window_to_foreground(window: &tauri::WebviewWindow) {
-    let hwnd_raw = window.hwnd().ok().map(|h| h.0 as HWND);
-    if let Some(hwnd) = hwnd_raw {
-        unsafe {
-            let foreground = GetForegroundWindow();
-            if foreground != 0 && foreground != hwnd {
-                let mut foreground_pid: u32 = 0;
-                let foreground_thread = GetWindowThreadProcessId(foreground, &mut foreground_pid);
-                let current_pid = GetCurrentProcessId();
-                
-                if foreground_pid == current_pid {
-                    // Si la ventana activa pertenece a nuestro propio proceso (ej. la ventana de retorno),
-                    // transferimos el foco directamente de forma segura sin usar AttachThreadInput.
-                    SetForegroundWindow(hwnd);
-                    SetFocus(hwnd);
-                    SetActiveWindow(hwnd);
-                } else {
-                    // Si pertenece a otro proceso, usamos AttachThreadInput como último recurso.
-                    let app_thread = GetCurrentThreadId();
-                    let _ = AttachThreadInput(app_thread, foreground_thread, 1);
-                    SetForegroundWindow(hwnd);
-                    SetFocus(hwnd);
-                    SetActiveWindow(hwnd);
-                    let _ = AttachThreadInput(app_thread, foreground_thread, 0);
-                }
-            } else {
-                // Si ya somos la ventana activa, solo aseguramos el foco
-                SetForegroundWindow(hwnd);
-                SetFocus(hwnd);
-                SetActiveWindow(hwnd);
-            }
-            // Refuerzo de visibilidad y estado TopMost (Z-Order)
-            ShowWindow(hwnd, SW_SHOW);
-            SetWindowPos(hwnd, -1isize as HWND, 0, 0, 0, 0, SWP_NOMOVE | SWP_NOSIZE | SWP_SHOWWINDOW);
-        }
-    }
-}

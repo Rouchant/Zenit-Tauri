@@ -1,11 +1,11 @@
 <script setup>
-import { ref } from 'vue';
+import { ref, computed } from 'vue';
 import { useSpecsStore } from '../../store/specs';
 import { tauriAPI } from '../../api/tauriApi';
 
 const emit = defineEmits(['close']);
 const store = useSpecsStore();
-const specs = store.currentSpecs;
+const specs = computed(() => store.currentSpecs);
 
 const tryPc = (e) => {
     if (e && e.target) e.target.blur();
@@ -14,7 +14,7 @@ const tryPc = (e) => {
     // Retraso de 200ms para que la animación se complete y evitar que el click/hover
     // se propague físicamente al botón de Inicio de Windows que está debajo.
     setTimeout(() => {
-        tauriAPI.minimizeApp(specs.store, store.matchedBrand);
+        tauriAPI.minimizeApp(specs.value.store, store.matchedBrand);
     }, 200);
 };
 </script>

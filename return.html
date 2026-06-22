@@ -317,8 +317,8 @@
         window.addEventListener('focus', resetState);
         window.addEventListener('blur', resetState);
 
-        // Pulsation via JS on click
-        btn.addEventListener('click', async () => {
+        // Pulsation via JS on pointerdown (evita problemas de encogimiento por el scale de CSS en los bordes)
+        btn.addEventListener('pointerdown', async () => {
             btn.classList.add('is-active');
             try {
                 await invoke('restore_app');
