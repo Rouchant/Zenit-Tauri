@@ -115,15 +115,15 @@
                     </div>
                     <div class="warranty-pillars">
                       <div class="warranty-pillar-item">
-                        <img src="/assets/images/icon1.png" alt="Derrames" class="warranty-pillar-icon" />
+                        <img src="/assets/images/icon1.svg" alt="Derrames" class="warranty-pillar-icon" />
                         <span class="warranty-pillar-text">Derrames de líquidos</span>
                       </div>
                       <div class="warranty-pillar-item">
-                        <img src="/assets/images/icon2.png" alt="Sobretensiones" class="warranty-pillar-icon" />
+                        <img src="/assets/images/icon2.svg" alt="Sobretensiones" class="warranty-pillar-icon" />
                         <span class="warranty-pillar-text">Sobretensiones eléctricas</span>
                       </div>
                       <div class="warranty-pillar-item">
-                        <img src="/assets/images/icon3.png" alt="Caídas" class="warranty-pillar-icon" />
+                        <img src="/assets/images/icon3.svg" alt="Caídas" class="warranty-pillar-icon" />
                         <span class="warranty-pillar-text">Caídas accidentales</span>
                       </div>
                     </div>
