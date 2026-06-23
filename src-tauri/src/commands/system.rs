@@ -552,16 +552,37 @@ pub fn get_video_path(app: AppHandle) -> String {
 /// Se ejecuta cuando el kiosco entra en modo video/inactividad.
 #[tauri::command]
 pub fn set_max_brightness() {
+    // 1. Bloqueo Nativo (Hard Block): Informa a Windows que la pantalla y el sistema DEBEN estar activos,
+    // ignorando cualquier plan de energía de terceros (como Armoury Crate o Lenovo Vantage).
+    #[cfg(windows)]
+    unsafe {
+        use windows_sys::Win32::System::Power::{SetThreadExecutionState, ES_CONTINUOUS, ES_DISPLAY_REQUIRED, ES_SYSTEM_REQUIRED};
+        SetThreadExecutionState(ES_CONTINUOUS | ES_DISPLAY_REQUIRED | ES_SYSTEM_REQUIRED);
+    }
+
+    // 2. Ajuste de Brillo y Powercfg (Respaldo)
+    // Se itera sobre TODOS los planes de energía disponibles en el sistema y se les desactiva
+    // la suspensión, para evitar que software de terceros arruine la configuración al cambiar de plan.
     let script = r#"
         $ErrorActionPreference = 'SilentlyContinue'
         try {
             Get-CimInstance -Namespace root/WMI -ClassName WmiMonitorBrightnessMethods | Invoke-CimMethod -MethodName WmiSetBrightness -Arguments @{ Timeout = 1; Brightness = 100 }
-            powercfg /setacvalueindex SCHEME_CURRENT SUB_VIDEO ADAPTBRIGHT 0
-            powercfg /setdcvalueindex SCHEME_CURRENT SUB_VIDEO ADAPTBRIGHT 0
-            powercfg /x -hibernate-timeout-ac 0
-            powercfg /x -standby-timeout-ac 0
-            powercfg /x -monitor-timeout-ac 0
-            powercfg /s SCHEME_CURRENT
+            
+            $current = (powercfg /getactivescheme) | Select-String -Pattern "([a-f0-9]{8}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{12})" | ForEach-Object { $_.Matches.Value }
+            $plans = (powercfg /l) | Select-String -Pattern "([a-f0-9]{8}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{12})" -AllMatches | ForEach-Object { $_.Matches.Value }
+            
+            foreach ($p in $plans) {
+                if ($p) {
+                    powercfg /s $p
+                    powercfg /setacvalueindex $p SUB_VIDEO ADAPTBRIGHT 0
+                    powercfg /setdcvalueindex $p SUB_VIDEO ADAPTBRIGHT 0
+                    powercfg /x -hibernate-timeout-ac 0
+                    powercfg /x -standby-timeout-ac 0
+                    powercfg /x -monitor-timeout-ac 0
+                }
+            }
+            
+            if ($current) { powercfg /s $current }
         } catch {}
     "#;
     match Command::new("powershell.exe")
@@ -676,5 +697,49 @@ mod tests {
         assert_eq!(approximate_refresh_rate(360), 360);
         assert_eq!(approximate_refresh_rate(0), 0);
         assert_eq!(approximate_refresh_rate(13), 13); // should not map since difference is > 10
+    }
+
+    #[test]
+    fn test_format_bytes_commercial() {
+        // Tamaños estándar
+        assert_eq!(format_bytes_commercial(512_000_000_000), "512GB SSD");
+        assert_eq!(format_bytes_commercial(1_024_000_000_000), "1TB SSD");
+        
+        // Redondeo comercial (lo que Windows lee vs lo que se vende)
+        assert_eq!(format_bytes_commercial(476_940_000_000), "512GB SSD"); // 512GB real
+        assert_eq!(format_bytes_commercial(931_000_000_000), "1TB SSD");   // 1TB real
+        assert_eq!(format_bytes_commercial(238_000_000_000), "256GB SSD"); // 256GB real
+        assert_eq!(format_bytes_commercial(119_000_000_000), "128GB SSD"); // 128GB real
+    }
+
+    #[test]
+    fn test_rate_gpu() {
+        let dedicated_nvidia = rate_gpu("NVIDIA GeForce RTX 4060 Laptop GPU");
+        let dedicated_amd = rate_gpu("AMD Radeon RX 7600S");
+        let integrated_intel = rate_gpu("Intel(R) UHD Graphics");
+        let integrated_amd = rate_gpu("AMD Radeon(TM) Graphics");
+        let generic = rate_gpu("Basic Display Adapter");
+
+        assert!(dedicated_nvidia > integrated_intel, "NVIDIA debería ganarle a Intel UHD");
+        assert!(dedicated_amd > integrated_amd, "RX debería ganarle a Radeon genérico");
+        assert_eq!(dedicated_nvidia, 10);
+        assert_eq!(dedicated_amd, 8);
+        assert_eq!(integrated_intel, 2);
+        assert_eq!(generic, 1);
+    }
+
+    #[test]
+    fn test_clean_brand_name() {
+        assert_eq!(clean_brand_name("ASUSTeK COMPUTER INC."), "ASUS");
+        assert_eq!(clean_brand_name("Hewlett-Packard"), "HP");
+        assert_eq!(clean_brand_name("Micro-Star International Co., Ltd."), "MSI");
+        assert_eq!(clean_brand_name("LENOVO"), "Lenovo");
+    }
+
+    #[test]
+    fn test_refine_model_name() {
+        assert_eq!(refine_model_name("ASUS", "ASUS TUF Gaming F15"), "ASUS TUF Gaming F15");
+        assert_eq!(refine_model_name("HP", "HP Laptop 15s-eq2xxx"), "HP 15s eq2xxx");
+        assert_eq!(refine_model_name("Lenovo", "82K2"), "Lenovo 82K2"); 
     }
 }

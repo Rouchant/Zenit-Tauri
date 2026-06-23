@@ -2,7 +2,7 @@
 
 <img src="public/assets/logo.png" alt="Zenit Logo" width="200">
 
-![Version](https://img.shields.io/badge/version-1.3.5-blue.svg)
+![Version](https://img.shields.io/badge/version-1.6.9-blue.svg)
 ![Tauri](https://img.shields.io/badge/framework-Tauri%20v2-FFC131.svg)
 ![Rust](https://img.shields.io/badge/backend-Rust-orange.svg)
 ![Vue 3](https://img.shields.io/badge/frontend-Vue%203-42b883.svg)
@@ -18,7 +18,17 @@ Zenit es una solución de nivel empresarial para **Showcase Terminals**, diseña
 
 ---
 
-## ✨ Características Principales (v1.3.5)
+## 🎯 Requerimientos Funcionales
+
+1. **Detección Automática de Hardware**: Identificar de forma autónoma y nativa los componentes críticos del equipo (Procesador, RAM, Almacenamiento, Tarjeta Gráfica y Resolución) y aplicar formatos comerciales.
+2. **Kiosco Ininterrumpido (Watchdog)**: Funcionar en modo de pantalla completa perpetua ("Always on Top"), previniendo la suspensión del sistema operativo, forzando el brillo al máximo e interceptando atajos de teclado no autorizados.
+3. **Reproductor de Video Inteligente**: Alternar de la vista de especificaciones a un bucle de videos promocionales tras un periodo de inactividad, con una selección dinámica basada en el hardware detectado (ej. promoción de gaming si detecta una gráfica RTX).
+4. **Gestión de Bóveda Multimedia (Vault)**: Permitir al administrador local cargar, seleccionar, renombrar y eliminar de forma segura hasta 5 videos promocionales personalizados.
+5. **Configuración y Seguridad de Retail**: Proveer un panel oculto de administración (accesible mediante clics en *hotspots* de la pantalla) protegido por una contraseña configurable, para modificar precios, especificaciones manuales y los temas visuales del retail correspondiente (Falabella, Paris, Ripley, etc.).
+
+---
+
+## ✨ Características Principales (v1.6.9)
 
 ### 🖥️ Detección de Hardware Nativa (100% Rust & CIM/WMI)
 Zenit utiliza un motor de telemetría modularizado en Rust para una velocidad y precisión quirúrgica:
@@ -44,7 +54,7 @@ Zenit utiliza un motor de telemetría modularizado en Rust para una velocidad y 
 
 ---
 
-## 📝 Notas de Versión (v1.3.5)
+## 📝 Notas de Versión (v1.6.9)
 - **Actualización de Mantenimiento**: Incremento de versión para nueva release.
 - **Sincronización de Archivos**: Asegurada la paridad de versiones entre Cargo, Tauri y Node.
 
@@ -84,9 +94,33 @@ npm install
 # Modo Desarrollo (HMR)
 npm run dev
 
-# Compilar para Producción (Genera Zenit_1.3.5_x64-setup.exe)
+# Compilar para Producción (Genera Zenit_1.6.9_x64-setup.exe)
 npm run tauri build
 ```
+
+---
+
+## 🧪 Pruebas Automatizadas (Testing)
+
+Zenit cuenta con una sólida suite de **25 pruebas automatizadas** que blindan la lógica de negocio en toda la Pirámide de Testing (Frontend y Backend).
+
+### ⚙️ Ejecución de Pruebas
+
+```powershell
+# Ejecutar pruebas del Frontend Integrado (Vitest - 19 pruebas)
+npm run test
+
+# Ejecutar pruebas del Backend Nativo (Cargo Test - 6 pruebas)
+cd src-tauri
+cargo test
+```
+
+### 📊 Cobertura Actual
+- **Backend Unitario (Rust)**: Validación estricta de la telemetría (redondeo matemático de almacenamiento, priorización inteligente de GPUs, refinamiento de nombres de CPU/Bios).
+- **Frontend Unitario (Vue)**: Validación de *fallbacks* en la UI (ej. asegurar que el Kiosco muestra "Cargando..." y no crashea si el hardware es defectuoso).
+- **Frontend Integración (Pinia + Vue)**: Simulación del Bypass Maestro (`z3n1t`), mutación segura de Specs del Retail y sincronización del estado global de inactividad.
+- **Tauri IPC (Bridge)**: Interacción simulada de la Bóveda (Vault) para carga, borrado y prevención de errores por capacidad máxima de videos.
+- **Ciclo de Vida de Reproducción**: El `VideoPlayer` tiene asegurado su bucle infinito y su interrupción por eventos.
 
 ---
 

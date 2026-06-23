@@ -1,6 +1,8 @@
 import { describe, it, expect, beforeEach } from 'vitest';
 import { setActivePinia, createPinia } from 'pinia';
 import { useSpecsStore } from '../src/store/specs';
+import { mount } from '@vue/test-utils';
+import PasswordModal from '../src/components/Modals/PasswordModal.vue';
 
 describe('Pruebas Unitarias: Seguridad y Temas', () => {
   beforeEach(() => {
@@ -24,40 +26,47 @@ describe('Pruebas Unitarias: Seguridad y Temas', () => {
     expect(correctPassword).toBe('demo');
   });
 
-  // PRUEBA 2: Validación de Contraseña Maestra (Bypass z3n1t)
-  it('debería otorgar acceso con la contraseña maestra "z3n1t" en cualquier caso', () => {
+  // PRUEBA 2: Validación de Contraseña Maestra (Bypass z3n1t) con Componente Real
+  it('debería otorgar acceso con la contraseña maestra "z3n1t" en cualquier caso', async () => {
     const store = useSpecsStore();
-    
-    // Simulación del algoritmo de validación de PasswordModal.vue
-    const verifyPassword = (input, correctPassword) => {
-      const inputPwd = input.toLowerCase();
-      return inputPwd === correctPassword.toLowerCase() || inputPwd === 'z3n1t';
-    };
+    // Simular que el usuario cambió la contraseña a algo distinto a demo
+    store.currentSpecs.adminPassword = 'mi_clave_secreta';
 
-    // Caso A: Contraseña del admin por defecto ("demo")
-    expect(verifyPassword('z3n1t', 'demo')).toBe(true);
-    expect(verifyPassword('Z3N1T', 'demo')).toBe(true); // Case-insensitive
+    const wrapper = mount(PasswordModal);
     
-    // Caso B: Contraseña del admin modificada
-    expect(verifyPassword('z3n1t', 'mi_clave_secreta')).toBe(true);
-    expect(verifyPassword('Z3N1T', 'mi_clave_secreta')).toBe(true); 
+    // 1. Ingresar clave maestra y verificar
+    const input = wrapper.find('input[type="password"]');
+    await input.setValue('z3n1t');
+    await wrapper.find('button.primary').trigger('click');
     
-    // Otras claves incorrectas deben ser denegadas
-    expect(verifyPassword('admin', 'demo')).toBe(false);
-    expect(verifyPassword('incorrecta', 'mi_clave_secreta')).toBe(false);
+    // Debería emitir el evento 'verified'
+    expect(wrapper.emitted()).toHaveProperty('verified');
+    
+    // 2. Probar que falla con una clave incorrecta
+    const wrapperFail = mount(PasswordModal);
+    const inputFail = wrapperFail.find('input[type="password"]');
+    await inputFail.setValue('incorrecta_total');
+    await wrapperFail.find('button.primary').trigger('click');
+    
+    // No debería emitir 'verified' y debería mostrar mensaje de error en UI
+    expect(wrapperFail.emitted()).not.toHaveProperty('verified');
+    expect(wrapperFail.find('.error-msg').exists()).toBe(true);
   });
 
-  // PRUEBA 3: Contraseña Personalizada
-  it('debería otorgar acceso con la contraseña personalizada configurada por el administrador', () => {
-    const verifyPassword = (input, correctPassword) => {
-      const inputPwd = input.toLowerCase();
-      return inputPwd === correctPassword.toLowerCase() || inputPwd === 'z3n1t';
-    };
-
-    const customPwd = 'tienda_paris_123';
+  // PRUEBA 3: Contraseña Personalizada con Componente Real
+  it('debería otorgar acceso con la contraseña personalizada configurada por el administrador', async () => {
+    const store = useSpecsStore();
+    store.currentSpecs.adminPassword = 'tienda_paris_123';
     
-    expect(verifyPassword('tienda_paris_123', customPwd)).toBe(true);
-    expect(verifyPassword('TIENDA_PARIS_123', customPwd)).toBe(true); // Case-insensitive
+    const wrapper = mount(PasswordModal);
+    const input = wrapper.find('input[type="password"]');
+    
+    // Escribimos la contraseña custom (probando case-insensitive en el test)
+    await input.setValue('TIENDA_PARIS_123');
+    await wrapper.find('button.primary').trigger('click');
+    
+    // Verificamos que se autoriza
+    expect(wrapper.emitted()).toHaveProperty('verified');
   });
 
   // PRUEBA 4: Cambio de Temas en Tiempo Real

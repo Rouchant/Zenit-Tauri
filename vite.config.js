@@ -19,9 +19,15 @@ export default defineConfig({
   resolve: {
     alias: {
       '@': resolve(__dirname, './src'),
+      '/assets': resolve(__dirname, './public/assets'),
     },
   },
   test: {
     environment: 'happy-dom',
+    environmentOptions: {
+      happyDOM: {
+        url: 'http://localhost:3000'
+      }
+    }
   },
 });
