@@ -233,8 +233,9 @@
     z-index: 100;
 
     /* Sombra corta y Glow contenido */
-    box-shadow: 0 4px 10px rgba(0, 0, 0, 0.4),
-        0 0 8px rgba(var(--primary-rgb, 0, 242, 255), 0.4);
+    box-shadow: 0 0 0 3px rgba(255, 255, 255, 0.45),
+        0 6px 8px rgba(0, 0, 0, 0.4),
+        0 0 6px rgba(var(--primary-rgb, 0, 242, 255), 0.4);
     will-change: transform, filter;
 }
 
@@ -280,13 +281,15 @@
 
 .view-pc-btn:active {
     transform: scale(0.98);
-    box-shadow: 0 4px 8px rgba(0, 0, 0, 0.2);
+    box-shadow: 0 0 0 3px rgba(255, 255, 255, 0.8),
+        0 3px 4px rgba(0, 0, 0, 0.2);
     filter: brightness(0.9);
 }
 
 .view-pc-btn:hover {
-    box-shadow: 0 4px 8px rgba(0, 0, 0, 0.35),
-        0 0 6px rgba(var(--primary-rgb, 0, 242, 255), 0.5);
+    box-shadow: 0 0 0 3px rgba(255, 255, 255, 0.8),
+        0 6px 12px rgba(0, 0, 0, 0.35),
+        0 0 8px rgba(var(--primary-rgb, 0, 242, 255), 0.5);
     filter: brightness(1.1);
 }
 

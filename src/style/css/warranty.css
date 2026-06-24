@@ -13,26 +13,32 @@
     font-weight: 600;
     cursor: pointer;
     transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
-    box-shadow: 0 0 0 3px rgba(255, 255, 255, 0.45), 0 6px 16px rgba(0, 0, 0, 0.35);
+    box-shadow: 0 0 0 3px rgba(255, 255, 255, 0.45), 
+                0 6px 8px rgba(0, 0, 0, 0.4), 
+                0 0 6px rgba(77, 18, 228, 0.4);
     transform: translateZ(0);
     will-change: transform;
 }
 
 .warranty-trigger-btn:hover {
     filter: brightness(1.15);
-    box-shadow: 0 0 0 3px rgba(255, 255, 255, 0.8), 0 6px 22px rgba(77, 18, 228, 0.45);
+    box-shadow: 0 0 0 3px rgba(255, 255, 255, 0.8), 
+                0 6px 12px rgba(0, 0, 0, 0.35), 
+                0 0 8px rgba(77, 18, 228, 0.5);
     transform: translateY(-2px) translateZ(0);
 }
 
 .warranty-trigger-btn:active {
     transform: translateY(1px) translateZ(0);
+    box-shadow: 0 0 0 3px rgba(255, 255, 255, 0.8), 
+                0 3px 4px rgba(0, 0, 0, 0.2);
 }
 
 .warranty-btn-shield {
     width: 32px;
     height: 32px;
     stroke: var(--white, #ffffff);
-    filter: drop-shadow(0 2px 4px rgba(0, 0, 0, 0.25));
+    filter: drop-shadow(0 2px 1px rgba(0, 0, 0, 0.25));
 }
 
 .warranty-btn-container {
@@ -109,13 +115,6 @@
     border-radius: 24px;
     padding: 28px 20px;
     box-shadow: 0 8px 24px rgba(26, 42, 184, 0.04);
-    transition: transform 0.25s cubic-bezier(0.4, 0, 0.2, 1), box-shadow 0.25s ease;
-}
-
-.warranty-pillar-item:hover {
-    transform: translateY(-4px);
-    box-shadow: 0 12px 30px rgba(26, 42, 184, 0.1);
-    background: rgba(255, 255, 255, 0.95);
 }
 
 .warranty-pillar-icon {
@@ -199,7 +198,6 @@
     max-height: 360px;
     width: auto;
     object-fit: contain;
-    filter: drop-shadow(0 12px 28px rgba(26, 42, 184, 0.22));
     animation: floatShield 4s ease-in-out infinite;
 }
 
