@@ -81,6 +81,14 @@ pub async fn restore_app_logic(app: &AppHandle) -> Result<(), String> {
 
     let res_unmin = main_window.unminimize();
     let res_show = main_window.show();
+    
+    // TRUCO ULTRA AGRESIVO: Simular la tecla ESCAPE
+    // Esto cierra el Menú Inicio o cualquier menú contextual que esté robando el foco.
+    unsafe {
+        keybd_event(0x1B, 0, 0, 0); // Presionar ESC (VK_ESCAPE = 0x1B)
+        keybd_event(0x1B, 0, 0x0002, 0); // Soltar ESC
+    }
+
     let _ = main_window.set_focus();
 
     let _ = return_window.hide();

@@ -286,11 +286,22 @@ watch([showPasswordModal, showAdminModal, showSpecsModal, showFirstStartModal], 
 
 // Throttled reset timer for mousemove (max 1 vez/segundo para evitar presión en equipos de gama baja)
 let lastResetTime = 0;
-const throttledResetTimer = () => {
+let lastMouseX = -1;
+let lastMouseY = -1;
+const throttledResetTimer = (e) => {
   if (isInternalFocusHack.value) return;
+
+  if (lastMouseX !== -1 && lastMouseY !== -1) {
+    const dx = Math.abs(e.clientX - lastMouseX);
+    const dy = Math.abs(e.clientY - lastMouseY);
+    if (dx < 3 && dy < 3) return; // Ignorar movimientos menores a 3px
+  }
+
   const now = Date.now();
   if (now - lastResetTime > 1000) {
     lastResetTime = now;
+    lastMouseX = e.clientX;
+    lastMouseY = e.clientY;
     resetTimer();
   }
 };
@@ -591,13 +602,7 @@ let watchdogInterval = null;
 const createTouchRipple = (e) => {
   if (store.isModalOpen) return;
   
-  // Evitar duplicaciones: si es un mousedown generado por un toque físico, ignorar.
-  if (e.type === 'mousedown' && (e.sourceCapabilities?.firesTouchEvents || e.button !== 0)) {
-    return;
-  }
-
-  const isTouch = e.type.startsWith('touch');
-  const targetEvent = isTouch ? e.touches[0] : e;
+  const targetEvent = e.touches[0];
   
   const ripple = document.createElement('div');
   ripple.className = 'touch-ripple';
@@ -658,7 +663,6 @@ onMounted(async () => {
   window.addEventListener('mousedown', resetTimer);
   
   window.addEventListener('touchstart', createTouchRipple, { passive: true });
-  window.addEventListener('mousedown', createTouchRipple, { passive: true });
 
   if (window.__TAURI_INTERNALS__) {
     // Cuando Rust le dice al frontend que reproduzca los videos
@@ -733,7 +737,6 @@ onUnmounted(() => {
   window.removeEventListener('keydown', resetTimer);
   window.removeEventListener('mousedown', resetTimer);
   window.removeEventListener('touchstart', createTouchRipple);
-  window.removeEventListener('mousedown', createTouchRipple);
   
   if (unlistenInactivity) unlistenInactivity();
   if (unlistenActivity) unlistenActivity();

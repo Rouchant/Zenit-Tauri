@@ -187,12 +187,11 @@ const finishSetup = async () => {
 .first-start-container {
   width: 100%;
   max-width: 960px;
-  background: rgba(255, 255, 255, 0.02);
-  border: 1px solid rgba(255, 255, 255, 0.08);
+  background: rgba(25, 28, 40, 0.95);
+  border: 1px solid rgba(255, 255, 255, 0.1);
   border-radius: 24px;
   padding: 40px;
   box-shadow: 0 30px 80px rgba(0, 0, 0, 0.6);
-  backdrop-filter: blur(25px);
   position: relative;
   display: flex;
   flex-direction: column;
