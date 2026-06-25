@@ -79,7 +79,7 @@
     width: auto;
     max-width: 280px;
     object-fit: contain;
-    filter: brightness(0) invert(1) brightness(0.94);
+    filter: brightness(0) invert(1) brightness(0.94) drop-shadow(3px 3px 0px rgba(0, 0, 0, 0.75));
 }
 
 .logo-placeholder img.zenit-logo {
@@ -115,6 +115,7 @@
     object-fit: contain;
     transform: scale(1);
     /* Scale reset to fit 95px area */
+    filter: drop-shadow(3px 3px 0px rgba(0, 0, 0, 0.75));
 }
 
 .brand-badge {
