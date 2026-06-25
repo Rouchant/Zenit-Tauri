@@ -225,7 +225,6 @@ defineExpose({ videoRef });
       @ended="onVideoEnded"
       @error="onVideoError"
       @loadedmetadata="onMetadataLoaded"
-      style="transform: translateZ(0); will-change: transform, opacity;"
     ></video>
     <div 
       class="video-overlay"
@@ -320,7 +319,6 @@ video {
   right: 3vw;
   left: auto;
   z-index: 3;
-  will-change: transform, opacity;
   transition: transform 0.6s cubic-bezier(0.16, 1, 0.3, 1), opacity 0.8s ease;
   display: flex;
   flex-direction: column;

@@ -23,7 +23,8 @@
 
       <!-- Video Layer (Active only if not in fixed background mode) -->
       <video 
-        v-if="!store.currentSpecs.fixedBackground && shouldBePlaying"
+        v-if="shouldBePlaying"
+        v-show="!store.currentSpecs.fixedBackground"
         id="bg-video" 
         autoplay 
         loop 
@@ -33,7 +34,7 @@
         :poster="store.isAsus ? '/assets/images/background-asus.png' : '/assets/images/background-generic.png'"
         ref="bgVideo"
         class="background-media"
-        style="background-color: transparent; transition: opacity 0.5s ease; transform: translateZ(0);"
+        style="background-color: transparent; transition: opacity 0.5s ease;"
         :key="store.isAsus ? 'asus' : 'generic'"
         :src="currentBgVideoSrc"
         @error="handleBgVideoError"
@@ -93,7 +94,6 @@
                 ref="landingVideo"
                 v-if="!store.isLoading && shouldBePlaying"
                 :style="{ 
-                  transform: 'translateZ(0)',
                   opacity: isLandingReady ? 1 : 0,
                   transition: 'opacity 0.5s ease'
                 }"
@@ -551,6 +551,20 @@ watch(() => store.isLoading, (loading) => {
         landingVideo.value?.play().catch(() => {});
       }
     }, 100);
+  }
+});
+
+watch(() => store.currentSpecs?.fixedBackground, (isFixed) => {
+  if (isFixed) {
+    if (bgVideo.value) {
+      bgVideo.value.pause();
+    }
+  } else {
+    if (shouldBePlaying.value && !store.isModalOpen && !store.isVideoMode) {
+      if (bgVideo.value) {
+        bgVideo.value.play().catch(() => {});
+      }
+    }
   }
 });
 
