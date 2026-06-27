@@ -16,33 +16,39 @@ use crate::commands::{system, vault, window};
 
 
 
-#[cfg(target_os = "windows")]
-fn disable_power_throttling() {
+fn optimize_process_performance() {
     unsafe {
         use windows_sys::Win32::System::Threading::{
             GetCurrentProcess, SetProcessInformation, ProcessPowerThrottling,
             PROCESS_POWER_THROTTLING_STATE, PROCESS_POWER_THROTTLING_CURRENT_VERSION,
-            PROCESS_POWER_THROTTLING_EXECUTION_SPEED,
+            PROCESS_POWER_THROTTLING_EXECUTION_SPEED, SetPriorityClass, ABOVE_NORMAL_PRIORITY_CLASS,
         };
 
+        let handle = GetCurrentProcess();
+
+        // 1. Desactivar Power Throttling / EcoQoS
         let mut power_throttling = PROCESS_POWER_THROTTLING_STATE {
             Version: PROCESS_POWER_THROTTLING_CURRENT_VERSION,
             ControlMask: PROCESS_POWER_THROTTLING_EXECUTION_SPEED,
             StateMask: 0,
         };
-
-        let handle = GetCurrentProcess();
-        let result = SetProcessInformation(
+        let pt_result = SetProcessInformation(
             handle,
             ProcessPowerThrottling,
             &mut power_throttling as *mut _ as *mut _,
             std::mem::size_of::<PROCESS_POWER_THROTTLING_STATE>() as u32,
         );
-
-        if result == 0 {
-            eprintln!("[Power] Failed to disable power throttling: {}", std::io::Error::last_os_error());
+        if pt_result == 0 {
+            eprintln!("[Performance] Failed to disable power throttling: {}", std::io::Error::last_os_error());
         } else {
-            println!("[Power] Power throttling successfully disabled for the main process.");
+            println!("[Performance] Power throttling successfully disabled.");
+        }
+
+        // 2. Elevar la prioridad del proceso a Above Normal (Prioridad sobre tareas en segundo plano como antivirus/actualizaciones)
+        if SetPriorityClass(handle, ABOVE_NORMAL_PRIORITY_CLASS) == 0 {
+            eprintln!("[Performance] Failed to set process priority class: {}", std::io::Error::last_os_error());
+        } else {
+            println!("[Performance] Process priority class set to ABOVE_NORMAL.");
         }
     }
 }
@@ -52,7 +58,7 @@ fn disable_power_throttling() {
 #[cfg_attr(mobile, tauri::mobile_entry_point)]
 pub fn run() {
     #[cfg(target_os = "windows")]
-    disable_power_throttling();
+    optimize_process_performance();
 
     // Optimización de memoria para WebView2/Chromium en modo kiosk.
     // La app no usa internet y todo el contenido es local (asset protocol),
