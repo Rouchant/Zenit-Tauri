@@ -200,9 +200,7 @@ export const useSpecsStore = defineStore('specs', () => {
       if (!currentSpecs.value.customLandingVideoName) {
         currentSpecs.value.customLandingVideoName = '';
       }
-      if (currentSpecs.value.fixedBackground === undefined) {
-        currentSpecs.value.fixedBackground = false;
-      }
+      currentSpecs.value.fixedBackground = false;
       if (currentSpecs.value.showAsusWarrantyTicker === undefined) {
         currentSpecs.value.showAsusWarrantyTicker = false;
       }

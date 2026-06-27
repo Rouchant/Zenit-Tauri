@@ -16,10 +16,44 @@ use crate::commands::{system, vault, window};
 
 
 
+#[cfg(target_os = "windows")]
+fn disable_power_throttling() {
+    unsafe {
+        use windows_sys::Win32::System::Threading::{
+            GetCurrentProcess, SetProcessInformation, ProcessPowerThrottling,
+            PROCESS_POWER_THROTTLING_STATE, PROCESS_POWER_THROTTLING_CURRENT_VERSION,
+            PROCESS_POWER_THROTTLING_EXECUTION_SPEED,
+        };
+
+        let mut power_throttling = PROCESS_POWER_THROTTLING_STATE {
+            Version: PROCESS_POWER_THROTTLING_CURRENT_VERSION,
+            ControlMask: PROCESS_POWER_THROTTLING_EXECUTION_SPEED,
+            StateMask: 0,
+        };
+
+        let handle = GetCurrentProcess();
+        let result = SetProcessInformation(
+            handle,
+            ProcessPowerThrottling,
+            &mut power_throttling as *mut _ as *mut _,
+            std::mem::size_of::<PROCESS_POWER_THROTTLING_STATE>() as u32,
+        );
+
+        if result == 0 {
+            eprintln!("[Power] Failed to disable power throttling: {}", std::io::Error::last_os_error());
+        } else {
+            println!("[Power] Power throttling successfully disabled for the main process.");
+        }
+    }
+}
+
 /// Punto de entrada principal de la aplicación Tauri.
 /// Configura plugins, estado global, handlers de comandos y eventos de ventana.
 #[cfg_attr(mobile, tauri::mobile_entry_point)]
 pub fn run() {
+    #[cfg(target_os = "windows")]
+    disable_power_throttling();
+
     // Optimización de memoria para WebView2/Chromium en modo kiosk.
     // La app no usa internet y todo el contenido es local (asset protocol),
     // así que podemos desactivar muchos subsistemas que desperdician RAM.
@@ -69,7 +103,7 @@ pub fn run() {
         "--force-color-profile=srgb",
     ];
 
-    let base_features = "BackForwardCache,TranslateUI,MediaRouter,Translate,AcceptCHFrame,AutofillServerCommunication,CalculateWindowOcclusion";
+    let base_features = "BackForwardCache,TranslateUI,MediaRouter,Translate,AcceptCHFrame,AutofillServerCommunication,CalculateWindowOcclusion,UseEcoQoSForBackgroundProcess,BatterySaverMode";
     let disable_features_str = format!("--disable-features={}", base_features);
 
     let mut all_args: Vec<String> = webview_args.iter().map(|s| s.to_string()).collect();

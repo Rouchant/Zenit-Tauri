@@ -18,13 +18,12 @@
         id="bg-image"
         :src="store.isAsus ? '/assets/images/background-asus.png' : '/assets/images/background-generic.png'"
         class="bg-fixed-image"
-        :style="{ opacity: store.currentSpecs.fixedBackground ? 1 : 0.8 }"
+        style="opacity: 0.8;"
       />
 
-      <!-- Video Layer (Active only if not in fixed background mode) -->
+      <!-- Video Layer -->
       <video 
         v-if="shouldBePlaying"
-        v-show="!store.currentSpecs.fixedBackground"
         id="bg-video" 
         autoplay 
         loop 
@@ -440,7 +439,7 @@ const checkVideosPlayState = () => {
     }
   } else {
     if (!store.isModalOpen) {
-      if (bgVideo.value && bgVideo.value.paused && !store.currentSpecs.fixedBackground) {
+      if (bgVideo.value && bgVideo.value.paused) {
         console.warn('[Watchdog] bgVideo estaba pausado pero debería reproducirse. Reanudando...');
         bgVideo.value.play().catch((e) => console.warn('[Watchdog] Failed to play bgVideo:', e));
       }
@@ -554,19 +553,6 @@ watch(() => store.isLoading, (loading) => {
   }
 });
 
-watch(() => store.currentSpecs?.fixedBackground, (isFixed) => {
-  if (isFixed) {
-    if (bgVideo.value) {
-      bgVideo.value.pause();
-    }
-  } else {
-    if (shouldBePlaying.value && !store.isModalOpen && !store.isVideoMode) {
-      if (bgVideo.value) {
-        bgVideo.value.play().catch(() => {});
-      }
-    }
-  }
-});
 
 // El landing video ya NO se pausa al abrir la Garantía Perfecta ASUS.
 // Sigue reproduciéndose debajo del overlay para evitar ciclos de pause/resume
@@ -858,7 +844,7 @@ onUnmounted(() => {
   right: 8px;
   font-size: 11px;
   color: #F4F5F0;
-  opacity: 0.05;
+  opacity: 0.1;
   z-index: 80;
   pointer-events: none;
   user-select: none;
