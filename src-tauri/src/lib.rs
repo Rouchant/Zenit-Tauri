@@ -21,7 +21,7 @@ fn optimize_process_performance() {
         use windows_sys::Win32::System::Threading::{
             GetCurrentProcess, SetProcessInformation, ProcessPowerThrottling,
             PROCESS_POWER_THROTTLING_STATE, PROCESS_POWER_THROTTLING_CURRENT_VERSION,
-            PROCESS_POWER_THROTTLING_EXECUTION_SPEED, SetPriorityClass, ABOVE_NORMAL_PRIORITY_CLASS,
+            PROCESS_POWER_THROTTLING_EXECUTION_SPEED, SetPriorityClass, HIGH_PRIORITY_CLASS,
         };
 
         let handle = GetCurrentProcess();
@@ -44,11 +44,11 @@ fn optimize_process_performance() {
             println!("[Performance] Power throttling successfully disabled.");
         }
 
-        // 2. Elevar la prioridad del proceso a Above Normal (Prioridad sobre tareas en segundo plano como antivirus/actualizaciones)
-        if SetPriorityClass(handle, ABOVE_NORMAL_PRIORITY_CLASS) == 0 {
+        // 2. Elevar la prioridad del proceso al Máximo (HIGH_PRIORITY_CLASS) para acaparar los recursos del CPU
+        if SetPriorityClass(handle, HIGH_PRIORITY_CLASS) == 0 {
             eprintln!("[Performance] Failed to set process priority class: {}", std::io::Error::last_os_error());
         } else {
-            println!("[Performance] Process priority class set to ABOVE_NORMAL.");
+            println!("[Performance] Process priority class set to HIGH_PRIORITY.");
         }
     }
 }
@@ -74,6 +74,10 @@ pub fn run() {
         // "--ignore-gpu-blocklist", // Comentado: Forzar aceleración en drivers inestables de AMD causa cuelgues.
         "--disable-gpu-shader-disk-cache",
         
+        // Backend Gráfico: D3D11 es el por defecto, pero a veces sufre de stuttering en modo batería por el 
+        // agresivo ahorro de energía de Windows. Si persiste el stuttering, descomenta alguna de estas opciones para probar:
+        // "--use-angle=gl",   // Alternativa 1: Usa OpenGL (suele tener frame-pacing más estable en batería)
+        // "--use-angle=d3d9", // Alternativa 2: Usa DirectX 9 (menos propenso a estrangulamiento agresivo de energía)
         // Background Management (Avoid suspension for power saving)
         "--disable-backgrounding-occluded-windows",
         "--disable-renderer-backgrounding",
@@ -100,7 +104,7 @@ pub fn run() {
 
         // Estabilidad de Hardware de Video: Desactiva búferes de memoria de video compartida
         // (Soluciona problemas comunes de stuttering en decodificadores de hardware de GPUs integradas como AMD)
-        "--disable-gpu-memory-buffer-video-frames",
+        // "--disable-gpu-memory-buffer-video-frames",
         
         // Autoplay: Asegurar que los videos reproduzcan sin gesto del usuario
         "--autoplay-policy=no-user-gesture-required",
@@ -122,6 +126,8 @@ pub fn run() {
             "WEBVIEW2_ADDITIONAL_BROWSER_ARGUMENTS",
             all_args.join(" "),
         );
+        #[cfg(target_os = "linux")]
+        std::env::set_var("WEBKIT_DISABLE_DMABUF_RENDERER", "1");
     }
 
     tauri::Builder::default()
