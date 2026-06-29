@@ -79,6 +79,17 @@ pub async fn restore_app_logic(app: &AppHandle) -> Result<(), String> {
         *guard = true;
     }
 
+    // 1. Notificar al frontend ANTES de restaurar para que comience a montar los videos
+    let _ = app.emit("play-info-videos", ());
+
+    // 2. Esperar 200ms para que Vue procese el DOM y cargue los reproductores de video en background
+    tokio::time::sleep(tokio::time::Duration::from_millis(200)).await;
+
+    // 3. Ocultar la ventana de retorno
+    let _ = return_window.hide();
+    let _ = return_window.set_always_on_top(false);
+
+    // 4. Restaurar la ventana principal
     let res_unmin = main_window.unminimize();
     let res_show = main_window.show();
     
@@ -90,11 +101,6 @@ pub async fn restore_app_logic(app: &AppHandle) -> Result<(), String> {
     }
 
     let _ = main_window.set_focus();
-
-    let _ = return_window.hide();
-    let _ = return_window.set_always_on_top(false);
-    
-    let _ = app.emit("play-info-videos", ());
 
     res_unmin.map_err(|e| e.to_string())?;
     res_show.map_err(|e| e.to_string())?;

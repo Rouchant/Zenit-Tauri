@@ -16,6 +16,7 @@ use crate::commands::{system, vault, window};
 
 
 
+#[allow(dead_code)]
 fn optimize_process_performance() {
     unsafe {
         use windows_sys::Win32::System::Threading::{
@@ -51,11 +52,12 @@ fn optimize_process_performance() {
 #[cfg_attr(mobile, tauri::mobile_entry_point)]
 pub fn run() {
     #[cfg(target_os = "windows")]
-    optimize_process_performance();
+    // optimize_process_performance(); // TODO: Comentado temporalmente para diagnosticar congelamiento en batería
 
     // Optimización de memoria para WebView2/Chromium en modo kiosk.
     // La app no usa internet y todo el contenido es local (asset protocol),
     // así que podemos desactivar muchos subsistemas que desperdician RAM.
+    /* // INICIO BLOQUE DIAGNOSTICO BATERIA
     let webview_args = [
         // GPU Performance & Stability
         // Sin --force-gpu-mem-available-mb: WebView2 consulta el driver de GPU directamente
@@ -122,6 +124,7 @@ pub fn run() {
         #[cfg(target_os = "linux")]
         std::env::set_var("WEBKIT_DISABLE_DMABUF_RENDERER", "1");
     }
+    */ // FIN BLOQUE DIAGNOSTICO BATERIA
 
     tauri::Builder::default()
         // Configuración de Logs: Guarda logs en archivo y los muestra en consola/webview

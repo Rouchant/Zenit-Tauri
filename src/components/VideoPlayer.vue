@@ -372,10 +372,10 @@ video {
   min-width: 16vw;
   max-width: 28vw;
   background: rgba(10, 10, 10, 0.72);
-  border: 0.08vw solid rgba(255, 255, 255, 0.1);
+  border: none;
   border-radius: 0.8vw;
   padding: 1.0vw;
-  box-shadow: 0 0.4vw 1.5vw rgba(0, 0, 0, 0.4);
+  box-shadow: 0 0.4vw 0 rgba(0, 0, 0, 0.4);
   box-sizing: border-box;
 }
 
