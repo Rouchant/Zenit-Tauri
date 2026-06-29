@@ -12,7 +12,7 @@ pub fn cleanup_cache(app_data_dir: &std::path::Path) {
     println!("[Setup] Limpiando caché de WebView2 en {:?}", webview_dir);
 
     // Directorios temporales comunes que se pueden borrar sin perder configuración esencial
-    let folders_to_clean = ["Cache", "Code Cache", "GPUCache", "ShaderCache", "blob_storage"];
+    let folders_to_clean = ["Cache", "Code Cache", "blob_storage"];
     
     // El perfil por defecto de WebView2 suele ser "Default"
     let profile_dir = webview_dir.join("Default");

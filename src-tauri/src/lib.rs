@@ -21,7 +21,7 @@ fn optimize_process_performance() {
         use windows_sys::Win32::System::Threading::{
             GetCurrentProcess, SetProcessInformation, ProcessPowerThrottling,
             PROCESS_POWER_THROTTLING_STATE, PROCESS_POWER_THROTTLING_CURRENT_VERSION,
-            PROCESS_POWER_THROTTLING_EXECUTION_SPEED, SetPriorityClass, HIGH_PRIORITY_CLASS,
+            PROCESS_POWER_THROTTLING_EXECUTION_SPEED,
         };
 
         let handle = GetCurrentProcess();
@@ -42,13 +42,6 @@ fn optimize_process_performance() {
             eprintln!("[Performance] Failed to disable power throttling: {}", std::io::Error::last_os_error());
         } else {
             println!("[Performance] Power throttling successfully disabled.");
-        }
-
-        // 2. Elevar la prioridad del proceso al Máximo (HIGH_PRIORITY_CLASS) para acaparar los recursos del CPU
-        if SetPriorityClass(handle, HIGH_PRIORITY_CLASS) == 0 {
-            eprintln!("[Performance] Failed to set process priority class: {}", std::io::Error::last_os_error());
-        } else {
-            println!("[Performance] Process priority class set to HIGH_PRIORITY.");
         }
     }
 }
@@ -72,7 +65,7 @@ pub fn run() {
         "--enable-gpu-rasterization",
         // "--enable-zero-copy", // Comentado: Reduce uso de CPU pero suele causar stuttering masivo o glitches en GPUs integradas AMD (APUs).
         // "--ignore-gpu-blocklist", // Comentado: Forzar aceleración en drivers inestables de AMD causa cuelgues.
-        "--disable-gpu-shader-disk-cache",
+        // "--disable-gpu-shader-disk-cache", // Comentado: Causaba stuttering en modo batería al forzar la recompilación
         
         // Backend Gráfico: D3D11 es el por defecto, pero a veces sufre de stuttering en modo batería por el 
         // agresivo ahorro de energía de Windows. Si persiste el stuttering, descomenta alguna de estas opciones para probar:
@@ -86,7 +79,7 @@ pub fn run() {
         // Cache: Desactivar caché HTTP en disco (todo el contenido es local vía asset://)
         // NO limitamos media-cache-size: ese buffer mantiene frames de video en RAM,
         // evitando re-lecturas desde disco en cada loop. Es memoria bien usada en un kiosk.
-        "--disk-cache-size=1",
+        // "--disk-cache-size=1", // Comentado: Dejamos que WebView2 administre su caché para evitar ahogos al leer videos
 
         // Red: Desactivar subsistemas de networking innecesarios
         "--disable-background-networking",
@@ -113,7 +106,7 @@ pub fn run() {
         "--force-color-profile=srgb",
     ];
 
-    let base_features = "BackForwardCache,TranslateUI,MediaRouter,Translate,AcceptCHFrame,AutofillServerCommunication,CalculateWindowOcclusion,UseEcoQoSForBackgroundProcess,BatterySaverMode";
+    let base_features = "BackForwardCache,TranslateUI,MediaRouter,Translate,AcceptCHFrame,AutofillServerCommunication,CalculateWindowOcclusion";
     let disable_features_str = format!("--disable-features={}", base_features);
 
     let mut all_args: Vec<String> = webview_args.iter().map(|s| s.to_string()).collect();
@@ -170,6 +163,13 @@ pub fn run() {
 
         // Configuración Inicial (Setup)
         .setup(|app| {
+            // 0. Bloqueo Nativo (Hard Block): Informa a Windows que la pantalla y el sistema DEBEN estar activos
+            #[cfg(windows)]
+            unsafe {
+                use windows_sys::Win32::System::Power::{SetThreadExecutionState, ES_CONTINUOUS, ES_DISPLAY_REQUIRED, ES_SYSTEM_REQUIRED};
+                SetThreadExecutionState(ES_CONTINUOUS | ES_DISPLAY_REQUIRED | ES_SYSTEM_REQUIRED);
+            }
+
             // Forzar que la ventana principal se ubique en la pantalla principal del sistema (ej. Zenbook Duo)
             if let Some(main_window) = app.get_webview_window("main") {
                 if let Ok(Some(primary_monitor)) = main_window.primary_monitor() {
