@@ -119,8 +119,8 @@
 }
 
 .brand-badge {
-    background: rgba(0, 0, 0, 0.75);
-    /* More opaque for visibility without blur */
+    background: #000000;
+    /* Solid black for performance and visibility */
     padding: 15px 30px;
     border-radius: 50px;
     font-size: 1.5rem;
@@ -209,7 +209,7 @@
 .view-pc-btn {
     width: 92%;
     margin: auto auto 0 auto;
-    background: transparent;
+    background: #000000;
     border: none;
     outline: none;
     color: var(--bg-dark);
@@ -221,7 +221,7 @@
     font-size: 38px;
     font-weight: 600;
     cursor: pointer;
-    transition: all 0.15s cubic-bezier(0.4, 0, 0.2, 1);
+    transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
 
     /* Prevención de desborde vertical y centrado */
     display: flex;
@@ -233,11 +233,11 @@
     position: relative;
     z-index: 100;
 
-    /* Sombra corta y Glow contenido */
+    /* Sombra con bordes nítidos */
     box-shadow: 0 0 0 3px rgba(255, 255, 255, 0.45),
-        0 6px 8px rgba(0, 0, 0, 0.4),
-        0 0 6px rgba(var(--primary-rgb, 0, 242, 255), 0.4);
-    will-change: transform, filter;
+        0 8px 0px rgba(0, 0, 0, 1);
+    transform: translateZ(0);
+    will-change: transform;
 }
 
 /* The rotating border beam */
@@ -280,18 +280,17 @@
     font-family: 'Antonio', sans-serif;
 }
 
-.view-pc-btn:active {
-    transform: scale(0.98);
-    box-shadow: 0 0 0 3px rgba(255, 255, 255, 0.8),
-        0 3px 4px rgba(0, 0, 0, 0.2);
-    filter: brightness(0.9);
-}
-
 .view-pc-btn:hover {
     box-shadow: 0 0 0 3px rgba(255, 255, 255, 0.8),
-        0 6px 12px rgba(0, 0, 0, 0.35),
-        0 0 8px rgba(var(--primary-rgb, 0, 242, 255), 0.5);
+        0 10px 0px rgba(0, 0, 0, 1);
     filter: brightness(1.1);
+}
+
+.view-pc-btn:active {
+    transform: translateY(6px) translateZ(0);
+    box-shadow: 0 0 0 3px rgba(255, 255, 255, 0.8),
+        0 2px 0px rgba(0, 0, 0, 1);
+    filter: brightness(0.9);
 }
 
 .toggle-specs-btn {
@@ -364,7 +363,7 @@
 
 /* Price Tag */
 .price-tag-container {
-    background: rgba(0, 0, 0, 0.75);
+    background: #000000;
     border: 1px solid rgba(255, 255, 255, 0.1);
     color: var(--white);
     padding: 20px 40px;

@@ -14,8 +14,7 @@
     cursor: pointer;
     transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
     box-shadow: 0 0 0 3px rgba(255, 255, 255, 0.45), 
-                0 6px 8px rgba(0, 0, 0, 0.4), 
-                0 0 6px rgba(77, 18, 228, 0.4);
+                0 8px 0px rgba(0, 0, 0, 1);
     transform: translateZ(0);
     will-change: transform;
 }
@@ -23,15 +22,13 @@
 .warranty-trigger-btn:hover {
     filter: brightness(1.15);
     box-shadow: 0 0 0 3px rgba(255, 255, 255, 0.8), 
-                0 6px 12px rgba(0, 0, 0, 0.35), 
-                0 0 8px rgba(77, 18, 228, 0.5);
-    transform: translateY(-2px) translateZ(0);
+                0 10px 0px rgba(0, 0, 0, 1);
 }
 
 .warranty-trigger-btn:active {
-    transform: translateY(1px) translateZ(0);
+    transform: translateY(6px) translateZ(0);
     box-shadow: 0 0 0 3px rgba(255, 255, 255, 0.8), 
-                0 3px 4px rgba(0, 0, 0, 0.2);
+                0 2px 0px rgba(0, 0, 0, 1);
 }
 
 .warranty-btn-shield {
