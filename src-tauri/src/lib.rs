@@ -352,12 +352,15 @@ pub fn run() {
                                 let is_visible = window_clone.is_visible().unwrap_or(true);
 
                                 if should_enforce && !is_minimized && is_visible {
+                                    /*
+                                    // Comentado para depurar congelamiento al desconectar el notebook
                                     let monitor_count = window_clone.available_monitors()
                                         .map(|list| list.len())
                                         .unwrap_or(1);
                                     if monitor_count <= 1 {
                                         let _ = window_clone.set_focus();
                                     }
+                                    */
                                 }
                                 // Los videos NO se pausan al perder el foco.
                                 // Solo se pausan explícitamente vía minimize_app (botón "Prueba esta PC").
