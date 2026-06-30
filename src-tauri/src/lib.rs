@@ -13,118 +13,11 @@ use tauri_plugin_global_shortcut::{GlobalShortcutExt, Shortcut, Modifiers, Code}
 use crate::state::AppState;
 use crate::setup::run_system_setup;
 use crate::commands::{system, vault, window};
-
-
-
-#[allow(dead_code)]
-fn optimize_process_performance() {
-    unsafe {
-        use windows_sys::Win32::System::Threading::{
-            GetCurrentProcess, SetProcessInformation, ProcessPowerThrottling,
-            PROCESS_POWER_THROTTLING_STATE, PROCESS_POWER_THROTTLING_CURRENT_VERSION,
-            PROCESS_POWER_THROTTLING_EXECUTION_SPEED,
-        };
-
-        let handle = GetCurrentProcess();
-
-        // 1. Desactivar Power Throttling / EcoQoS
-        let mut power_throttling = PROCESS_POWER_THROTTLING_STATE {
-            Version: PROCESS_POWER_THROTTLING_CURRENT_VERSION,
-            ControlMask: PROCESS_POWER_THROTTLING_EXECUTION_SPEED,
-            StateMask: 0,
-        };
-        let pt_result = SetProcessInformation(
-            handle,
-            ProcessPowerThrottling,
-            &mut power_throttling as *mut _ as *mut _,
-            std::mem::size_of::<PROCESS_POWER_THROTTLING_STATE>() as u32,
-        );
-        if pt_result == 0 {
-            eprintln!("[Performance] Failed to disable power throttling: {}", std::io::Error::last_os_error());
-        } else {
-            println!("[Performance] Power throttling successfully disabled.");
-        }
-    }
-}
-
 /// Punto de entrada principal de la aplicación Tauri.
 /// Configura plugins, estado global, handlers de comandos y eventos de ventana.
 #[cfg_attr(mobile, tauri::mobile_entry_point)]
 pub fn run() {
-    #[cfg(target_os = "windows")]
-    // optimize_process_performance(); // TODO: Comentado temporalmente para diagnosticar congelamiento en batería
 
-    // Optimización de memoria para WebView2/Chromium en modo kiosk.
-    // La app no usa internet y todo el contenido es local (asset protocol),
-    // así que podemos desactivar muchos subsistemas que desperdician RAM.
-    /* // INICIO BLOQUE DIAGNOSTICO BATERIA
-    let webview_args = [
-        // GPU Performance & Stability
-        // Sin --force-gpu-mem-available-mb: WebView2 consulta el driver de GPU directamente
-        // y usa el presupuesto de VRAM que el sistema reporta (RTX 4060=8GB, UHD=compartido, etc.).
-        // Poner un valor fijo causaba stuttering en GPUs con más VRAM de la que el flag permitía usar.
-        "--enable-accelerated-video-decode",
-        "--enable-gpu-rasterization",
-        // "--enable-zero-copy", // Comentado: Reduce uso de CPU pero suele causar stuttering masivo o glitches en GPUs integradas AMD (APUs).
-        // "--ignore-gpu-blocklist", // Comentado: Forzar aceleración en drivers inestables de AMD causa cuelgues.
-        // "--disable-gpu-shader-disk-cache", // Comentado: Causaba stuttering en modo batería al forzar la recompilación
-        
-        // Backend Gráfico: D3D11 es el por defecto, pero a veces sufre de stuttering en modo batería por el 
-        // agresivo ahorro de energía de Windows. Si persiste el stuttering, descomenta alguna de estas opciones para probar:
-        // "--use-angle=gl",   // Alternativa 1: Usa OpenGL (suele tener frame-pacing más estable en batería)
-        // "--use-angle=d3d9", // Alternativa 2: Usa DirectX 9 (menos propenso a estrangulamiento agresivo de energía)
-        // Background Management (Avoid suspension for power saving)
-        "--disable-backgrounding-occluded-windows",
-        "--disable-renderer-backgrounding",
-        "--disable-background-media-suspend",
-
-        // Cache: Desactivar caché HTTP en disco (todo el contenido es local vía asset://)
-        // NO limitamos media-cache-size: ese buffer mantiene frames de video en RAM,
-        // evitando re-lecturas desde disco en cada loop. Es memoria bien usada en un kiosk.
-        // "--disk-cache-size=1", // Comentado: Dejamos que WebView2 administre su caché para evitar ahogos al leer videos
-
-        // Red: Desactivar subsistemas de networking innecesarios
-        "--disable-background-networking",
-        "--disable-domain-reliability",
-        "--disable-component-update",
-
-        // Subsistemas innecesarios para un kiosk local
-        "--disable-speech-api",
-        "--disable-shared-workers",
-        "--disable-notifications",
-        "--disable-breakpad",
-
-        // Renderer: Permitir multiproceso para que Chromium distribuya la carga (ej. múltiples videos) en varios núcleos de CPU.
-        // "--renderer-process-limit=1", // Comentado para priorizar rendimiento sobre ahorro de RAM
-
-        // Estabilidad de Hardware de Video: Desactiva búferes de memoria de video compartida
-        // (Soluciona problemas comunes de stuttering en decodificadores de hardware de GPUs integradas como AMD)
-        // "--disable-gpu-memory-buffer-video-frames",
-        
-        // Autoplay: Asegurar que los videos reproduzcan sin gesto del usuario
-        "--autoplay-policy=no-user-gesture-required",
-        
-        // Color: Forzar perfil sRGB para evitar inconsistencias entre monitores/HDR
-        "--force-color-profile=srgb",
-    ];
-
-    let base_features = "BackForwardCache,TranslateUI,MediaRouter,Translate,AcceptCHFrame,AutofillServerCommunication,CalculateWindowOcclusion";
-    let disable_features_str = format!("--disable-features={}", base_features);
-
-    let mut all_args: Vec<String> = webview_args.iter().map(|s| s.to_string()).collect();
-    all_args.push(disable_features_str);
-
-    // SAFETY: Se ejecuta antes de que Tauri inicie cualquier hilo (antes de Builder::default()).
-    // set_var no es thread-safe, pero en este punto el proceso es single-threaded.
-    unsafe {
-        std::env::set_var(
-            "WEBVIEW2_ADDITIONAL_BROWSER_ARGUMENTS",
-            all_args.join(" "),
-        );
-        #[cfg(target_os = "linux")]
-        std::env::set_var("WEBKIT_DISABLE_DMABUF_RENDERER", "1");
-    }
-    */ // FIN BLOQUE DIAGNOSTICO BATERIA
 
     tauri::Builder::default()
         // Configuración de Logs: Guarda logs en archivo y los muestra en consola/webview

@@ -5741,7 +5741,7 @@ dependencies = [
 
 [[package]]
 name = "zenit"
-version = "1.8.1"
+version = "1.8.2"
 dependencies = [
  "log",
  "regex",
