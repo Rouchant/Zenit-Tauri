@@ -375,7 +375,6 @@ video {
   border: none;
   border-radius: 0.8vw;
   padding: 1.0vw;
-  box-shadow: 0 0.4vw 0 rgba(0, 0, 0, 0.4);
   box-sizing: border-box;
 }
 
