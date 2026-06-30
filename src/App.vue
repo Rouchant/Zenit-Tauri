@@ -93,8 +93,9 @@
                 ref="landingVideo"
                 v-if="!store.isLoading && shouldBePlaying"
                 :style="{ 
-                  opacity: isLandingReady ? 1 : 0,
-                  transition: 'opacity 0.5s ease'
+                  opacity: isLandingReady && !showWarrantyOverlay ? 1 : 0,
+                  visibility: showWarrantyOverlay ? 'hidden' : 'visible',
+                  transition: 'opacity 0.5s ease, visibility 0.5s'
                 }"
                 @error="handleLandingVideoError"
                 @playing="() => { isLandingReady = true; landingRetryCount = 0; }"
