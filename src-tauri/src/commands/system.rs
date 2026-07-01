@@ -560,32 +560,12 @@ pub fn set_max_brightness() {
         SetThreadExecutionState(ES_CONTINUOUS | ES_DISPLAY_REQUIRED | ES_SYSTEM_REQUIRED);
     }
 
-    // 2. Ajuste de Brillo y Powercfg (Respaldo)
-    // Se itera sobre TODOS los planes de energía disponibles en el sistema y se les desactiva
-    // la suspensión, para evitar que software de terceros arruine la configuración al cambiar de plan.
+    // 2. Ajuste de Brillo (Ligero)
+    // Solo sube el brillo de las pantallas conectadas al 100% sin modificar planes de energía de forma repetitiva.
     let script = r#"
         $ErrorActionPreference = 'SilentlyContinue'
         try {
             Get-CimInstance -Namespace root/WMI -ClassName WmiMonitorBrightnessMethods | Invoke-CimMethod -MethodName WmiSetBrightness -Arguments @{ Timeout = 1; Brightness = 100 }
-            
-            $current = (powercfg /getactivescheme) | Select-String -Pattern "([a-f0-9]{8}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{12})" | ForEach-Object { $_.Matches.Value }
-            $plans = (powercfg /l) | Select-String -Pattern "([a-f0-9]{8}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{12})" -AllMatches | ForEach-Object { $_.Matches.Value }
-            
-            foreach ($p in $plans) {
-                if ($p) {
-                    powercfg /s $p
-                    powercfg /setacvalueindex $p SUB_VIDEO ADAPTBRIGHT 0
-                    powercfg /setdcvalueindex $p SUB_VIDEO ADAPTBRIGHT 0
-                    powercfg /x -hibernate-timeout-ac 0
-                    powercfg /x -standby-timeout-ac 0
-                    powercfg /x -monitor-timeout-ac 0
-                    powercfg /x -hibernate-timeout-dc 0
-                    powercfg /x -standby-timeout-dc 0
-                    powercfg /x -monitor-timeout-dc 0
-                }
-            }
-            
-            if ($current) { powercfg /s $current }
         } catch {}
     "#;
     match Command::new("powershell.exe")

@@ -1,6 +1,7 @@
 <script setup>
-import { computed, onMounted, onUnmounted, ref, watch, nextTick } from 'vue';
+import { computed, onMounted, onUnmounted, ref, watchEffect, nextTick, watch } from 'vue';
 import { useSpecsStore } from '../store/specs';
+import { timers } from '../utils/timers';
 
 const store = useSpecsStore();
 const videoRef = ref(null);
@@ -17,36 +18,39 @@ const hasSinglePrice = computed(() => {
 });
 
 const currentIndex = ref(0);
-const videoKey = ref(0);
+
 const retryCount = ref(0);
 
 const videoUrls = computed(() => {
   const customPaths = store.currentSpecs.customVideoPaths || [];
   const validPaths = customPaths.filter(v => v.path).map(v => store.getVideoUrl(v.path));
-  
   if (validPaths.length > 0) {
     return validPaths;
   }
-  
-  // Failsafe: Si no hay nada seleccionado, usar el base según marca detectada
+  // fallback base promo video using getVideoUrl
   return [store.getVideoUrl(store.isAsus ? '__ASUS_PROMO__' : '__GENERIC_PROMO__')];
 });
 
-watch(videoUrls, (urls) => {
-  if (currentIndex.value >= urls.length) {
-    currentIndex.value = 0;
-  }
-});
+
 
 const currentUrl = computed(() => {
   const idx = Math.min(currentIndex.value, videoUrls.value.length - 1);
   return videoUrls.value[idx] || '';
 });
 
-const playVideo = async () => {
+watchEffect(() => {
+  // Keep index in range
+  if (currentIndex.value >= videoUrls.value.length) {
+    currentIndex.value = 0;
+  }
+  // Play video whenever source URL changes
+  playVideo();
+});
+
+async function playVideo() {
   if (videoRef.value) {
     try {
-      // Si el video ya está en una URL válida, solo dar play. 
+      // Si el video ya está en una URL válida, solo dar play.
       // load() solo es necesario si cambiamos el src manualmente y no se dispara solo.
       const playPromise = videoRef.value.play();
       if (playPromise !== undefined) {
@@ -60,11 +64,9 @@ const playVideo = async () => {
       }
     }
   }
-};
+}
 
-watch(currentUrl, () => {
-  playVideo();
-});
+
 
 const safetyTimeout = ref(null);
 
@@ -76,7 +78,7 @@ const onVideoError = (e) => {
     console.warn(`[VideoPlayer] Attempting recovery (retry ${retryCount.value}/3)...`);
     
     // Force re-mount the video element
-    videoKey.value++;
+    videoRef.value?.load();
     
     // Esperar al siguiente tick de Vue (cuando el nuevo elemento ya está montado e hidratado en el DOM)
     nextTick(() => {
@@ -95,6 +97,10 @@ const clearSafetyTimer = () => {
     clearTimeout(safetyTimeout.value);
     safetyTimeout.value = null;
   }
+  if (timers.safety) {
+    clearTimeout(timers.safety);
+    timers.safety = null;
+  }
 };
 
 const startSafetyTimer = (durationInSeconds) => {
@@ -110,6 +116,16 @@ const startSafetyTimer = (durationInSeconds) => {
     console.warn('[VideoPlayer] Safety timeout reached, forcing exit.');
     store.isVideoMode = false;
   }, timeoutMs);
+  // also keep reference in timers for centralized cleanup
+  timers.safety = safetyTimeout.value;
+
+// Expose helper for debugging in the browser console (only in dev)
+if (import.meta.env.DEV) {
+  // @ts-ignore
+  window.startSafetyTimer = startSafetyTimer;
+  // @ts-ignore
+  window.clearSafetyTimer = clearSafetyTimer;
+}
 };
 
 const onMetadataLoaded = () => {
@@ -122,6 +138,7 @@ const onMetadataLoaded = () => {
 
 const onVideoEnded = () => {
   console.log('[VideoPlayer] Video ended, index:', currentIndex.value, 'of', videoUrls.value.length);
+  stopRafWatchdog();
   clearSafetyTimer();
   retryCount.value = 0; // Reset retries on success
   
@@ -136,31 +153,73 @@ const onVideoEnded = () => {
 const boxPosition = ref('top-right'); // 'top-right' | 'top-left'
 const boxVisible = ref(false);
 const isDimmed = ref(false);
-let cycleTimeout = null;
 
+// RAF watchdog functions (video stall detection)
+const startRafWatchdog = (maxStallSeconds = 5) => {
+  if (!videoRef.value) return;
+  const wb = timers.rafWatchdog;
+  wb.active = true;
+  wb.lastTime = videoRef.value.currentTime;
+  wb.stallTime = 0;
+  const loop = () => {
+    if (!wb.active) return;
+    const now = videoRef.value?.currentTime ?? 0;
+    if (Math.abs(now - wb.lastTime) < 0.01) {
+      wb.stallTime += 1 / 60;
+    } else {
+      wb.stallTime = 0;
+      wb.lastTime = now;
+    }
+    if (wb.stallTime >= maxStallSeconds) {
+      console.warn('[VideoPlayer] RAF watchdog: video stalled, exiting video mode.');
+      store.isVideoMode = false;
+      stopRafWatchdog();
+      return;
+    }
+    wb.frameId = requestAnimationFrame(loop);
+  };
+  wb.frameId = requestAnimationFrame(loop);
+};
+
+const stopRafWatchdog = () => {
+  const wb = timers.rafWatchdog;
+  wb.active = false;
+  if (wb.frameId) cancelAnimationFrame(wb.frameId);
+};
+
+
+// Expose timers and helper functions only in development for debugging
+if (import.meta.env.DEV) {
+  // @ts-ignore
+  window.timers = timers;
+  // @ts-ignore
+  window.startRafWatchdog = startRafWatchdog;
+  // @ts-ignore
+  window.stopRafWatchdog = stopRafWatchdog;
+  // @ts-ignore
+  window.startSafetyTimer = startSafetyTimer;
+  // @ts-ignore
+  window.clearSafetyTimer = clearSafetyTimer;
+}
 const runOverlayCycle = () => {
-  // 1. Enter/Stay at 100% opacity
+  // 1. Show overlay
   boxVisible.value = true;
   isDimmed.value = false;
-  
-  // Stays at 100% opacity for 10 seconds
-  cycleTimeout = setTimeout(() => {
-    // 2. Dim to 50% opacity
+
+  // 2. After 10 s dim to 50 %
+  timers.overlay = setTimeout(() => {
     isDimmed.value = true;
-    
-    // Stays dimmed for 15 seconds
-    cycleTimeout = setTimeout(() => {
-      // 3. Hide completely to change position
+
+    // 3. After another 15 s hide and reposition
+    timers.overlay = setTimeout(() => {
       boxVisible.value = false;
-      
-      // Wait for hide transition to finish (800ms)
-      cycleTimeout = setTimeout(() => {
-        // 4. Reposition, reset dim state, and loop
+
+      // 4. After hide transition (800 ms) change position and restart
+      timers.overlay = setTimeout(() => {
         boxPosition.value = boxPosition.value === 'top-right' ? 'top-left' : 'top-right';
         isDimmed.value = false;
-        
-        // Wait a tiny bit offscreen before sliding/fading in
-        cycleTimeout = setTimeout(() => {
+        // Small pause before next cycle
+        timers.overlay = setTimeout(() => {
           runOverlayCycle();
         }, 300);
       }, 800);
@@ -169,9 +228,9 @@ const runOverlayCycle = () => {
 };
 
 const stopOverlayCycle = () => {
-  if (cycleTimeout) {
-    clearTimeout(cycleTimeout);
-    cycleTimeout = null;
+  if (timers.overlay) {
+    clearTimeout(timers.overlay);
+    timers.overlay = null;
   }
   boxVisible.value = false;
   isDimmed.value = false;
@@ -199,11 +258,13 @@ onMounted(() => {
   playVideo();
   // Start overlay movement cycle on mount
   runOverlayCycle();
+  startRafWatchdog();
 });
 
 onUnmounted(() => {
   clearSafetyTimer();
   stopOverlayCycle();
+  stopRafWatchdog();
 });
 
 // Exponer el elemento <video> al componente padre (App.vue) para que el watchdog
@@ -214,7 +275,7 @@ defineExpose({ videoRef });
 <template>
   <div class="video-container">
     <video 
-      :key="videoKey"
+      
       ref="videoRef"
       id="promo-video" 
       autoplay

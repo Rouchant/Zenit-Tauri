@@ -1,3 +1,8 @@
+// Expose a global timers placeholder for debugging
+if (import.meta.env.DEV) {
+  // @ts-ignore
+  window.timers = {};
+}
 import { createApp } from 'vue';
 import { createPinia } from 'pinia';
 import App from './App.vue';

@@ -25,7 +25,7 @@ const themesList = [
     label: 'Falabella', 
     description: 'Estilo corporativo verde', 
     primaryColor: '#B9D40D',
-    logoUrl: '/assets/images/T-FALABELLA.svg',
+    logoUrl: '/assets/logos/falabella1.svg',
     logoType: 'image'
   },
   { 
@@ -33,7 +33,7 @@ const themesList = [
     label: 'Paris', 
     description: 'Estilo corporativo celeste', 
     primaryColor: '#00D1FF',
-    logoUrl: '/assets/images/T-CENCOSUD.svg',
+    logoUrl: '/assets/logos/paris.svg',
     logoType: 'image'
   },
   { 
@@ -41,7 +41,7 @@ const themesList = [
     label: 'Ripley', 
     description: 'Estilo corporativo morado', 
     primaryColor: '#AF47FF',
-    logoUrl: '/assets/images/T-RIPLEY.svg',
+    logoUrl: '/assets/logos/ripley.svg',
     logoType: 'image'
   }
 ];
@@ -109,7 +109,7 @@ const finishSetup = async () => {
               <div class="theme-card-badge" v-if="selectedStore === t.id">✓ Activo</div>
               
               <div class="theme-logo-wrapper">
-                <img v-if="t.logoType === 'image'" :src="t.logoUrl" :alt="t.label" class="store-logo" />
+                <img v-if="t.logoType === 'image'" :src="t.logoUrl" :alt="t.label" class="store-logo" :class="{ 'paris-logo': t.id === 'paris' }" />
                 <span v-else class="text-logo">{{ t.logoText }}</span>
               </div>
 
@@ -351,6 +351,10 @@ const finishSetup = async () => {
   max-height: 24px;
   max-width: 90%;
   filter: drop-shadow(0 2px 5px rgba(0, 0, 0, 0.3));
+}
+
+.store-logo.paris-logo {
+  max-height: 35px;
 }
 
 .text-logo {

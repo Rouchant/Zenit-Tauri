@@ -31,6 +31,7 @@ pub fn run_system_setup() {
                 ("SUB_SLEEP", "HIBERNATEIDLE", "0"),
                 ("SUB_SLEEP", "STANDBYIDLE",   "0"),
                 ("SUB_VIDEO", "VIDEOIDLE",     "0"),
+                ("SUB_VIDEO", "ADAPTBRIGHT",   "0"), // Desactivar brillo adaptativo al arrancar
             ] {
                 // AC (Enchufado) - Esto es lo que hacía la 1.1.7
                 let _ = Command::new("powercfg")

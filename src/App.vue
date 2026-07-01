@@ -244,6 +244,7 @@ import { onMounted, onUnmounted, ref, watch, reactive, nextTick, computed } from
 import { useSpecsStore } from './store/specs';
 import { tauriAPI } from './api/tauriApi';
 import { listen } from '@tauri-apps/api/event';
+import { timers } from '@/utils/timers';
 
 // Components
 import Header from './components/Header.vue';
@@ -747,6 +748,13 @@ onUnmounted(() => {
   if (watchdogInterval) clearInterval(watchdogInterval);
   
   clearTimeout(inactivityTimer.value);
+// Clean up shared timers
+if (timers.safety) { clearTimeout(timers.safety); timers.safety = null; }
+if (timers.overlay) { clearTimeout(timers.overlay); timers.overlay = null; }
+if (timers.rafWatchdog) {
+  timers.rafWatchdog.active = false;
+  if (timers.rafWatchdog.frameId) { cancelAnimationFrame(timers.rafWatchdog.frameId); timers.rafWatchdog.frameId = null; }
+}
   if (pixelShiftInterval) clearInterval(pixelShiftInterval);
 });
 </script>
