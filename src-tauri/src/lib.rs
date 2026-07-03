@@ -17,7 +17,9 @@ use crate::commands::{system, vault, window};
 /// Configura plugins, estado global, handlers de comandos y eventos de ventana.
 #[cfg_attr(mobile, tauri::mobile_entry_point)]
 pub fn run() {
-
+    // Desactivar decodificación por hardware de video para evitar cuelgues por transición de energía de la GPU
+    #[cfg(windows)]
+    std::env::set_var("WEBVIEW2_ADDITIONAL_BROWSER_ARGUMENTS", "--disable-gpu-video-decode");
 
     tauri::Builder::default()
         // Configuración de Logs: Guarda logs en archivo y los muestra en consola/webview
