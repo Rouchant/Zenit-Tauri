@@ -28,7 +28,7 @@ const storeLogo = computed(() => {
         </div>
         <div class="logo-separator" v-if="brandLogo && storeLogo"></div>
         <div class="store-logo-placeholder" id="store-logo-container" v-if="storeLogo">
-          <img :src="storeLogo" :alt="store.currentSpecs.store">
+          <img :src="storeLogo" :alt="store.currentSpecs.store" :class="'store-' + (store.currentSpecs.store || '').toLowerCase()">
         </div>
       </div>
 

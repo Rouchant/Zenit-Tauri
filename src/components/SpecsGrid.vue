@@ -85,12 +85,14 @@ const tryPc = (e) => {
       />
     </div>
     
-    <button 
-      id="view-pc" 
-      class="view-pc-btn" 
-      @click="tryPc($event)"
-    >
-      <span class="btn-text">Prueba esta PC</span>
-    </button>
+    <div class="view-pc-btn-wrapper">
+      <button 
+        id="view-pc" 
+        class="view-pc-btn" 
+        @click="tryPc($event)"
+      >
+        <span class="btn-text">Prueba esta PC</span>
+      </button>
+    </div>
   </div>
 </template>

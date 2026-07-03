@@ -23,7 +23,7 @@
 
       <!-- Video Layer -->
       <video 
-        v-if="shouldBePlaying"
+        v-show="shouldBePlaying"
         id="bg-video" 
         autoplay 
         loop 
@@ -91,7 +91,7 @@
                 preload="auto"
                 :src="currentLandingVideoSrc"
                 ref="landingVideo"
-                v-if="!store.isLoading && shouldBePlaying"
+                v-show="!store.isLoading && shouldBePlaying"
                 :style="{ 
                   opacity: isLandingReady && !showWarrantyOverlay ? 1 : 0,
                   visibility: showWarrantyOverlay ? 'hidden' : 'visible',
@@ -643,6 +643,23 @@ const initPixelShift = () => {
   }, 120000);
 };
 
+let clockMonitorInterval = null;
+const initClockMonitor = () => {
+  let lastCheckTime = Date.now();
+  clockMonitorInterval = setInterval(() => {
+    const now = Date.now();
+    const diff = now - lastCheckTime;
+    
+    // Si el tiempo transcurrido difiere en más de 10 segundos del esperado (2s),
+    // el sistema se suspendió, hibernó, se reinició o cambió de hora.
+    if (Math.abs(diff) > 10000) {
+      console.warn('[Clock Monitor] Cambio súbito en el reloj detectado. Recargando aplicación...');
+      window.location.reload();
+    }
+    lastCheckTime = now;
+  }, 2000);
+};
+
 onMounted(async () => {
   updateScale();
   window.addEventListener('resize', updateScale);
@@ -659,6 +676,7 @@ onMounted(async () => {
     resetTimer();
   }
   initPixelShift();
+  initClockMonitor();
 
   window.addEventListener('mousemove', throttledResetTimer);
   window.addEventListener('keydown', resetTimer);
@@ -671,7 +689,6 @@ onMounted(async () => {
     unlistenPlay = await listen('play-info-videos', () => {
       console.log('[Tauri Event] play-info-videos recibido. Forzando remontaje de videos.');
       shouldBePlaying.value = false;
-      isLandingReady.value = false;
       nextTick(() => {
         shouldBePlaying.value = true;
         nextTick(() => {
@@ -686,7 +703,6 @@ onMounted(async () => {
     unlistenPause = await listen('pause-info-videos', () => {
       console.log('[Tauri Event] pause-info-videos recibido. Pausando videos.');
       shouldBePlaying.value = false;
-      isLandingReady.value = false;
       showWarrantyOverlay.value = false; // Cerrar overlay de garantía al ir a "Prueba esta PC"
       if (inactivityTimer.value) {
         clearTimeout(inactivityTimer.value);
@@ -756,6 +772,7 @@ if (timers.rafWatchdog) {
   if (timers.rafWatchdog.frameId) { cancelAnimationFrame(timers.rafWatchdog.frameId); timers.rafWatchdog.frameId = null; }
 }
   if (pixelShiftInterval) clearInterval(pixelShiftInterval);
+  if (clockMonitorInterval) clearInterval(clockMonitorInterval);
 });
 </script>
 

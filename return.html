@@ -152,50 +152,48 @@
             clip-path: inset(0 round 16px);
         }
 
-        @property --angle {
-            syntax: '<angle>';
-            initial-value: 0deg;
-            inherits: false;
+        @keyframes rotate-border-transform {
+            from {
+                transform: translate(-50%, -50%) rotate(0deg);
+            }
+            to {
+                transform: translate(-50%, -50%) rotate(360deg);
+            }
         }
 
-        /* The rotating border beam */
+        /* The rotating border beam (Optimized with GPU-accelerated transform rotation) */
         .return-btn::before {
             content: '';
             position: absolute;
-            inset: 0;
-            background: conic-gradient(from var(--angle),
+            width: 200%;
+            height: auto;
+            aspect-ratio: 1 / 1;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%) rotate(0deg);
+            background: conic-gradient(
                         #FFFFFF 0%,
                         var(--primary) 10%,
-                        /* El blanco se apaga rápidamente aquí */
                         var(--secondary) 50%,
                         var(--primary) 90%,
-                        /* El blanco recién empieza a aparecer aquí */
                         #FFFFFF 100%);
-            animation: rotate-border 4s linear infinite;
+            animation: rotate-border-transform 4s linear infinite;
             pointer-events: none;
             z-index: 1;
+            will-change: transform;
         }
 
-        /* The solid button background, inset by 2.2px to create a 0.3px overlap that masks the anti-aliasing seam */
+        /* The solid button background, inset by 2.5px to create a 0.3px overlap that masks the anti-aliasing seam */
         .return-btn::after {
             content: '';
             position: absolute;
-            top: 2.2px;
-            left: 2.2px;
-            bottom: 2.2px;
-            right: 2.2px;
+            inset: 2.5px;
             background: linear-gradient(50deg, var(--secondary), var(--primary));
-            border-radius: 13.8px;
-            /* Mathematically concentric to the outer 16px radius (16 - 2.2) */
+            border-radius: 13.5px;
+            /* Mathematically concentric to the outer 16px radius (16 - 2.5) */
             pointer-events: none;
             z-index: 2;
             transition: all 0.1s cubic-bezier(0.4, 0, 0.2, 1);
-        }
-
-        @keyframes rotate-border {
-            to {
-                --angle: 360deg;
-            }
         }
 
         /* NO HOVER EFFECTS */

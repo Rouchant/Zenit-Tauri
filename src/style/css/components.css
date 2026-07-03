@@ -79,7 +79,7 @@
     width: auto;
     max-width: 280px;
     object-fit: contain;
-    filter: brightness(0) invert(1) brightness(0.94) drop-shadow(3px 3px 0px rgba(0, 0, 0, 0.75));
+    filter: brightness(0) invert(1) brightness(0.94) drop-shadow(3px 3px 0px #000000);
 }
 
 .logo-placeholder img.zenit-logo {
@@ -115,7 +115,12 @@
     object-fit: contain;
     transform: scale(1);
     /* Scale reset to fit 95px area */
-    filter: drop-shadow(3px 3px 0px rgba(0, 0, 0, 0.75));
+    filter: brightness(0) invert(1) brightness(0.94) drop-shadow(3px 3px 0px #000000);
+}
+
+.store-logo-placeholder img.store-paris,
+.store-logo-placeholder img.store-ripley {
+    filter: drop-shadow(3px 3px 0px #000000);
 }
 
 .brand-badge {
@@ -194,22 +199,32 @@
     border-radius: 8px;
 }
 
-@property --angle {
-    syntax: '<angle>';
-    initial-value: 0deg;
-    inherits: false;
-}
-
-@keyframes rotate-border {
+@keyframes rotate-border-transform {
+    from {
+        transform: translate(-50%, -50%) rotate(0deg);
+    }
     to {
-        --angle: 360deg;
+        transform: translate(-50%, -50%) rotate(360deg);
     }
 }
 
-.view-pc-btn {
+.view-pc-btn-wrapper {
+    position: relative;
     width: 92%;
     margin: auto auto 0 auto;
-    background: #000000;
+    border-radius: 24px;
+    background: whitesmoke; /* Fondo negro sólido para evitar desfases y huecos grises de anti-aliasing en las esquinas */
+    /* Sombra con bordes nítidos */
+    box-shadow: 0 0 0 3px rgba(255, 255, 255, 0.45),
+        0 8px 0px rgba(0, 0, 0, 1);
+    transform: translateZ(0);
+    will-change: transform;
+    transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+.view-pc-btn {
+    width: 100%; /* Rellenar el wrapper */
+    background: whitesmoke; /* Transparente para evitar que el fondo del botón tape la sombra/borde del wrapper en las esquinas */
     border: none;
     outline: none;
     color: var(--bg-dark);
@@ -230,44 +245,41 @@
     text-align: center;
     line-height: 1.1;
     overflow: hidden;
+    clip-path: inset(0 round 24px); /* Retornar a 24px concéntrico perfecto ahora que el fondo es transparente */
     position: relative;
     z-index: 100;
-
-    /* Sombra con bordes nítidos */
-    box-shadow: 0 0 0 3px rgba(255, 255, 255, 0.45),
-        0 8px 0px rgba(0, 0, 0, 1);
-    transform: translateZ(0);
-    will-change: transform;
 }
 
-/* The rotating border beam */
+/* The rotating border beam (Optimized with GPU-accelerated transform rotation) */
 .view-pc-btn::before {
     content: '';
     position: absolute;
-    inset: 0;
-    background: conic-gradient(from var(--angle),
-    #FFFFFF 0%,
-    var(--primary) 10%,
-    /* El blanco se apaga rápidamente aquí */
-    var(--secondary) 50%,
-    var(--primary) 90%,
-    /* El blanco recién empieza a aparecer aquí */
-    #FFFFFF 100%);
-    animation: rotate-border 4s linear infinite;
+    width: 200%;
+    height: auto;
+    aspect-ratio: 1 / 1;
+    top: 50%;
+    left: 50%;
+    transform: translate(-50%, -50%) rotate(0deg);
+    background: conic-gradient(
+        #FFFFFF 0%,
+        var(--primary) 10%,
+        var(--secondary) 50%,
+        var(--primary) 90%,
+        #FFFFFF 100%
+    );
+    animation: rotate-border-transform 4s linear infinite;
     pointer-events: none;
     z-index: 1;
+    will-change: transform;
 }
 
 /* The solid button background, inset by 2.2px to create concentric border overlap */
 .view-pc-btn::after {
     content: '';
     position: absolute;
-    top: 2.2px;
-    left: 2.2px;
-    bottom: 2.2px;
-    right: 2.2px;
+    inset: 2.5px; /* Unificar bordes para evitar errores de redondeo de sub-píxeles */
     background: linear-gradient(45deg, var(--secondary), var(--primary));
-    border-radius: 21.8px; /* 24px - 2.2px */
+    border-radius: 21.5px; /* 24px - 2.5px */
     pointer-events: none;
     z-index: 2;
     transition: all 0.1s cubic-bezier(0.4, 0, 0.2, 1);
@@ -280,17 +292,19 @@
     font-family: 'Antonio', sans-serif;
 }
 
-.view-pc-btn:hover {
+.view-pc-btn-wrapper:hover {
     box-shadow: 0 0 0 3px rgba(255, 255, 255, 0.8),
         0 10px 0px rgba(0, 0, 0, 1);
-    filter: brightness(1.1);
 }
 
-.view-pc-btn:active {
-    transform: translateY(6px) translateZ(0);
+.view-pc-btn-wrapper:hover .view-pc-btn {
+    filter: brightness(1.15);
+}
+
+.view-pc-btn-wrapper:active {
+    transform: translateY(6px);
     box-shadow: 0 0 0 3px rgba(255, 255, 255, 0.8),
         0 2px 0px rgba(0, 0, 0, 1);
-    filter: brightness(0.9);
 }
 
 .toggle-specs-btn {
