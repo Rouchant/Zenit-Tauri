@@ -33,7 +33,15 @@ const INTERNAL_PATHS = {
 
 const BACKGROUND_VIDEOS = {
   ASUS: 'background-asus.mp4',
-  GENERIC: 'background-generic.mp4'
+  GENERIC: 'background-generic.mp4',
+  ASUS_default: 'background-asus_default.mp4',
+  ASUS_falabella: 'background-asus_falabella.mp4',
+  ASUS_paris: 'background-asus_paris.mp4',
+  ASUS_ripley: 'background-asus_ripley.mp4',
+  GENERIC_default: 'background-generic_default.mp4',
+  GENERIC_falabella: 'background-generic_falabella.mp4',
+  GENERIC_paris: 'background-generic_paris.mp4',
+  GENERIC_ripley: 'background-generic_ripley.mp4'
 };
 
 export const useSpecsStore = defineStore('specs', () => {
@@ -43,6 +51,7 @@ export const useSpecsStore = defineStore('specs', () => {
   const isVideoMode = ref(false);
   const isModalOpen = ref(false);
   const isLoading = ref(true);
+  const isBgThemed = ref(false);
   const theme = ref((() => {
     try {
       return (typeof localStorage !== 'undefined' && localStorage.getItem('zenit-theme')) || 'default';
@@ -142,8 +151,8 @@ export const useSpecsStore = defineStore('specs', () => {
       if (window.__TAURI_INTERNALS__) {
         const resDir = await tauriAPI.getVideoPath();
         if (resDir) {
-          // Normalizar separadores de ruta para Windows
           const base = resDir.replace(/\\/g, '/');
+          console.log("[Zenit Specs] Base resource directory:", base);
           
           const internalEntries = Object.entries(INTERNAL_PATHS);
           const bgEntries = Object.entries(BACKGROUND_VIDEOS);
@@ -151,7 +160,19 @@ export const useSpecsStore = defineStore('specs', () => {
           const newResolved = { ...resolvedPaths.value };
           for (const [key, fileName] of [...internalEntries, ...bgEntries]) {
             const absPath = `${base}/${fileName}`;
-            newResolved[key] = convertFileSrc(absPath);
+            if (key.includes('_')) {
+              try {
+                const exists = await tauriAPI.checkFileExists(absPath);
+                console.log(`[Zenit Specs] Check themed path: ${key} -> ${absPath} -> exists: ${exists}`);
+                if (exists) {
+                  newResolved[key] = convertFileSrc(absPath);
+                }
+              } catch (e) {
+                console.warn(`Error checking background path ${absPath}:`, e);
+              }
+            } else {
+              newResolved[key] = convertFileSrc(absPath);
+            }
           }
           resolvedPaths.value = newResolved;
         }
@@ -324,6 +345,7 @@ export const useSpecsStore = defineStore('specs', () => {
     isVideoMode,
     isModalOpen,
     isLoading,
+    isBgThemed,
     theme,
     CONFIG,
     saveCustom,

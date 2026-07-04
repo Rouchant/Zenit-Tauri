@@ -23,6 +23,7 @@
 
       <!-- Video Layer -->
       <video 
+        v-if="currentBgVideoSrc"
         v-show="shouldBePlaying"
         id="bg-video" 
         autoplay 
@@ -34,15 +35,14 @@
         ref="bgVideo"
         class="background-media"
         style="background-color: transparent; transition: opacity 0.5s ease;"
-        :key="store.isAsus ? 'asus' : 'generic'"
+        :key="(store.isAsus ? 'asus_' : 'generic_') + store.theme"
         :src="currentBgVideoSrc"
         @error="handleBgVideoError"
-        @playing="bgRetryCount = 0"
-      >
-      </video>
+        @playing="() => { bgRetryCount = 0; isBgVideoFailed = false; }"
+      ></video>
 
       <!-- Background Overlay (Moved inside to unify GPU compositing) -->
-      <div class="bg-blur"></div>
+      <div class="bg-blur" v-if="!store.isBgThemed || isBgVideoFailed"></div>
     </div>
 
     <!-- Header siempre pegado arriba y al ancho de la ventana -->
@@ -83,6 +83,7 @@
           >
             <div class="landing-video-container">
               <video 
+                v-if="currentLandingVideoSrc"
                 id="landing-video" 
                 autoplay 
                 loop 
@@ -275,6 +276,17 @@ const showWarrantyOverlay = ref(false);
 // Retry counters for video recovery
 const bgRetryCount = ref(0);
 const landingRetryCount = ref(0);
+const isBgVideoFailed = ref(false);
+
+watch(currentBgVideoSrc, () => {
+  isBgVideoFailed.value = false;
+  nextTick(() => {
+    if (bgVideo.value) {
+      bgVideo.value.load();
+      bgVideo.value.play().catch(() => {});
+    }
+  });
+});
 
 
 // Indica si el backend indica que los videos deberían estarse reproduciendo (ventana enfocada y no minimizada)
@@ -409,6 +421,7 @@ const handleBgVideoError = () => {
     }, 2000);
   } else {
     console.error("Background video failed after max retries. Keeping static fallback.");
+    isBgVideoFailed.value = true;
   }
 };
 
@@ -520,10 +533,24 @@ watch(() => store.isVideoMode, (isVideo) => {
 });
 
 const updateVideoSources = () => {
-  const newBg = store.getVideoUrl(store.isAsus ? 'ASUS' : 'GENERIC');
+  const themeSuffix = store.theme;
+  const baseKey = store.isAsus ? 'ASUS' : 'GENERIC';
+  const themedKey = `${baseKey}_${themeSuffix}`;
+
+  let newBg = store.getVideoUrl(themedKey);
+  let isThemed = true;
+  if (!newBg) {
+    newBg = store.getVideoUrl(baseKey);
+    isThemed = false;
+  }
+
+  console.log("[Zenit App] updateVideoSources:", { themeSuffix, baseKey, themedKey, newBg, isThemed });
+
   if (currentBgVideoSrc.value !== newBg) {
     currentBgVideoSrc.value = newBg;
   }
+  
+  store.isBgThemed = isThemed;
 
   const newLanding = store.getVideoUrl(store.currentSpecs.customLandingVideoPath || (store.isAsus ? '__ASUS_LANDING__' : '__GENERIC_LANDING__'));
   if (currentLandingVideoSrc.value !== newLanding) {
@@ -536,6 +563,7 @@ const updateVideoSources = () => {
 watch([
   () => store.isAsus,
   () => store.currentSpecs.customLandingVideoPath,
+  () => store.theme,
 ], updateVideoSources);
 
 // Desactivar estado listo únicamente si cambia la ruta real del video para evitar parpadeos/bloqueos visuales

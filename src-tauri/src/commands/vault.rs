@@ -174,7 +174,12 @@ pub async fn rename_custom_video(app: AppHandle, path: String, new_name: String)
 
 #[tauri::command]
 pub fn check_file_exists(file_path: String) -> bool {
-    PathBuf::from(file_path).exists()
+    let normalized = if file_path.starts_with("//?/") {
+        file_path.replace("//?/", "\\\\?\\").replace("/", "\\")
+    } else {
+        file_path.replace("/", "\\")
+    };
+    std::path::Path::new(&normalized).exists()
 }
 
 /// Borra archivos físicos que no estén en meta.json

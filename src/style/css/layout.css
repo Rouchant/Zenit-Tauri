@@ -46,7 +46,6 @@
     object-fit: cover;
     z-index: 0;
 }
-
 .bg-blur {
     position: absolute;
     top: -2px;
