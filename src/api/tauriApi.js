@@ -26,6 +26,7 @@ export const tauriAPI = {
   getVideoPath: () => safeInvoke('get_video_path'),
   minimizeApp: (store, brand) => safeInvoke('minimize_app', { store, brand }),
   restoreApp: () => safeInvoke('restore_app'),
+  closeSplashscreen: () => safeInvoke('close_splashscreen'),
   selectVideo: () => safeInvoke('select_video'),
   saveCustomVideo: (sourcePath, customName = null) => safeInvoke('save_custom_video', { sourcePath, customName }),
   listCustomVideos: () => safeInvoke('list_custom_videos'),

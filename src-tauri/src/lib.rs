@@ -152,6 +152,7 @@ pub fn run() {
             window::restore_app,
             window::quit_app,
             window::set_always_on_top,
+            window::close_splashscreen,
         ])
 
         // Manejo de eventos de ventana
@@ -247,15 +248,11 @@ pub fn run() {
                                 let is_visible = window_clone.is_visible().unwrap_or(true);
 
                                 if should_enforce && !is_minimized && is_visible {
-                                    /*
-                                    // Comentado para depurar congelamiento al desconectar el notebook
-                                    let monitor_count = window_clone.available_monitors()
-                                        .map(|list| list.len())
-                                        .unwrap_or(1);
-                                    if monitor_count <= 1 {
+                                    // Usar GetSystemMetrics (SM_CMONITORS) de forma no bloqueante
+                                    // para evitar deadlocks/congelamientos del hilo principal en cambios de pantalla.
+                                    if get_monitor_count() <= 1 {
                                         let _ = window_clone.set_focus();
                                     }
-                                    */
                                 }
                                 // Los videos NO se pausan al perder el foco.
                                 // Solo se pausan explícitamente vía minimize_app (botón "Prueba esta PC").
@@ -271,4 +268,18 @@ pub fn run() {
 
     // Limpieza al cerrar: desinstalar el hook de teclado
     guardian::stop_keyboard_guardian();
+}
+
+#[cfg(windows)]
+fn get_monitor_count() -> i32 {
+    unsafe {
+        windows_sys::Win32::UI::WindowsAndMessaging::GetSystemMetrics(
+            windows_sys::Win32::UI::WindowsAndMessaging::SM_CMONITORS,
+        )
+    }
+}
+
+#[cfg(not(windows))]
+fn get_monitor_count() -> i32 {
+    1
 }

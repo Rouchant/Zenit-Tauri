@@ -50,6 +50,15 @@ pub fn quit_app(app: AppHandle) {
     app.exit(0);
 }
 
+/// Cierra la ventana de salpicadura (splashscreen) si está activa.
+#[tauri::command]
+pub async fn close_splashscreen(app: AppHandle) -> Result<(), String> {
+    if let Some(splash) = app.get_webview_window("splashscreen") {
+        let _ = splash.close();
+    }
+    Ok(())
+}
+
 /// Activa o desactiva el estado "Siempre al frente" (Always on Top) de la ventana principal.
 /// También actualiza el flag de persistencia para evitar que el loop de foco lo revierta.
 #[tauri::command]

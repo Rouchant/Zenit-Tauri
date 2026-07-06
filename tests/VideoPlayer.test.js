@@ -44,7 +44,7 @@ describe('Pruebas del Reproductor de Video (VideoPlayer.vue)', () => {
     });
     
     // El src del elemento <video> debe apuntar al path cargado
-    const videoEl = wrapper.find('video');
+    const videoEl = wrapper.find('.player-active');
     expect(videoEl.attributes('src')).toBe('C:\\Videos\\test1.mp4');
     
     // play() debería haber sido invocado automáticamente (por el onMounted)
@@ -66,7 +66,7 @@ describe('Pruebas del Reproductor de Video (VideoPlayer.vue)', () => {
         }
       }
     });
-    const videoEl = wrapper.find('video');
+    const videoEl = wrapper.find('.player-active');
     
     // Inicialmente está en el video 1
     expect(videoEl.attributes('src')).toBe('C:\\Videos\\1.mp4');
@@ -74,8 +74,8 @@ describe('Pruebas del Reproductor de Video (VideoPlayer.vue)', () => {
     // Simulamos que el video termina su reproducción
     await videoEl.trigger('ended');
 
-    // El reproductor debería avanzar automáticamente al video 2
-    expect(videoEl.attributes('src')).toBe('C:\\Videos\\2.mp4');
+    // El reproductor debería avanzar automáticamente al video 2 (activo en el otro buffer)
+    expect(wrapper.find('.player-active').attributes('src')).toBe('C:\\Videos\\2.mp4');
   });
 
   it('debería salir del modo video al terminar el último de la lista', async () => {
@@ -93,7 +93,7 @@ describe('Pruebas del Reproductor de Video (VideoPlayer.vue)', () => {
         }
       }
     });
-    const videoEl = wrapper.find('video');
+    const videoEl = wrapper.find('.player-active');
 
     // Simulamos que el único video de la lista termina
     await videoEl.trigger('ended');

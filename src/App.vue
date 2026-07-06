@@ -1,15 +1,5 @@
 <template>
   <div class="app-root">
-    <!-- Loading Screen -->
-    <Transition name="fade">
-      <div v-if="store.isLoading" class="loading-screen">
-        <div class="loader-container">
-          <div class="loader"></div>
-          <div class="loader-glow"></div>
-        </div>
-        <p class="loading-text">Cargando especificaciones...</p>
-      </div>
-    </Transition>
 
     <!-- Background Media Layers (Plano de fondo a pantalla física completa) -->
     <div class="background-wrapper" v-if="!store.isLoading">
@@ -466,6 +456,35 @@ const checkVideosPlayState = () => {
 
 // --- WATCHERS CONSOLIDADOS (ESTABILIDAD) ---
 
+// 0. Gestión de Inicio (Splashscreen -> Ventana Principal)
+watch(() => store.isLoading, async (loading) => {
+  if (!loading && window.__TAURI_INTERNALS__) {
+    try {
+      // 1. Esperar a que el motor del navegador tenga las fuentes completamente listas
+      if (document.fonts) {
+        await document.fonts.ready.catch(() => {});
+      }
+      
+      // 2. Dar 400ms para que el primer frame del video e imágenes se pinten en segundo plano
+      setTimeout(async () => {
+        const { getCurrentWebviewWindow } = await import('@tauri-apps/api/webviewWindow');
+        const mainWin = getCurrentWebviewWindow();
+        
+        // Mostrar y enfocar la ventana principal
+        await mainWin.show();
+        await mainWin.setFocus();
+        
+        // Cerrar la ventana de salpicadura nativamente
+        setTimeout(async () => {
+          await tauriAPI.closeSplashscreen();
+        }, 200);
+      }, 400);
+    } catch (err) {
+      console.warn('No se pudo gestionar la ventana de salpicadura:', err);
+    }
+  }
+}, { immediate: true });
+
 // 1. Gestión de Modales
 watch(() => store.isModalOpen, (isOpen) => {
   if (isOpen) {
@@ -687,19 +706,6 @@ const initClockMonitor = () => {
 onMounted(async () => {
   updateScale();
   window.addEventListener('resize', updateScale);
-
-  // Mostrar la ventana de forma segura tras 100ms para evitar el pantallazo blanco inicial
-  if (window.__TAURI_INTERNALS__) {
-    try {
-      const { getCurrentWebviewWindow } = await import('@tauri-apps/api/webviewWindow');
-      const mainWin = getCurrentWebviewWindow();
-      setTimeout(() => {
-        mainWin.show().catch(err => console.error('Error mostrando ventana principal:', err));
-      }, 100);
-    } catch (err) {
-      console.warn('No se pudo cargar el módulo de ventana de Tauri:', err);
-    }
-  }
   
   await store.loadSpecs();
   updateVideoSources();
@@ -822,73 +828,6 @@ if (timers.rafWatchdog) {
   background: var(--bg-dark);
 }
 
-/* Global styles are imported in main.js */
-.loading-screen {
-  position: fixed;
-  top: 0; left: 0; right: 0; bottom: 0;
-  background: radial-gradient(circle at center, #111 0%, #000 100%);
-  display: flex;
-  flex-direction: column;
-  justify-content: center;
-  align-items: center;
-  z-index: 9999;
-  color: var(--white);
-}
-
-.loader-container {
-  position: relative;
-  width: 60px;
-  height: 60px;
-  margin-bottom: 30px;
-}
-
-.loader {
-  position: absolute;
-  top: 0; left: 0;
-  border: 2px solid rgba(0, 242, 255, 0.1);
-  border-top: 2px solid var(--primary, #00f2ff);
-  border-radius: 50%;
-  width: 100%;
-  height: 100%;
-  animation: spin 1s cubic-bezier(0.5, 0, 0.5, 1) infinite;
-  z-index: 2;
-}
-
-.loader-glow {
-  position: absolute;
-  top: 0; left: 0;
-  width: 100%;
-  height: 100%;
-  border-radius: 50%;
-  background: var(--primary, #00f2ff);
-  filter: blur(15px);
-  opacity: 0.2;
-  animation: pulse 2s ease-in-out infinite;
-}
-
-.loading-text {
-  font-size: 1.1rem;
-  letter-spacing: 2px;
-  text-transform: uppercase;
-  font-weight: 300;
-  color: rgba(255, 255, 255, 0.8);
-  animation: fadePulse 2s ease-in-out infinite;
-}
-
-@keyframes spin {
-  0% { transform: rotate(0deg); }
-  100% { transform: rotate(360deg); }
-}
-
-@keyframes pulse {
-  0%, 100% { opacity: 0.1; transform: scale(0.8); }
-  50% { opacity: 0.3; transform: scale(1.2); }
-}
-
-@keyframes fadePulse {
-  0%, 100% { opacity: 0.5; }
-  50% { opacity: 1; }
-}
 
 /* Transitions */
 .fade-enter-active,
