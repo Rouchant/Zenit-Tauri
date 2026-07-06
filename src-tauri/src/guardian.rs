@@ -94,12 +94,12 @@ unsafe extern "system" fn low_level_keyboard_proc(n_code: i32, w_param: WPARAM, 
         let shift = LSHIFT_DOWN.load(Ordering::SeqCst) || RSHIFT_DOWN.load(Ordering::SeqCst);
         let alt = LALT_DOWN.load(Ordering::SeqCst) || RALT_DOWN.load(Ordering::SeqCst);
 
-        // 1. Bypass para Admin (Copy, Paste, Cut, Task Manager)
+        // 2. Bypass para Admin (Copy, Paste, Cut, Task Manager)
         if ctrl && !win && !alt && (key == VK_C || key == VK_V || key == VK_X || (shift && key == VK_ESCAPE)) {
             return CallNextHookEx(0, n_code, w_param, l_param);
         }
 
-        // 2. Bloqueos consolidados
+        // 3. Bloqueos consolidados
         let should_block = if win && key != VK_LWIN && key != VK_RWIN {
             // Bloquear atajos de Windows (Win + ...) pero permitir tecla Windows sola
             matches!(key, 

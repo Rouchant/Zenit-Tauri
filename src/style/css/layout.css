@@ -46,16 +46,6 @@
     object-fit: cover;
     z-index: 0;
 }
-.bg-blur {
-    position: absolute;
-    top: -2px;
-    left: -2px;
-    right: -2px;
-    bottom: -2px;
-    background: radial-gradient(ellipse at 50% 20%, var(--bg-overlay-start) 0% 50%, var(--bg-overlay-end) 120%);
-    z-index: 1;
-    pointer-events: none;
-}
 
 .header {
     position: fixed;

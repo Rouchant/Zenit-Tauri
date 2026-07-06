@@ -16,7 +16,7 @@
       <!-- Static Layer (Always present as fallback/base) -->
       <img 
         id="bg-image"
-        :src="store.isAsus ? '/assets/images/background-asus.png' : '/assets/images/background-generic.png'"
+        :src="store.isAsus ? `/assets/images/fallback-bg/background-asus_${store.theme}.png` : `/assets/images/fallback-bg/background-generic_${store.theme}.png`"
         class="bg-fixed-image"
         style="opacity: 0.8;"
       />
@@ -31,7 +31,7 @@
         muted 
         playsinline 
         preload="auto"
-        :poster="store.isAsus ? '/assets/images/background-asus.png' : '/assets/images/background-generic.png'"
+        :poster="store.isAsus ? `/assets/images/fallback-bg/background-asus_${store.theme}.png` : `/assets/images/fallback-bg/background-generic_${store.theme}.png`"
         ref="bgVideo"
         class="background-media"
         style="background-color: transparent; transition: opacity 0.5s ease;"
@@ -40,9 +40,6 @@
         @error="handleBgVideoError"
         @playing="() => { bgRetryCount = 0; isBgVideoFailed = false; }"
       ></video>
-
-      <!-- Background Overlay (Moved inside to unify GPU compositing) -->
-      <div class="bg-blur" v-if="!store.isBgThemed || isBgVideoFailed"></div>
     </div>
 
     <!-- Header siempre pegado arriba y al ancho de la ventana -->
@@ -534,17 +531,16 @@ watch(() => store.isVideoMode, (isVideo) => {
 
 const updateVideoSources = () => {
   const themeSuffix = store.theme;
-  const baseKey = store.isAsus ? 'ASUS' : 'GENERIC';
-  const themedKey = `${baseKey}_${themeSuffix}`;
+  const baseKey = store.isAsus ? 'asus' : 'generic';
+  
+  // Los videos de fondo se resuelven directamente desde la carpeta pública de assets de la aplicación.
+  // Esto evita llamadas lentas al disco e IPC a través de Tauri (convertFileSrc) al cambiar de tema.
+  const newBg = `/assets/videos/background-${baseKey}_${themeSuffix}.mp4`;
+  
+  // Todos los fondos ahora tienen su propia variante temática específica, por lo que marcamos isBgThemed como verdadero
+  const isThemed = true;
 
-  let newBg = store.getVideoUrl(themedKey);
-  let isThemed = true;
-  if (!newBg) {
-    newBg = store.getVideoUrl(baseKey);
-    isThemed = false;
-  }
-
-  console.log("[Zenit App] updateVideoSources:", { themeSuffix, baseKey, themedKey, newBg, isThemed });
+  console.log("[Zenit App] updateVideoSources:", { themeSuffix, baseKey, newBg, isThemed });
 
   if (currentBgVideoSrc.value !== newBg) {
     currentBgVideoSrc.value = newBg;

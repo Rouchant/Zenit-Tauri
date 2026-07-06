@@ -82,8 +82,8 @@ pub async fn restore_app_logic(app: &AppHandle) -> Result<(), String> {
     // 1. Notificar al frontend ANTES de restaurar para que comience a montar los videos
     let _ = app.emit("play-info-videos", ());
 
-    // 2. Esperar 200ms para que Vue procese el DOM y cargue los reproductores de video en background
-    tokio::time::sleep(tokio::time::Duration::from_millis(200)).await;
+    // 2. Esperar 100ms para que Vue procese el DOM y cargue los reproductores de video en background
+    tokio::time::sleep(tokio::time::Duration::from_millis(100)).await;
 
     // 3. Ocultar la ventana de retorno
     let _ = return_window.hide();
@@ -108,7 +108,7 @@ pub async fn restore_app_logic(app: &AppHandle) -> Result<(), String> {
     Ok(())
 }
 
-/// Configura la posición de la ventana de retorno en la esquina superior derecha del monitor principal.
+/// Configura la posición de la ventana de retorno en el lateral derecho (centrado verticalmente) del monitor principal.
 async fn position_return_window(main: &tauri::WebviewWindow, ret: &tauri::WebviewWindow, store: Option<String>, brand: Option<String>) -> Result<(), String> {
     if let Ok(Some(monitor)) = main.primary_monitor() {
         let scale_factor = monitor.scale_factor();

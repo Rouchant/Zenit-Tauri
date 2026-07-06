@@ -136,7 +136,7 @@
             line-height: 1.1;
             text-transform: uppercase;
             cursor: pointer;
-            transition: all 0.1s cubic-bezier(0.4, 0, 0.2, 1);
+            transition: transform 0.1s cubic-bezier(0.4, 0, 0.2, 1), opacity 0.1s cubic-bezier(0.4, 0, 0.2, 1), filter 0.1s cubic-bezier(0.4, 0, 0.2, 1);
             -webkit-app-region: no-drag;
             display: flex;
             flex-direction: column;
@@ -150,6 +150,12 @@
             transform: translateZ(0);
             overflow: hidden;
             clip-path: inset(0 round 16px);
+        }
+
+        .return-btn.is-hidden {
+            opacity: 0;
+            transform: scale(0.8);
+            pointer-events: none;
         }
 
         @keyframes rotate-border-transform {
@@ -271,6 +277,10 @@
 
         // Función global para actualizar el contexto sin recargar la página
         window.setReturnContext = (store, brand) => {
+            // Asegurar que el botón esté visible e interactivo al reabrirse la ventana
+            btn.classList.remove('is-hidden');
+            resetState();
+
             // Actualizar tema
             const theme = store === 'none' ? 'default' : store;
             document.documentElement.className = 'theme-' + theme;
@@ -315,15 +325,21 @@
         window.addEventListener('focus', resetState);
         window.addEventListener('blur', resetState);
 
-        // Pulsation via JS on pointerdown (evita problemas de encogimiento por el scale de CSS en los bordes)
+        // Al presionar el botón (pointerdown), se activa visualmente y se oculta mediante la clase .is-hidden (GPU accelerated transition)
         btn.addEventListener('pointerdown', async () => {
-            btn.classList.add('is-active');
-            try {
-                await invoke('restore_app');
-            } catch (err) {
-                console.error('Failed to restore app:', err);
-                resetState();
-            }
+            btn.classList.add('is-active', 'is-hidden');
+            
+            // Se pospone la llamada nativa 100ms para permitir que la animación CSS de escala/desvanecimiento termine de reproducirse
+            setTimeout(async () => {
+                try {
+                    await invoke('restore_app');
+                } catch (err) {
+                    console.error('Failed to restore app:', err);
+                    // Si ocurre un error restaurando la app, mostramos el botón nuevamente y restauramos su estado inicial
+                    btn.classList.remove('is-hidden');
+                    resetState();
+                }
+            }, 100);
         });
 
         // Pixel Shift removed to avoid border alignment issues and visual glitches

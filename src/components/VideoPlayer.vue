@@ -405,7 +405,7 @@ video {
   align-items: flex-start;
 }
 
-/* Transiciones de entrada y salida deslizándose por la derecha */
+/* Transiciones de entrada y salida (deslizándose por el lateral correspondiente) */
 .video-overlay.state-visible {
   opacity: 1;
   transform: translateX(0) var(--pixel-shift);

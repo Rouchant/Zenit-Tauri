@@ -31,19 +31,6 @@ const INTERNAL_PATHS = {
   [INTERNAL_VIDEOS.ASUS_WARRANTY]: 'Asus_Garantia_Perfecta.mp4'
 };
 
-const BACKGROUND_VIDEOS = {
-  ASUS: 'background-asus.mp4',
-  GENERIC: 'background-generic.mp4',
-  ASUS_default: 'background-asus_default.mp4',
-  ASUS_falabella: 'background-asus_falabella.mp4',
-  ASUS_paris: 'background-asus_paris.mp4',
-  ASUS_ripley: 'background-asus_ripley.mp4',
-  GENERIC_default: 'background-generic_default.mp4',
-  GENERIC_falabella: 'background-generic_falabella.mp4',
-  GENERIC_paris: 'background-generic_paris.mp4',
-  GENERIC_ripley: 'background-generic_ripley.mp4'
-};
-
 export const useSpecsStore = defineStore('specs', () => {
   const currentSpecs = ref({});
   const autoDetectedSpecs = ref({});
@@ -155,10 +142,9 @@ export const useSpecsStore = defineStore('specs', () => {
           console.log("[Zenit Specs] Base resource directory:", base);
           
           const internalEntries = Object.entries(INTERNAL_PATHS);
-          const bgEntries = Object.entries(BACKGROUND_VIDEOS);
           
           const newResolved = { ...resolvedPaths.value };
-          for (const [key, fileName] of [...internalEntries, ...bgEntries]) {
+          for (const [key, fileName] of internalEntries) {
             const absPath = `${base}/${fileName}`;
             if (key.includes('_')) {
               try {
@@ -318,10 +304,10 @@ export const useSpecsStore = defineStore('specs', () => {
       return resolvedPaths.value[filePath];
     }
 
-    // 2. Si es una clave interna de INTERNAL_VIDEOS o BACKGROUND_VIDEOS pero aún no se ha resuelto
-    if (INTERNAL_PATHS[filePath] || BACKGROUND_VIDEOS[filePath]) {
+    // 2. Si es una clave interna de INTERNAL_VIDEOS pero aún no se ha resuelto
+    if (INTERNAL_PATHS[filePath]) {
       // Intentar una ruta relativa como último recurso si no estamos en Tauri
-      return window.__TAURI_INTERNALS__ ? '' : `/resources/assets/${INTERNAL_PATHS[filePath] || BACKGROUND_VIDEOS[filePath]}`;
+      return window.__TAURI_INTERNALS__ ? '' : `/resources/assets/${INTERNAL_PATHS[filePath]}`;
     }
 
     // 3. Para rutas de archivos externos (Bóveda) o fallbacks
