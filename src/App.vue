@@ -687,6 +687,19 @@ const initClockMonitor = () => {
 onMounted(async () => {
   updateScale();
   window.addEventListener('resize', updateScale);
+
+  // Mostrar la ventana de forma segura tras 100ms para evitar el pantallazo blanco inicial
+  if (window.__TAURI_INTERNALS__) {
+    try {
+      const { getCurrentWebviewWindow } = await import('@tauri-apps/api/webviewWindow');
+      const mainWin = getCurrentWebviewWindow();
+      setTimeout(() => {
+        mainWin.show().catch(err => console.error('Error mostrando ventana principal:', err));
+      }, 100);
+    } catch (err) {
+      console.warn('No se pudo cargar el módulo de ventana de Tauri:', err);
+    }
+  }
   
   await store.loadSpecs();
   updateVideoSources();

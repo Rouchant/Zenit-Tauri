@@ -24,7 +24,8 @@
         "skipTaskbar": false,
         "center": true,
         "focus": true,
-        "devtools": false
+        "devtools": false,
+        "visible": false
       },
       {
         "label": "return",
