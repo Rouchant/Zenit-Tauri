@@ -47,18 +47,4 @@ const initApp = () => {
   }
 };
 
-// En desarrollo, conectamos con Vue DevTools y retrasamos el arranque de Vue hasta tener conexión
-if (import.meta.env.DEV) {
-  const devtoolsScript = document.createElement('script');
-  devtoolsScript.src = 'http://localhost:8098';
-  devtoolsScript.onload = () => {
-    initApp();
-  };
-  devtoolsScript.onerror = () => {
-    // Si no está corriendo el servidor de devtools, arrancar la app normalmente
-    initApp();
-  };
-  document.head.appendChild(devtoolsScript);
-} else {
-  initApp();
-}
+initApp();
