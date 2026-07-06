@@ -683,23 +683,7 @@ const initPixelShift = () => {
   }, 120000);
 };
 
-let clockMonitorInterval = null;
-const initClockMonitor = () => {
-  let lastCheckTime = Date.now();
-  clockMonitorInterval = setInterval(() => {
-    const now = Date.now();
-    const diff = now - lastCheckTime;
-    
-    // Si el tiempo transcurrido difiere en más de 60 segundos del esperado (2s),
-    // el sistema se suspendió, hibernó, se reinició o cambió de hora.
-    // Umbral alto (60s) para evitar recargas en VMs con drift de reloj moderado.
-    if (Math.abs(diff) > 60000) {
-      console.warn('[Clock Monitor] Cambio súbito en el reloj detectado (drift: ' + diff + 'ms). Recargando aplicación...');
-      window.location.reload();
-    }
-    lastCheckTime = now;
-  }, 2000);
-};
+// Pixel Shift para OLED se inicializa en onMounted
 
 onMounted(async () => {
   updateScale();
@@ -717,7 +701,6 @@ onMounted(async () => {
     resetTimer();
   }
   initPixelShift();
-  initClockMonitor();
 
   window.addEventListener('mousemove', throttledResetTimer);
   window.addEventListener('keydown', resetTimer);
@@ -779,6 +762,16 @@ onMounted(async () => {
     // 1. Detección de retorno de suspensión (time-drift)
     const now = Date.now();
     const drift = now - lastDriftTime;
+    
+    // Si la diferencia absoluta es mayor a 20 minutos (1200000ms), recargar app.
+    // Previene loops o bloqueos si el sistema estuvo inactivo/suspendido mucho tiempo.
+    if (Math.abs(drift) > 1200000) {
+      console.warn('[Watchdog] Cambio extremo en el reloj detectado (drift: ' + drift + 'ms). Recargando aplicación...');
+      window.location.reload();
+      return;
+    }
+    
+    // Restaurar brillo si volvió de un sleep moderado (drift > 20s)
     if (drift > 20000) {
       console.log(`[Watchdog] Wake-from-sleep detected (drift: ${drift}ms). Restaurando brillo.`);
       tauriAPI.setMaxBrightness();
@@ -813,7 +806,6 @@ if (timers.rafWatchdog) {
   if (timers.rafWatchdog.frameId) { cancelAnimationFrame(timers.rafWatchdog.frameId); timers.rafWatchdog.frameId = null; }
 }
   if (pixelShiftInterval) clearInterval(pixelShiftInterval);
-  if (clockMonitorInterval) clearInterval(clockMonitorInterval);
 });
 </script>
 
