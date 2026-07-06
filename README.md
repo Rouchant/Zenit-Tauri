@@ -2,7 +2,7 @@
 
 <img src="public/assets/logo.png" alt="Zenit Logo" width="200">
 
-![Version](https://img.shields.io/badge/version-1.8.6-blue.svg)
+![Version](https://img.shields.io/badge/version-1.8.7-blue.svg)
 ![Tauri](https://img.shields.io/badge/framework-Tauri%20v2-FFC131.svg)
 ![Rust](https://img.shields.io/badge/backend-Rust-orange.svg)
 ![Vue 3](https://img.shields.io/badge/frontend-Vue%203-42b883.svg)
@@ -28,7 +28,7 @@ Zenit es una solución de nivel empresarial para **Showcase Terminals**, diseña
 
 ---
 
-## ✨ Características Principales (v1.8.6)
+## ✨ Características Principales (v1.8.7)
 
 ### 🖥️ Detección de Hardware Nativa (100% Rust & CIM/WMI)
 Zenit utiliza un motor de telemetría modularizado en Rust para una velocidad y precisión quirúrgica:
@@ -55,6 +55,15 @@ Zenit utiliza un motor de telemetría modularizado en Rust para una velocidad y 
 - **Unidades Uniformes**: Formato de texto profesional sin espacios inconsistentes (`16GB`, `512GB`, `115W`).
 
 ---
+
+## 📝 Notas de Versión (v1.8.7)
+- **Watcher de Carga Optimizado**:
+  - Unificación de los watchers `isLoading` en Vue para evitar llamadas a `play()` sobre elementos que aún no son visibles.
+  - Aumento a **500ms** en el temporizador de pintura del primer frame para garantizar transiciones fluidas de splash a app.
+- **Optimización de Precarga de Layout**:
+  - Eliminación de directivas `v-if="!store.isLoading"` en elementos del layout principal. Ahora los componentes, imágenes y reproductores se montan inmediatamente en segundo plano, permitiendo que la caché y el buffer de video estén al 100% al momento de mostrar la ventana.
+- **Estabilidad en Máquinas Virtuales (VM)**:
+  - Eliminación de la tarea repetitiva de reloj secundario. El umbral de re-sincronización se unificó en el watchdog de 10s con una tolerancia de **20 minutos** para evitar recargas agresivas accidentales causadas por lag de reloj de la VM.
 
 ## 📝 Notas de Versión (v1.8.6)
 - **Optimización de Transición de Retorno**:
@@ -100,7 +109,7 @@ npm install
 # Modo Desarrollo (HMR)
 npm run dev
 
-# Compilar para Producción (Genera Zenit_1.8.6_x64-setup.exe)
+# Compilar para Producción (Genera Zenit_1.8.7_x64-setup.exe)
 npm run tauri build
 ```
 
