@@ -2,7 +2,7 @@
   <div class="app-root">
 
     <!-- Background Media Layers (Plano de fondo a pantalla física completa) -->
-    <div class="background-wrapper" v-if="!store.isLoading">
+    <div class="background-wrapper">
       <!-- Static Layer (Always present as fallback/base) -->
       <img 
         id="bg-image"
@@ -34,12 +34,12 @@
 
     <!-- Header siempre pegado arriba y al ancho de la ventana -->
     <Transition name="fade">
-      <Header v-if="!store.isLoading" />
+      <Header />
     </Transition>
 
     <!-- Video View (Inactivity) - Fuera de app-container para ocupar pantalla completa real -->
     <Transition name="fade">
-      <div id="video-view" v-if="store.isVideoMode && !store.isLoading" class="view active physical-fullscreen">
+      <div id="video-view" v-if="store.isVideoMode" class="view active physical-fullscreen">
        <VideoPlayer ref="videoPlayerRef" />
       </div>
     </Transition>
@@ -47,7 +47,7 @@
     <!-- Contenedor Escalable del Contenido (Transparente y centrado en la pantalla física) -->
     <div class="app-container" :class="{ 'is-loading': store.isLoading }">
       <!-- Info View -->
-      <div id="info-view" v-show="!store.isLoading" class="view active">
+      <div id="info-view" class="view active">
         <!-- Espaciador invisible para preservar la alineación exacta de las especificaciones -->
         <div 
           class="header-placeholder" 
@@ -79,7 +79,7 @@
                 preload="auto"
                 :src="currentLandingVideoSrc"
                 ref="landingVideo"
-                v-show="!store.isLoading && shouldBePlaying"
+                v-show="shouldBePlaying"
                 :style="{ 
                   opacity: isLandingReady && !showWarrantyOverlay ? 1 : 0,
                   visibility: showWarrantyOverlay ? 'hidden' : 'visible',
@@ -456,7 +456,7 @@ const checkVideosPlayState = () => {
 
 // --- WATCHERS CONSOLIDADOS (ESTABILIDAD) ---
 
-// 0. Gestión de Inicio (Splashscreen -> Ventana Principal)
+// 0. Gestión de Inicio (Splashscreen -> Ventana Principal + Reproducción de Videos)
 watch(() => store.isLoading, async (loading) => {
   if (!loading && window.__TAURI_INTERNALS__) {
     try {
@@ -465,7 +465,7 @@ watch(() => store.isLoading, async (loading) => {
         await document.fonts.ready.catch(() => {});
       }
       
-      // 2. Dar 400ms para que el primer frame del video e imágenes se pinten en segundo plano
+      // 2. Dar 500ms para que el primer frame del video e imágenes se pinten en segundo plano
       setTimeout(async () => {
         const { getCurrentWebviewWindow } = await import('@tauri-apps/api/webviewWindow');
         const mainWin = getCurrentWebviewWindow();
@@ -474,11 +474,17 @@ watch(() => store.isLoading, async (loading) => {
         await mainWin.show();
         await mainWin.setFocus();
         
+        // 3. Reproducir videos ahora que la ventana es visible
+        if (!store.isModalOpen && !store.isVideoMode) {
+          bgVideo.value?.play().catch(() => {});
+          landingVideo.value?.play().catch(() => {});
+        }
+        
         // Cerrar la ventana de salpicadura nativamente
         setTimeout(async () => {
           await tauriAPI.closeSplashscreen();
         }, 200);
-      }, 400);
+      }, 500);
     } catch (err) {
       console.warn('No se pudo gestionar la ventana de salpicadura:', err);
     }
@@ -587,16 +593,7 @@ watch(currentLandingVideoSrc, () => {
 });
 
 // 3. Gestión de Carga Inicial
-watch(() => store.isLoading, (loading) => {
-  if (!loading) {
-    setTimeout(() => {
-      if (!store.isModalOpen && !store.isVideoMode) {
-        bgVideo.value?.play().catch(() => {});
-        landingVideo.value?.play().catch(() => {});
-      }
-    }, 100);
-  }
-});
+// (Unificado con el Watcher 0 de Splashscreen para evitar play() sobre ventana invisible)
 
 
 // El landing video ya NO se pausa al abrir la Garantía Perfecta ASUS.
@@ -693,10 +690,11 @@ const initClockMonitor = () => {
     const now = Date.now();
     const diff = now - lastCheckTime;
     
-    // Si el tiempo transcurrido difiere en más de 10 segundos del esperado (2s),
+    // Si el tiempo transcurrido difiere en más de 60 segundos del esperado (2s),
     // el sistema se suspendió, hibernó, se reinició o cambió de hora.
-    if (Math.abs(diff) > 10000) {
-      console.warn('[Clock Monitor] Cambio súbito en el reloj detectado. Recargando aplicación...');
+    // Umbral alto (60s) para evitar recargas en VMs con drift de reloj moderado.
+    if (Math.abs(diff) > 60000) {
+      console.warn('[Clock Monitor] Cambio súbito en el reloj detectado (drift: ' + diff + 'ms). Recargando aplicación...');
       window.location.reload();
     }
     lastCheckTime = now;
