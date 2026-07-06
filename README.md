@@ -2,7 +2,7 @@
 
 <img src="public/assets/logo.png" alt="Zenit Logo" width="200">
 
-![Version](https://img.shields.io/badge/version-1.6.9-blue.svg)
+![Version](https://img.shields.io/badge/version-1.8.6-blue.svg)
 ![Tauri](https://img.shields.io/badge/framework-Tauri%20v2-FFC131.svg)
 ![Rust](https://img.shields.io/badge/backend-Rust-orange.svg)
 ![Vue 3](https://img.shields.io/badge/frontend-Vue%203-42b883.svg)
@@ -28,7 +28,7 @@ Zenit es una solución de nivel empresarial para **Showcase Terminals**, diseña
 
 ---
 
-## ✨ Características Principales (v1.6.9)
+## ✨ Características Principales (v1.8.6)
 
 ### 🖥️ Detección de Hardware Nativa (100% Rust & CIM/WMI)
 Zenit utiliza un motor de telemetría modularizado en Rust para una velocidad y precisión quirúrgica:
@@ -42,26 +42,32 @@ Zenit utiliza un motor de telemetría modularizado en Rust para una velocidad y 
 - **Soporte Non-16:9**: Adaptación dinámica para resoluciones exóticas (2.8K, WUXGA) mediante técnica de **Overscan de 2px**, eliminando franjas negras causadas por errores de redondeo de subpíxeles.
 - **Escalado Inteligente**: Soporte nativo para High-DPI (150%+) en laptops de 14", manteniendo la jerarquía visual y legibilidad.
 
-### 🧠 Eficiencia de Recursos (Green Kiosk)
+### 🧠 Eficiencia de Recursos & Estabilidad (Green Kiosk)
+- **Cero llamadas de disco en Fondos**: Los videos y las imágenes de fondo se cargan directamente como recursos estáticos del frontend en lugar de resolverse dinámicamente mediante la API nativa de Tauri en cada cambio de tema. Esto reduce la latencia de disco y el IPC de comunicación a cero para transiciones de fondo inmediatas.
+- **Sin superposición de Blur (Optimización GPU)**: Se eliminó por completo el overlay de blur CSS (`bg-blur`) sobre los videos de fondo, lo cual reduce drásticamente el uso de GPU en equipos con hardware básico y previene el parpadeo de anti-aliasing.
 - **Gestión Híbrida de Memoria**: Sistema de vaciado de buffers de video (`src clearing`) que libera entre **150MB y 300MB de RAM** instantáneamente al abrir modales o entrar en modo inactividad.
 - **Chromium Tuning**: Flags optimizados (`--in-process-gpu`, `--aggressive-cache-discard`) para minimizar el footprint del WebView2 en equipos con recursos limitados.
-- **Watchdog de Estabilidad**: Lógica reactiva consolidada que previene condiciones de carrera (race conditions), asegura la recuperación del foco absoluto y garantiza transiciones limpias al video promocional tras inactividad.
 
 ### 🏷️ Personalización Comercial (E-Commerce Ready)
 - **Precios Dinámicos**: Soporte para precios de oferta (Exclusivo Tarjeta) y normales, con diseño premium adaptable.
-- **Branding de Retail**: Soporte para logos de retails (**Falabella, Paris, Ripley**) y marcas líderes (**Asus, HP, Samsung**) con matices de color dinámicos en los fondos.
+- **Fondos Estáticos Temáticos (fallback-bg)**: Soporte para imágenes de fondo específicas para cada retail en la ruta `public/assets/images/fallback-bg/` (París, Falabella, Ripley, Default) para Asus y Genérico.
+- **Videos Temáticos Locales**: Videos de fondo servidos en base al retail configurado mediante `/assets/videos/background-{brand}_{theme}.mp4` directamente desde el frontend.
 - **Unidades Uniformes**: Formato de texto profesional sin espacios inconsistentes (`16GB`, `512GB`, `115W`).
 
 ---
 
+## 📝 Notas de Versión (v1.8.6)
+- **Optimización de Transición de Retorno**:
+  - Implementación de animación por GPU (**Scale-Down** + **Fade-Out**) en el botón "VER DETALLES" (`return.html`) usando clases CSS en vez de estilos inline para un renderizado ultra eficiente a 60 FPS.
+  - Sincronización del tiempo de espera: Se redujo a **100ms** tanto en el frontend (`setTimeout`) como en el comando del backend de Rust (`window.rs` / `restore_app_logic`) para una sensación de velocidad e interactividad instantánea al regresar a las especificaciones.
+- **Fondos Optimizados**:
+  - Migración de imágenes a la bóveda local del frontend en `/assets/images/fallback-bg`.
+  - Reubicación de videos de fondo al directorio `/assets/videos/`.
+  - Remoción de filtros de blur CSS para mayor estabilidad visual.
+
 ## 📝 Notas de Versión (v1.6.9)
 - **Actualización de Mantenimiento**: Incremento de versión para nueva release.
 - **Sincronización de Archivos**: Asegurada la paridad de versiones entre Cargo, Tauri y Node.
-
-## 📝 Notas de Versión (v1.3.4)
-- **Optimización de Restauración**: Corregido el "flicker" visual donde las especificaciones eran visibles momentáneamente durante la restauración automática por inactividad.
-- **Transiciones Mejoradas**: Reducción del tiempo de cambio de vista a 0.3s para una respuesta más fluida y profesional.
-- **Event Orchestration**: Sincronización precisa entre el backend (Rust) y el frontend (Vue) para asegurar que el contenido promocional sea lo primero que se visualice al "despertar" el equipo.
 
 ---
 
@@ -94,7 +100,7 @@ npm install
 # Modo Desarrollo (HMR)
 npm run dev
 
-# Compilar para Producción (Genera Zenit_1.6.9_x64-setup.exe)
+# Compilar para Producción (Genera Zenit_1.8.6_x64-setup.exe)
 npm run tauri build
 ```
 
@@ -116,11 +122,11 @@ cargo test
 ```
 
 ### 📊 Cobertura Actual
-- **Backend Unitario (Rust)**: Validación estricta de la telemetría (redondeo matemático de almacenamiento, priorización inteligente de GPUs, refinamiento de nombres de CPU/Bios).
-- **Frontend Unitario (Vue)**: Validación de *fallbacks* en la UI (ej. asegurar que el Kiosco muestra "Cargando..." y no crashea si el hardware es defectuoso).
-- **Frontend Integración (Pinia + Vue)**: Simulación del Bypass Maestro (`z3n1t`), mutación segura de Specs del Retail y sincronización del estado global de inactividad.
-- **Tauri IPC (Bridge)**: Interacción simulada de la Bóveda (Vault) para carga, borrado y prevención de errores por capacidad máxima de videos.
-- **Ciclo de Vida de Reproducción**: El `VideoPlayer` tiene asegurado su bucle infinito y su interrupción por eventos.
+- **Backend Unitario (Rust)**: Validación de la telemetría, posicionamiento lógico centrado de la ventana de retorno, redondeo comercial y priorización de GPU.
+- **Frontend Unitario (Vue)**: Validación de *fallbacks* en la UI ante datos incompletos.
+- **Frontend Integración (Pinia + Vue)**: Simulación de Bypass Maestro, mutación segura de Specs del Retail y sincronización del estado global de inactividad.
+- **Tauri IPC (Bridge)**: Interacción simulada de la Bóveda (Vault) para carga y borrado de videos.
+- **Ciclo de Vida de Reproducción**: Control total de bucles e interrupciones en el componente `VideoPlayer`.
 
 ---
 
@@ -169,10 +175,10 @@ Zenit expone una serie de comandos nativos en Rust para el control total del equ
 3.  **`get_video_path`**: Resuelve la ruta física absoluta de los recursos multimedia según el entorno (desarrollo o producción).
 
 ### 🪟 Gestión de Ventanas (`window.rs`)
-4.  **`minimize_app`**: Minimiza el kiosko de forma segura y lanza la "Ventana de Retorno" para permitir pruebas del equipo.
-5.  **`restore_app`**: Cierra la ventana de retorno y recupera el foco absoluto de la aplicación principal.
-6.  **`set_always_on_top`**: Alterna la jerarquía de la ventana para asegurar que Zenit sea siempre lo primero que vea el cliente.
-7.  **`quit_app`**: Cierre administrativo que asegura que todos los hilos y procesos huérfanos se detengan correctamente.
+4.  **`minimize_app`**: Minimiza el kiosko de forma segura y lanza la "Ventana de Retorno" (centrada verticalmente en el lateral derecho del monitor) para permitir la interacción libre con Windows.
+5.  **`restore_app`**: Oculta la ventana flotante de retorno y recupera el foco de la ventana principal de especificaciones.
+6.  **`set_always_on_top`**: Alterna la jerarquía de la ventana para asegurar que Zenit permanezca siempre al frente de la pantalla.
+7.  **`quit_app`**: Cierre administrativo que detiene de manera limpia todos los procesos y hooks.
 
 ### 🎥 Bóveda de Videos (`vault.rs`)
 8.  **`list_custom_videos`**: Escanea el directorio de recursos para identificar videos locales.
