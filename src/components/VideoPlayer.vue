@@ -307,7 +307,6 @@ defineExpose({ videoRef });
       ref="videoPlayerA"
       id="promo-video-a" 
       :class="activePlayer === 'A' ? 'player-active' : 'player-inactive'"
-      autoplay
       muted 
       playsinline
       preload="auto"
@@ -320,7 +319,6 @@ defineExpose({ videoRef });
       ref="videoPlayerB"
       id="promo-video-b" 
       :class="activePlayer === 'B' ? 'player-active' : 'player-inactive'"
-      autoplay
       muted 
       playsinline
       preload="auto"

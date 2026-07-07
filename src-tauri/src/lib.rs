@@ -117,7 +117,7 @@ pub fn run() {
                             let backup_path = user_data.join("config.json.bak");
                             if backup_path.exists() { let _ = fs::remove_file(&backup_path); }
                             let _ = fs::rename(&config_path, &backup_path);
-                            println!("[Zenit] Migración config.json → store.json completada");
+                            log::info!("[Zenit] Migración config.json → store.json completada");
                         }
                     }
                 }

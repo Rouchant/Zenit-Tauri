@@ -38,7 +38,7 @@ pub fn start_keyboard_guardian() {
 
             if hook != 0 {
                 let _ = HOOK_HANDLE.set(hook);
-                info!("[Guardian] Hook de teclado registrado exitosamente.");
+                log::debug!("[Guardian] Hook de teclado registrado exitosamente.");
                 let mut msg: MSG = std::mem::zeroed();
                 while GetMessageW(&mut msg, 0, 0, 0) != 0 {
                     TranslateMessage(&msg);

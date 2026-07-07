@@ -6,7 +6,7 @@ const NO_WINDOW: u32 = 0x08000000;
 /// Ejecuta configuraciones de sistema (Brillo, Energía, Notificaciones, etc.)
 pub fn run_system_setup() {
     std::thread::spawn(|| {
-        println!("[Setup] Aplicando parches de energía (powercfg)...");
+        log::debug!("[Setup] Aplicando parches de energía (powercfg)...");
         let output = Command::new("powercfg")
             .arg("/l")
             .creation_flags(NO_WINDOW)
@@ -65,7 +65,7 @@ pub fn cleanup_cache(app_data_dir: &std::path::Path) {
     let webview_dir = app_data_dir.join("EBWebView");
     if !webview_dir.exists() { return; }
 
-    println!("[Setup] Limpiando caché de WebView2 en {:?}", webview_dir);
+    log::debug!("[Setup] Limpiando caché de WebView2 en {:?}", webview_dir);
 
     // Directorios temporales comunes que se pueden borrar sin perder configuración esencial
     let folders_to_clean = ["Cache", "Code Cache", "blob_storage"];
