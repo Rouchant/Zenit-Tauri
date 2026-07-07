@@ -2,7 +2,7 @@
 
 ![Zenit Logo](public/assets/logo.png)
 
-![Version](https://img.shields.io/badge/version-1.8.8-blue.svg)
+![Version](https://img.shields.io/badge/version-1.8.9-blue.svg)
 ![Tauri](https://img.shields.io/badge/framework-Tauri%20v2-FFC131.svg)
 ![Rust](https://img.shields.io/badge/backend-Rust-orange.svg)
 ![Vue 3](https://img.shields.io/badge/frontend-Vue%203-42b883.svg)
@@ -28,7 +28,7 @@ Zenit es una solución de nivel empresarial para **Showcase Terminals**, diseña
 
 ---
 
-## ✨ Características Principales (v1.8.8)
+## ✨ Características Principales (v1.8.9)
 
 ### 🖥️ Detección de Hardware Nativa (100% Rust & CIM/WMI)
 
@@ -60,6 +60,16 @@ Zenit utiliza un motor de telemetría modularizado en Rust para una velocidad y 
 - **Unidades Uniformes**: Formato de texto profesional sin espacios inconsistentes (`16GB`, `512GB`, `115W`).
 
 ---
+
+## 📝 Notas de Versión (v1.8.9)
+
+- **Eliminación del Sistema de Doble Búfer**:
+  - Reemplazo del complejo sistema de múltiples reproductores de video (A y B) por un solo elemento de video con intercambio reactivo de fuentes.
+  - Corrección de raíz de la anomalía de fotogramas residuales (*ghost frames*) durante transiciones entre múltiples videos locales en unidades SSD.
+- **Optimización de Tiempos de Arranque (Node.js 17+)**:
+  - Configuración explícita de `127.0.0.1` en vez de `localhost` en el servidor de desarrollo de Vite y CLI de Tauri para evitar retrasos causados por resoluciones de bucle DNS a direcciones IPv6 (`::1`).
+  - Desactivación del borrado sincrónico de la caché de WebView2 en compilaciones de desarrollo (Debug), lo que disminuye el tiempo de apertura inicial de la ventana del kiosco.
+  - Configuración de exclusión de carpetas nativas de compilación Rust (`**/src-tauri/**`) en el watchdog de archivos de Vite para evitar alta utilización de CPU y disco.
 
 ## 📝 Notas de Versión (v1.8.8)
 
@@ -122,7 +132,7 @@ npm install
 # Modo Desarrollo (HMR)
 npm run dev
 
-# Compilar para Producción (Genera Zenit_1.8.8_x64-setup.exe)
+# Compilar para Producción (Genera Zenit_1.8.9_x64-setup.exe)
 npm run tauri build
 ```
 

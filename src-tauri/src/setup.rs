@@ -61,6 +61,7 @@ pub fn run_system_setup() {
 
 /// Limpia los directorios de caché de WebView2 para evitar acumulación de archivos temporales.
 /// Se ejecuta al inicio, antes de que el motor de renderizado bloquee los archivos.
+#[allow(dead_code)]
 pub fn cleanup_cache(app_data_dir: &std::path::Path) {
     let webview_dir = app_data_dir.join("EBWebView");
     if !webview_dir.exists() { return; }

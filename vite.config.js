@@ -22,6 +22,14 @@ export default defineConfig({
       '/assets': resolve(__dirname, './public/assets'),
     },
   },
+  server: {
+    host: '127.0.0.1',
+    port: 5173,
+    strictPort: true,
+    watch: {
+      ignored: ['**/src-tauri/**'],
+    },
+  },
   test: {
     environment: 'happy-dom',
     environmentOptions: {

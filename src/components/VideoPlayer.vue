@@ -1,5 +1,5 @@
 <script setup>
-import { computed, onMounted, onUnmounted, ref, watchEffect, nextTick, watch } from 'vue';
+import { computed, onMounted, onUnmounted, ref, watch, nextTick } from 'vue';
 import { useSpecsStore } from '../store/specs';
 import { timers } from '../utils/timers';
 
@@ -29,52 +29,27 @@ const videoUrls = computed(() => {
   return [store.getVideoUrl(store.isAsus ? '__ASUS_PROMO__' : '__GENERIC_PROMO__')];
 });
 
-// Doble búfer (Preload Inteligente)
-const activePlayer = ref('A'); // 'A' o 'B'
-const videoPlayerA = ref(null);
-const videoPlayerB = ref(null);
-const srcA = ref('');
-const srcB = ref('');
+// Fuente actual del video (reactiva)
+const currentSrc = computed(() => videoUrls.value[currentIndex.value] || '');
 
-// Sincronizar fuentes e iniciar precarga cuando cambien los videos de la lista
-watch(videoUrls, (newUrls) => {
+// Sincronizar cuando cambie la lista de videos
+watch(videoUrls, () => {
   currentIndex.value = 0;
-  activePlayer.value = 'A';
-  srcA.value = newUrls[0] || '';
-  // Precargar el segundo video (o el mismo si solo hay uno) en el reproductor inactivo
-  srcB.value = newUrls[1] || newUrls[0] || '';
-  
-  nextTick(() => {
-    videoRef.value = videoPlayerA.value;
-    playVideo();
-  });
+  nextTick(() => playVideo());
 }, { immediate: true });
 
-// Sincronizar videoRef con el reproductor activo para que el watchdog externo funcione transparente
-watch(activePlayer, (newPlayer) => {
-  videoRef.value = newPlayer === 'A' ? videoPlayerA.value : videoPlayerB.value;
-  
-  // Reiniciar telemetría del watchdog de congelamiento (RAF) para evitar falsos positivos por el cambio de elemento
-  const wb = timers.rafWatchdog;
-  if (wb.active && videoRef.value) {
-    wb.lastTime = videoRef.value.currentTime;
-    wb.stallTime = 0;
-  }
-});
-
 async function playVideo() {
-  const activeVideo = activePlayer.value === 'A' ? videoPlayerA.value : videoPlayerB.value;
-  if (activeVideo) {
+  if (videoRef.value) {
     try {
-      const playPromise = activeVideo.play();
+      const playPromise = videoRef.value.play();
       if (playPromise !== undefined) {
         await playPromise;
       }
     } catch (error) {
       if (error.name !== 'AbortError') {
         console.warn('Inactivity video failed to play, attempting reload:', error);
-        activeVideo.load();
-        activeVideo.play().catch(e => console.error("Final play attempt failed:", e));
+        videoRef.value.load();
+        videoRef.value.play().catch(e => console.error("Final play attempt failed:", e));
       }
     }
   }
@@ -82,22 +57,15 @@ async function playVideo() {
 
 const safetyTimeout = ref(null);
 
-const onVideoError = (e) => {
-  const activeVideo = activePlayer.value === 'A' ? videoPlayerA.value : videoPlayerB.value;
-  if (e.target !== activeVideo) {
-    // Ignorar errores del reproductor en segundo plano (precargando)
-    return;
-  }
-  console.error('[VideoPlayer] Active video error detected:', e);
+const onVideoError = () => {
+  console.error('[VideoPlayer] Video error detected');
   
   if (retryCount.value < 3) {
     retryCount.value++;
     console.warn(`[VideoPlayer] Attempting recovery (retry ${retryCount.value}/3)...`);
     
-    activeVideo.load();
-    nextTick(() => {
-      playVideo();
-    });
+    videoRef.value?.load();
+    nextTick(() => playVideo());
   } else {
     console.error('[VideoPlayer] Max retries reached, exiting video mode.');
     store.isVideoMode = false;
@@ -135,11 +103,10 @@ const startSafetyTimer = (durationInSeconds) => {
   }
 };
 
-const onMetadataLoaded = (e) => {
-  const activeVideo = activePlayer.value === 'A' ? videoPlayerA.value : videoPlayerB.value;
-  if (e.target === activeVideo) {
-    const duration = activeVideo.duration;
-    console.log('[VideoPlayer] Metadata loaded for active player, duration:', duration);
+const onMetadataLoaded = () => {
+  if (videoRef.value) {
+    const duration = videoRef.value.duration;
+    console.log('[VideoPlayer] Metadata loaded, duration:', duration);
     startSafetyTimer(duration);
   }
 };
@@ -148,34 +115,18 @@ const onVideoEnded = () => {
   console.log('[VideoPlayer] Video ended, index:', currentIndex.value, 'of', videoUrls.value.length);
   stopRafWatchdog();
   clearSafetyTimer();
-  retryCount.value = 0; // Reset retries on success
+  retryCount.value = 0;
   
-  if (currentIndex.value === videoUrls.value.length - 1) {
+  if (currentIndex.value >= videoUrls.value.length - 1) {
     console.log('[VideoPlayer] Last video reached, returning to specs view.');
     store.isVideoMode = false;
   } else {
-    // Avanzar índice
+    // Avanzar al siguiente video (el cambio de currentSrc es reactivo via computed)
     currentIndex.value++;
-    
-    // Cambiar al reproductor pre-cargado
-    activePlayer.value = activePlayer.value === 'A' ? 'B' : 'A';
-    
-    // Reproducir instantáneamente el nuevo reproductor activo
     nextTick(() => {
       playVideo();
       startRafWatchdog();
     });
-
-    // Iniciar la precarga del siguiente video en el reproductor inactivo
-    const nextIndex = (currentIndex.value + 1) % videoUrls.value.length;
-    const nextUrl = videoUrls.value[nextIndex] || '';
-    if (activePlayer.value === 'A') {
-      srcB.value = nextUrl;
-      videoPlayerB.value?.load();
-    } else {
-      srcA.value = nextUrl;
-      videoPlayerA.value?.load();
-    }
   }
 };
 
@@ -235,15 +186,15 @@ const runOverlayCycle = () => {
   boxVisible.value = true;
   isDimmed.value = false;
 
-  // 2. After 10 s dim to 50 %
+  // 2. After 10 s dim to 50 %
   timers.overlay = setTimeout(() => {
     isDimmed.value = true;
 
-    // 3. After another 15 s hide and reposition
+    // 3. After another 15 s hide and reposition
     timers.overlay = setTimeout(() => {
       boxVisible.value = false;
 
-      // 4. After hide transition (800 ms) change position and restart
+      // 4. After hide transition (800 ms) change position and restart
       timers.overlay = setTimeout(() => {
         boxPosition.value = boxPosition.value === 'top-right' ? 'top-left' : 'top-right';
         isDimmed.value = false;
@@ -304,25 +255,12 @@ defineExpose({ videoRef });
 <template>
   <div class="video-container">
     <video 
-      ref="videoPlayerA"
-      id="promo-video-a" 
-      :class="activePlayer === 'A' ? 'player-active' : 'player-inactive'"
+      ref="videoRef"
+      id="promo-video" 
       muted 
       playsinline
       preload="auto"
-      :src="srcA"
-      @ended="onVideoEnded"
-      @error="onVideoError"
-      @loadedmetadata="onMetadataLoaded"
-    ></video>
-    <video 
-      ref="videoPlayerB"
-      id="promo-video-b" 
-      :class="activePlayer === 'B' ? 'player-active' : 'player-inactive'"
-      muted 
-      playsinline
-      preload="auto"
-      :src="srcB"
+      :src="currentSrc"
       @ended="onVideoEnded"
       @error="onVideoError"
       @loadedmetadata="onMetadataLoaded"
@@ -416,16 +354,6 @@ video {
   width: 100%;
   height: 100%;
   object-fit: cover;
-  transition: opacity 0.25s ease;
-}
-.player-active {
-  opacity: 1;
-  z-index: 1;
-}
-.player-inactive {
-  opacity: 0;
-  z-index: 0;
-  pointer-events: none;
 }
 
 /* Posicionamiento dinámico del overlay */

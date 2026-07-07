@@ -104,6 +104,7 @@ pub fn run() {
             let _ = fs::create_dir_all(user_data.join("custom-videos"));
 
             // Limpiar caché de WebView (Evita acumulación de basura en el kiosk)
+            #[cfg(not(debug_assertions))]
             crate::setup::cleanup_cache(&user_data);
 
             // 5. Migración de datos (config.json antiguo a store.json moderno)
