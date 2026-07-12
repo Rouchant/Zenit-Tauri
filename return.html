@@ -150,12 +150,7 @@
             transform: translateZ(0);
             overflow: hidden;
             clip-path: inset(0 round 16px);
-        }
-
-        .return-btn.is-hidden {
-            opacity: 0;
-            transform: scale(0.8);
-            pointer-events: none;
+            isolation: isolate;
         }
 
         @keyframes rotate-border-transform {
@@ -210,6 +205,21 @@
             transform: scale(0.96);
             filter: brightness(0.85);
             box-shadow: 0 2px 4px rgba(0, 0, 0, 0.2);
+        }
+
+        /* Declarada después de active/is-active para ganar prioridad en la cascada */
+        .return-btn.is-hidden {
+            opacity: 0;
+            transform: scale(0.8);
+            pointer-events: none;
+        }
+
+        /* Oculta de inmediato el haz de luz giratorio durante la animación para evitar la fuga visual blanca */
+        .return-btn:active::before,
+        .return-btn.is-active::before,
+        .return-btn.is-hidden::before {
+            opacity: 0;
+            transition: opacity 0.05s ease-out;
         }
 
         .btn-icon,
