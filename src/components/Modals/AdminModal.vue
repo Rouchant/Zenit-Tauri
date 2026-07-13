@@ -359,6 +359,18 @@ const isHardwareLimitReached = computed(() => {
                             </div>
                         </div>
                     </div>
+
+                    <!-- Características Destacadas (Destacables) -->
+                    <div style="margin-top: 25px; border-top: 1px solid rgba(255, 255, 255, 0.05); padding-top: 20px;">
+                        <label for="badge-select" style="margin-bottom: 12px; display: block; font-weight: 600; color: var(--white);">Características Destacadas (Destacables)</label>
+                        <div class="custom-select" style="max-width: 350px;">
+                            <select id="badge-select" name="storeBadge" v-model="editableSpecs.storeBadge">
+                                <option value="none">Ninguno (Normal)</option>
+                                <option value="touch">Pantalla Táctil</option>
+                            </select>
+                        </div>
+                    </div>
+
                     <div v-if="isHardwareLimitReached" class="price-limit-error" style="margin-top: 20px;">
                         ⚠️ Se ha alcanzado el límite de 80 caracteres en un campo de hardware.
                     </div>
@@ -506,78 +518,46 @@ const isHardwareLimitReached = computed(() => {
             <div v-if="activeTab === 'tienda'" class="tab-content">
                 <section class="settings-section">
                     <div class="price-settings-zone">
-                        <div class="hardware-grid">
-                            <!-- Columna Izquierda: SKU, Precios y Botón de Limpieza -->
-                            <div style="display: flex; flex-direction: column; gap: 15px;">
-                                <!-- SKU -->
-                                <div class="input-group">
-                                    <label for="sku-input">SKU del Producto</label>
-                                    <div class="input-with-action">
-                                        <input 
-                                            id="sku-input" 
-                                            name="sku" 
-                                            type="text" 
-                                            v-model="editableSpecs.sku" 
-                                            placeholder="inserte SKU"
-                                            @input="editableSpecs.sku = editableSpecs.sku.replace(/\D/g, '')"
-                                            autocomplete="off"
-                                            maxlength="80"
-                                        >
-                                    </div>
-                                </div>
-
-                                <!-- Precio Tarjeta -->
-                                <div class="input-group">
-                                    <label for="price-primary">Precio con Tarjeta</label>
-                                    <div class="input-with-action">
-                                        <input id="price-primary" name="pricePrimary" type="text" v-model="editableSpecs.pricePrimary" placeholder="Ej: $899.990" maxlength="28" autocomplete="off">
-                                    </div>
-                                </div>
-
-                                <!-- Precio Todo Medio -->
-                                <div class="input-group">
-                                    <label for="price-secondary">Precio Todo Medio de Pago</label>
-                                    <div class="input-with-action">
-                                        <input id="price-secondary" name="priceSecondary" type="text" v-model="editableSpecs.priceSecondary" placeholder="Ej: $1.099.990" maxlength="28" autocomplete="off">
-                                    </div>
-                                </div>
-
-                                <!-- Limpiar Precios -->
-                                <div style="display: flex; justify-content: flex-start; margin-top: 5px;">
-                                    <button class="btn-clean-action" @click="clearPrices">
-                                        <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="lucide lucide-eraser"><path d="m7 21-4.3-4.3c-1-1-1-2.5 0-3.4l9.9-9.9c1-1 2.5-1 3.4 0l4.4 4.4c1 1 1 2.5 0 3.4L7 21Z"/><path d="m22 21-5.9-5.9"/><path d="m11 5 9 9"/></svg>
-                                        Limpiar Precios
-                                    </button>
+                        <div style="display: flex; flex-direction: column; gap: 15px; max-width: 50%;">
+                            <!-- SKU -->
+                            <div class="input-group">
+                                <label for="sku-input">SKU del Producto</label>
+                                <div class="input-with-action">
+                                    <input 
+                                        id="sku-input" 
+                                        name="sku" 
+                                        type="text" 
+                                        v-model="editableSpecs.sku" 
+                                        placeholder="inserte SKU"
+                                        @input="editableSpecs.sku = editableSpecs.sku.replace(/\D/g, '')"
+                                        autocomplete="off"
+                                        maxlength="80"
+                                    >
                                 </div>
                             </div>
 
-                            <!-- Columna Derecha: Etiqueta / Estado de Tienda -->
-                            <div style="display: flex; flex-direction: column; gap: 15px;">
-                                <div class="input-group">
-                                    <label style="margin-bottom: 12px; display: block;">Etiqueta / Estado de Tienda</label>
-                                    <div style="display: flex; flex-direction: column; gap: 12px;">
-                                        <label class="checkbox-container" style="color: var(--white); cursor: pointer; padding-left: 30px; font-size: 0.95rem;">
-                                            <input type="radio" value="none" v-model="editableSpecs.storeBadge">
-                                            <span class="checkmark" style="border-radius: 50%; height: 20px; width: 20px;"></span>
-                                            Ninguno (Normal)
-                                        </label>
-                                        <label class="checkbox-container" style="color: var(--white); cursor: pointer; padding-left: 30px; font-size: 0.95rem;">
-                                            <input type="radio" value="delivery" v-model="editableSpecs.storeBadge">
-                                            <span class="checkmark" style="border-radius: 50%; height: 20px; width: 20px;"></span>
-                                            Solo Despacho
-                                        </label>
-                                        <label class="checkbox-container" style="color: var(--white); cursor: pointer; padding-left: 30px; font-size: 0.95rem;">
-                                            <input type="radio" value="no-stock" v-model="editableSpecs.storeBadge">
-                                            <span class="checkmark" style="border-radius: 50%; height: 20px; width: 20px;"></span>
-                                            Sin Stock
-                                        </label>
-                                        <label class="checkbox-container" style="color: var(--white); cursor: pointer; padding-left: 30px; font-size: 0.95rem;">
-                                            <input type="radio" value="last-unit" v-model="editableSpecs.storeBadge">
-                                            <span class="checkmark" style="border-radius: 50%; height: 20px; width: 20px;"></span>
-                                            Última unidad
-                                        </label>
-                                    </div>
+                            <!-- Precio Tarjeta -->
+                            <div class="input-group">
+                                <label for="price-primary">Precio con Tarjeta</label>
+                                <div class="input-with-action">
+                                    <input id="price-primary" name="pricePrimary" type="text" v-model="editableSpecs.pricePrimary" placeholder="Ej: $899.990" maxlength="28" autocomplete="off">
                                 </div>
+                            </div>
+
+                            <!-- Precio Todo Medio -->
+                            <div class="input-group">
+                                <label for="price-secondary">Precio Todo Medio de Pago</label>
+                                <div class="input-with-action">
+                                    <input id="price-secondary" name="priceSecondary" type="text" v-model="editableSpecs.priceSecondary" placeholder="Ej: $1.099.990" maxlength="28" autocomplete="off">
+                                </div>
+                            </div>
+
+                            <!-- Limpiar Precios -->
+                            <div style="display: flex; justify-content: flex-start; margin-top: 5px;">
+                                <button class="btn-clean-action" @click="clearPrices">
+                                    <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="lucide lucide-eraser"><path d="m7 21-4.3-4.3c-1-1-1-2.5 0-3.4l9.9-9.9c1-1 2.5-1 3.4 0l4.4 4.4c1 1 1 2.5 0 3.4L7 21Z"/><path d="m22 21-5.9-5.9"/><path d="m11 5 9 9"/></svg>
+                                    Limpiar Precios
+                                </button>
                             </div>
                         </div>
 

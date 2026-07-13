@@ -321,19 +321,9 @@ defineExpose({ videoRef });
       </div>
 
       <!-- Store Status Inactivity Visual Pill -->
-      <div v-if="store.currentSpecs?.model && store.currentSpecs.storeBadge && store.currentSpecs.storeBadge !== 'none'" class="store-status-inactivity" :class="{ 'status-no-stock': store.currentSpecs.storeBadge === 'no-stock', 'status-delivery': store.currentSpecs.storeBadge === 'delivery', 'status-last-unit': store.currentSpecs.storeBadge === 'last-unit' }">
-        <template v-if="store.currentSpecs.storeBadge === 'delivery'">
-          <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="lucide lucide-truck-icon lucide-truck"><path d="M14 18V6a2 2 0 0 0-2-2H4a2 2 0 0 0-2 2v11a1 1 0 0 0 1 1h2"/><path d="M15 18H9"/><path d="M19 18h2a1 1 0 0 0 1-1v-3.65a1 1 0 0 0-.22-.624l-3.48-4.35A1 1 0 0 0 17.52 8H14"/><circle cx="17" cy="18" r="2"/><circle cx="7" cy="18" r="2"/></svg>
-          <span>Solo Despacho</span>
-        </template>
-        <template v-else-if="store.currentSpecs.storeBadge === 'no-stock'">
-          <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="lucide lucide-package-x-icon lucide-package-x"><path d="M12 22V12"/><path d="m16.5 14.5 5 5"/><path d="m16.5 19.5 5-5"/><path d="M21 10.5V8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.729l7 4a2 2 0 0 0 2 .001l.13-.074"/><path d="M3.29 7 12 12l8.71-5"/><path d="m7.5 4.27 8.997 5.148"/></svg>
-          <span>Sin Stock</span>
-        </template>
-        <template v-else-if="store.currentSpecs.storeBadge === 'last-unit'">
-          <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="lucide lucide-box-icon lucide-box"><path d="M21 8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73l7 4a2 2 0 0 0 2 0l7-4A2 2 0 0 0 21 16Z"/><path d="m3.3 7 8.7 5 8.7-5"/><path d="M12 22V12"/></svg>
-          <span>Última unidad</span>
-        </template>
+      <div v-if="store.currentSpecs?.model && store.currentSpecs.storeBadge === 'touch'" class="store-status-inactivity status-touch">
+          <svg version="1.1" viewBox="0 0 84.91 122.88" class="lucide lucide-touch-icon" style="width: 1.5vw; height: 1.5vw;"><g><path d="M26.6,80.57c-0.11-0.06-0.25-0.14-0.37-0.23c-1.49-1.18-3.13-2.51-4.54-3.66c-2.06-1.69-4.43-3.64-6.09-5.02 c-1.13-0.93-2.42-1.58-3.63-1.83c-0.79-0.14-1.49-0.14-2.06,0.08c-0.45,0.2-0.85,0.56-1.1,1.13c-0.34,0.76-0.51,1.83-0.42,3.3 c0.08,1.3,0.54,2.71,1.13,4.09c0.87,2,2.09,3.86,2.99,5.04c0.06,0.08,0.11,0.14,0.14,0.23l17.84,25.48 c0.23,0.34,0.37,0.71,0.39,1.07c0.37,2.93,0.99,5.16,1.89,6.54c0.68,1.01,1.52,1.52,2.62,1.49h28.07c1.75-0.03,3.33-0.53,4.79-1.55 c1.61-1.1,3.04-2.82,4.37-5.13c0.03-0.03,0.06-0.08,0.08-0.11c0.51-0.87,1.18-2,1.83-3.07c2.85-4.68,5.33-8.77,5.61-14.57l-0.17-8 c-0.03-0.11-0.03-0.23-0.03-0.34s0-0.87,0.03-1.89c0.06-5.3,0.14-11.84-4.71-12.65h-3.13c-0.03,1.49-0.11,3.02-0.2,4.48 c-0.08,1.32-0.17,2.56-0.17,3.78c0,1.3-1.04,2.34-2.34,2.34c-1.3,0-2.34-1.04-2.34-2.34c0-1.21,0.08-2.62,0.17-4.09 c0.31-4.99,0.68-10.71-3.3-11.41h-3.1c-0.17,0-0.34-0.03-0.51-0.06c0.03,1.8-0.08,3.66-0.2,5.47C60.08,70.46,60,71.7,60,72.91 c0,1.3-1.04,2.34-2.34,2.34c-1.3,0-2.34-1.04-2.34-2.34c0-1.21,0.08-2.62,0.17-4.09c0.31-4.99,0.68-10.71-3.3-11.41h-3.1 c-0.23,0-0.42-0.03-0.62-0.08v9.1c0,1.3-1.04,2.34-2.34,2.34c-1.3,0-2.34-1.04-2.34-2.34V41.99c0-4.09-1.66-6.68-3.8-7.75 c-0.79-0.4-1.63-0.59-2.45-0.59c-0.82,0-1.66,0.2-2.45,0.59c-2.11,1.07-3.75,3.66-3.75,7.86v42.81c0,1.3-1.04,2.34-2.34,2.34c-1.3,0-2.34-1.04-2.34-2.34v-4.34H26.6L26.6,80.57z"/></g></svg>
+          <span>Pantalla Táctil</span>
       </div>
     </div>
   </div>
@@ -594,8 +584,8 @@ video {
   font-weight: 700;
   font-size: 0.9vw;
   padding: 0.5vw 1.2vw;
-  background: rgba(10, 10, 10, 0.82);
-  border: 0.08vw solid rgba(255, 255, 255, 0.1);
+  background: #000000;
+  border: 0.08vw solid rgba(255, 255, 255, 0.15);
   border-radius: 999vw;
   box-shadow: 0 0.4vw 1.5vw rgba(0, 0, 0, 0.4);
 }
@@ -606,33 +596,18 @@ video {
   stroke: var(--primary, #00f2ff);
 }
 
-.store-status-inactivity.status-no-stock {
-  color: #B81B0E;
-  border-color: rgba(184, 27, 14, 0.25);
-  background: rgba(15, 0, 4, 0.75);
+
+
+.store-status-inactivity.status-touch {
+  color: whitesmoke;
+  border-color: rgba(245, 245, 245, 0.4);
+  background: #000000;
 }
 
-.store-status-inactivity.status-no-stock svg {
-  stroke: #B81B0E;
-}
-
-.store-status-inactivity.status-delivery {
-  color: #FDDA0D;
-  border-color: rgba(253, 218, 13, 0.25);
-  background: rgba(10, 8, 0, 0.72);
-}
-
-.store-status-inactivity.status-delivery svg {
-  stroke: #FDDA0D;
-}
-
-.store-status-inactivity.status-last-unit {
-  color: #FF6B00;
-  border-color: rgba(255, 107, 0, 0.25);
-  background: rgba(15, 6, 0, 0.72);
-}
-
-.store-status-inactivity.status-last-unit svg {
-  stroke: #FF6B00;
+.store-status-inactivity.status-touch svg {
+  fill: whitesmoke;
+  stroke: none;
+  width: 1.5vw;
+  height: 1.5vw;
 }
 </style>

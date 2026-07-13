@@ -96,11 +96,13 @@
         }
 
         html {
-            background: transparent;
+            background: transparent !important;
+            background-color: transparent !important;
             width: 100%;
             height: 100%;
             margin: 0;
             padding: 0;
+            overflow: hidden;
         }
 
         body {
@@ -112,7 +114,8 @@
             align-items: center;
             height: 100%;
             width: 100%;
-            background: transparent;
+            background: transparent !important;
+            background-color: transparent !important;
             font-family: 'Outfit', sans-serif;
             user-select: none;
             box-sizing: border-box;
@@ -136,7 +139,7 @@
             line-height: 1.1;
             text-transform: uppercase;
             cursor: pointer;
-            transition: transform 0.1s cubic-bezier(0.4, 0, 0.2, 1), opacity 0.1s cubic-bezier(0.4, 0, 0.2, 1), filter 0.1s cubic-bezier(0.4, 0, 0.2, 1);
+            transition: filter 0.1s cubic-bezier(0.4, 0, 0.2, 1), box-shadow 0.1s cubic-bezier(0.4, 0, 0.2, 1);
             -webkit-app-region: no-drag;
             display: flex;
             flex-direction: column;
@@ -202,22 +205,13 @@
         /* Native active state and JS class active state */
         .return-btn:active,
         .return-btn.is-active {
-            transform: scale(0.96);
             filter: brightness(0.85);
             box-shadow: 0 2px 4px rgba(0, 0, 0, 0.2);
         }
 
-        /* Declarada después de active/is-active para ganar prioridad en la cascada */
-        .return-btn.is-hidden {
-            opacity: 0;
-            transform: scale(0.8);
-            pointer-events: none;
-        }
-
-        /* Oculta de inmediato el haz de luz giratorio durante la animación para evitar la fuga visual blanca */
+        /* Oculta de inmediato el haz de luz giratorio al presionar para evitar la fuga visual blanca */
         .return-btn:active::before,
-        .return-btn.is-active::before,
-        .return-btn.is-hidden::before {
+        .return-btn.is-active::before {
             opacity: 0;
             transition: opacity 0.05s ease-out;
         }
@@ -287,8 +281,7 @@
 
         // Función global para actualizar el contexto sin recargar la página
         window.setReturnContext = (store, brand) => {
-            // Asegurar que el botón esté visible e interactivo al reabrirse la ventana
-            btn.classList.remove('is-hidden');
+            // Asegurar el estado inicial del botón al reabrirse la ventana
             resetState();
 
             // Actualizar tema
@@ -335,21 +328,17 @@
         window.addEventListener('focus', resetState);
         window.addEventListener('blur', resetState);
 
-        // Al presionar el botón (pointerdown), se activa visualmente y se oculta mediante la clase .is-hidden (GPU accelerated transition)
+        // Al presionar el botón (pointerdown), se activa visualmente e inicia la restauración inmediatamente
+        // Se elimina el retardo de 100ms y el escalado/desvanecimiento CSS para evitar el bug del compositor GPU de WebView2 (fondo blanco)
         btn.addEventListener('pointerdown', async () => {
-            btn.classList.add('is-active', 'is-hidden');
+            btn.classList.add('is-active');
             
-            // Se pospone la llamada nativa 100ms para permitir que la animación CSS de escala/desvanecimiento termine de reproducirse
-            setTimeout(async () => {
-                try {
-                    await invoke('restore_app');
-                } catch (err) {
-                    console.error('Failed to restore app:', err);
-                    // Si ocurre un error restaurando la app, mostramos el botón nuevamente y restauramos su estado inicial
-                    btn.classList.remove('is-hidden');
-                    resetState();
-                }
-            }, 100);
+            try {
+                await invoke('restore_app');
+            } catch (err) {
+                console.error('Failed to restore app:', err);
+                resetState();
+            }
         });
 
         // Pixel Shift removed to avoid border alignment issues and visual glitches

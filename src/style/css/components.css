@@ -509,7 +509,7 @@
     gap: 12px;
 }
 
-/* Store Status Floating Pill (Despacho, Stock) */
+/* Store Status Floating Pill (Despacho, Stock, Táctil) */
 .store-status-pill {
     display: inline-flex;
     align-items: center;
@@ -518,8 +518,8 @@
     font-weight: 700;
     font-size: 18px;
     padding: 10px 24px;
-    background: rgba(0, 0, 0, 0.75);
-    border: 1px solid rgba(255, 255, 255, 0.1);
+    background: #000000;
+    border: 1px solid rgba(255, 255, 255, 0.15);
     border-radius: 999px;
     animation: slideUp 0.6s ease-out;
 }
@@ -530,32 +530,43 @@
     stroke: var(--primary, #00f2ff);
 }
 
-.store-status-pill.status-no-stock {
-    color: #B81B0E;
-    border-color: rgba(184, 27, 14, 0.25);
-    background: rgba(15, 0, 4, 0.75);
+
+
+.store-status-pill.status-touch {
+    color: whitesmoke;
+    border-color: rgba(245, 245, 245, 0.4);
+    background: #000000;
+    cursor: pointer;
+    user-select: none;
+    transition: transform 0.2s cubic-bezier(0.25, 0.8, 0.25, 1);
+    animation: pulseBounce 8s ease-in-out infinite;
 }
 
-.store-status-pill.status-no-stock svg {
-    stroke: #B81B0E;
+.store-status-pill.status-touch:active {
+    transform: scale(1.1) !important;
+    transition: transform 0.08s ease-out;
 }
 
-.store-status-pill.status-delivery {
-    color: #FDDA0D;
-    border-color: rgba(253, 218, 13, 0.25);
-    background: rgba(10, 8, 0, 0.72);
+.store-status-pill.status-touch svg {
+    fill: whitesmoke;
+    stroke: none;
 }
 
-.store-status-pill.status-delivery svg {
-    stroke: #FDDA0D;
-}
-
-.store-status-pill.status-last-unit {
-    color: #FF6B00;
-    border-color: rgba(255, 107, 0, 0.25);
-    background: rgba(15, 6, 0, 0.72);
-}
-
-.store-status-pill.status-last-unit svg {
-    stroke: #FF6B00;
+/* Subtle double hop animation once in a while to encourage user interaction */
+@keyframes pulseBounce {
+    0%, 85%, 100% {
+        transform: translateY(0);
+    }
+    88% {
+        transform: translateY(-4px);
+    }
+    91% {
+        transform: translateY(0);
+    }
+    94% {
+        transform: translateY(-2px);
+    }
+    97% {
+        transform: translateY(0);
+    }
 }
