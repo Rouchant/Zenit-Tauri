@@ -123,15 +123,15 @@
 }
 
 .input-group {
-    margin-bottom: 10px;
+    margin-bottom: 6px;
 }
 
 
 .input-group label {
     display: block;
-    margin-bottom: 6px;
+    margin-bottom: 4px;
     color: var(--text-muted);
-    font-size: 16px;
+    font-size: 15px;
     font-weight: 400;
 }
 
@@ -140,18 +140,18 @@
     gap: 10px;
     align-items: center;
     width: 100%;
-    min-height: 44px;
+    min-height: 38px;
 }
 
 .input-with-action input {
     flex: 1;
-    height: 44px;
+    height: 38px;
     background: #202024;
     border: 1px solid #303034;
-    padding: 0 16px;
+    padding: 0 12px;
     border-radius: 10px;
     color: var(--white);
-    font-size: 16px;
+    font-size: 15px;
     outline: none;
     transition: border-color 0.2s;
 }
@@ -167,8 +167,8 @@
 
 .custom-select select {
     width: 100%;
-    height: 44px;
-    padding: 0 40px 0 16px;
+    height: 38px;
+    padding: 0 40px 0 12px;
     background-color: #202024;
     border: 1px solid #303034;
     border-radius: 10px;
@@ -245,7 +245,7 @@
 .hardware-grid {
     display: grid;
     grid-template-columns: 1fr 1fr;
-    gap: 15px 25px;
+    gap: 10px 20px;
     padding: 5px;
 }
 

@@ -587,7 +587,7 @@ video {
   background: #000000;
   border: 0.08vw solid rgba(255, 255, 255, 0.15);
   border-radius: 999vw;
-  box-shadow: 0 0.4vw 1.5vw rgba(0, 0, 0, 0.4);
+  box-shadow: none;
 }
 
 .store-status-inactivity svg {

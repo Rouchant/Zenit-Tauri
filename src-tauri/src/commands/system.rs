@@ -290,8 +290,8 @@ fn format_display_resolution(wmi: &wmi::WMIConnection, video_results: &[HashMap<
         (1920, 1080) => " (Full HD)",
         (1920, 1200) => " (WUXGA)",
         (2560, 1440) => " (2K QHD)",
-        (2560, 1600) => " (QHD+)",
-        (2880, 1800) => " (2.8K)",
+        (2560, 1600) => " (2.5K)",
+        (2880, 1800) => " (3K)",
         (3000, 2000) => " (3K)",
         (3200, 2000) => " (3.2K)",
         (3840, 2160) => " (4K UHD)",
@@ -311,7 +311,7 @@ fn format_display_resolution(wmi: &wmi::WMIConnection, video_results: &[HashMap<
 #[cfg(windows)]
 /// Detecta el tipo de tecnología de RAM (DDR4, DDR5, LPDDR5, etc.) y su velocidad usando SMBIOS y la propiedad Speed.
 fn detect_ram_type(wmi: &wmi::WMIConnection) -> String {
-    if let Ok(results) = wmi.raw_query("SELECT SMBIOSMemoryType, Speed FROM Win32_PhysicalMemory") {
+    if let Ok(results) = wmi.raw_query("SELECT SMBIOSMemoryType, ConfiguredClockSpeed FROM Win32_PhysicalMemory") {
         let results: Vec<HashMap<String, serde_json::Value>> = results;
         if let Some(res) = results.first() {
             let mut ram_type = match res.get("SMBIOSMemoryType").and_then(|v| v.as_u64()).unwrap_or(0) {
@@ -325,7 +325,7 @@ fn detect_ram_type(wmi: &wmi::WMIConnection) -> String {
                 35 => "LPDDR5",
                 _ => "DDR4"
             };
-            let speed = match res.get("Speed") {
+            let speed = match res.get("ConfiguredClockSpeed") {
                 Some(serde_json::Value::Number(n)) => n.as_u64().unwrap_or(0),
                 Some(serde_json::Value::String(s)) => s.parse::<u64>().unwrap_or(0),
                 _ => 0,

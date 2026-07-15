@@ -44,7 +44,7 @@ const tryPc = (e) => {
         label="Procesador"
         :tag="specs.gen"
         :value="specs.processor"
-        :subValue="specs.cores ? `${specs.cores} Núcleos / ${specs.threads} Hilos` : ''"
+        :subValue="specs.coresAndThreads || (specs.cores ? `${specs.cores} Núcleos / ${specs.threads} Hilos` : '')"
         :icon="procIcon"
       />
       

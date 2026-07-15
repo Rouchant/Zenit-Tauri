@@ -53,6 +53,7 @@ const editableSpecs = reactive({
     landingVideoType: 'default',
     showAsusWarrantyTicker: store.currentSpecs.showAsusWarrantyTicker !== undefined ? store.currentSpecs.showAsusWarrantyTicker : false,
     ...store.currentSpecs,
+    coresAndThreads: store.currentSpecs.coresAndThreads || (store.currentSpecs.cores ? `${store.currentSpecs.cores} Núcleos / ${store.currentSpecs.threads} Hilos` : ''),
     customVideoPaths: initCustomVideoPaths()
 });
 
@@ -124,7 +125,11 @@ const save = () => {
 };
 
 const restoreField = (field) => {
-    editableSpecs[field] = store.autoDetectedSpecs[field] || '';
+    if (field === 'coresAndThreads') {
+        editableSpecs.coresAndThreads = store.autoDetectedSpecs.cores ? `${store.autoDetectedSpecs.cores} Núcleos / ${store.autoDetectedSpecs.threads} Hilos` : '';
+    } else {
+        editableSpecs[field] = store.autoDetectedSpecs[field] || '';
+    }
 };
 
 const selectVideo = async (type, index = null) => {
@@ -263,7 +268,7 @@ const clearPrices = () => {
 };
 
 const isHardwareLimitReached = computed(() => {
-    const fields = ['model', 'processor', 'gen', 'ram', 'ramType', 'storage', 'gpu', 'display', 'os'];
+    const fields = ['model', 'processor', 'gen', 'coresAndThreads', 'ram', 'ramType', 'storage', 'gpu', 'display', 'os'];
     return fields.some(f => editableSpecs[f] && editableSpecs[f].length >= 80);
 });
 </script>
@@ -314,6 +319,13 @@ const isHardwareLimitReached = computed(() => {
                             <div class="input-with-action">
                                 <input id="gen-input" name="gen" type="text" v-model="editableSpecs.gen" autocomplete="off" maxlength="80">
                                 <button class="restore-btn" @click="restoreField('gen')" title="Restaurar">↺</button>
+                            </div>
+                        </div>
+                        <div class="input-group">
+                            <label for="cores-and-threads-input">Núcleos / Hilos</label>
+                            <div class="input-with-action">
+                                <input id="cores-and-threads-input" name="coresAndThreads" type="text" v-model="editableSpecs.coresAndThreads" autocomplete="off" placeholder="Ej: 4 Núcleos / 8 Hilos" maxlength="80">
+                                <button class="restore-btn" @click="restoreField('coresAndThreads')" title="Restaurar">↺</button>
                             </div>
                         </div>
                         <div class="input-group">

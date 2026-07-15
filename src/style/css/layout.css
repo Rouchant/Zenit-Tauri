@@ -14,7 +14,6 @@
     background: transparent;
     overflow: hidden;
     z-index: 2;
-    will-change: transform;
 }
 
 #info-view {
@@ -22,7 +21,6 @@
     transform: translate(var(--shift-x, 0px), var(--shift-y, 0px));
     /* Transición de 10 segundos para que el movimiento sea imperceptible */
     transition: transform 10s ease-in-out;
-    will-change: transform;
 }
 
 .background-wrapper {

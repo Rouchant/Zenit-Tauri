@@ -139,7 +139,6 @@
             line-height: 1.1;
             text-transform: uppercase;
             cursor: pointer;
-            transition: filter 0.1s cubic-bezier(0.4, 0, 0.2, 1), box-shadow 0.1s cubic-bezier(0.4, 0, 0.2, 1);
             -webkit-app-region: no-drag;
             display: flex;
             flex-direction: column;
@@ -197,24 +196,9 @@
             /* Mathematically concentric to the outer 16px radius (16 - 2.5) */
             pointer-events: none;
             z-index: 2;
-            transition: all 0.1s cubic-bezier(0.4, 0, 0.2, 1);
         }
 
         /* NO HOVER EFFECTS */
-
-        /* Native active state and JS class active state */
-        .return-btn:active,
-        .return-btn.is-active {
-            filter: brightness(0.85);
-            box-shadow: 0 2px 4px rgba(0, 0, 0, 0.2);
-        }
-
-        /* Oculta de inmediato el haz de luz giratorio al presionar para evitar la fuga visual blanca */
-        .return-btn:active::before,
-        .return-btn.is-active::before {
-            opacity: 0;
-            transition: opacity 0.05s ease-out;
-        }
 
         .btn-icon,
         .btn-text,
@@ -331,13 +315,10 @@
         // Al presionar el botón (pointerdown), se activa visualmente e inicia la restauración inmediatamente
         // Se elimina el retardo de 100ms y el escalado/desvanecimiento CSS para evitar el bug del compositor GPU de WebView2 (fondo blanco)
         btn.addEventListener('pointerdown', async () => {
-            btn.classList.add('is-active');
-            
             try {
                 await invoke('restore_app');
             } catch (err) {
                 console.error('Failed to restore app:', err);
-                resetState();
             }
         });
 
