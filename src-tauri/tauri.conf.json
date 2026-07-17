@@ -25,7 +25,8 @@
         "center": true,
         "focus": true,
         "devtools": false,
-        "visible": false
+        "visible": false,
+        "useHttpsScheme": true
       },
       {
         "label": "splashscreen",
@@ -41,7 +42,8 @@
         "shadow": false,
         "skipTaskbar": true,
         "visible": true,
-        "center": true
+        "center": true,
+        "useHttpsScheme": true
       },
       {
         "label": "return",
@@ -56,11 +58,12 @@
         "transparent": true,
         "shadow": false,
         "skipTaskbar": true,
-        "visible": false
+        "visible": false,
+        "useHttpsScheme": true
       }
     ],
     "security": {
-      "csp": "default-src 'self' asset: http://asset.localhost https://asset.localhost https://tauri.localhost http://tauri.localhost; img-src 'self' data: asset: http://asset.localhost https://asset.localhost https://tauri.localhost http://tauri.localhost; media-src 'self' asset: http://asset.localhost https://asset.localhost https://tauri.localhost http://tauri.localhost; connect-src 'self' asset: http://asset.localhost https://asset.localhost https://tauri.localhost http://tauri.localhost",
+      "csp": "default-src 'self' asset: stream: http://asset.localhost https://asset.localhost https://tauri.localhost http://tauri.localhost http://stream.localhost https://stream.localhost; img-src 'self' data: asset: http://asset.localhost https://asset.localhost https://tauri.localhost http://tauri.localhost; media-src 'self' asset: stream: http://asset.localhost https://asset.localhost https://tauri.localhost http://tauri.localhost http://stream.localhost https://stream.localhost; connect-src 'self' asset: stream: http://asset.localhost https://asset.localhost https://tauri.localhost http://tauri.localhost http://stream.localhost https://stream.localhost",
       "assetProtocol": {
         "enable": true,
         "scope": [

@@ -1,7 +1,6 @@
 import { defineStore } from 'pinia';
 import { ref, computed } from 'vue';
 import { tauriAPI } from '../api/tauriApi';
-import { convertFileSrc } from '@tauri-apps/api/core';
 import { LazyStore } from '@tauri-apps/plugin-store';
 
 // LazyStore: se carga sólo al primer acceso, persistente en disco
@@ -32,6 +31,20 @@ const INTERNAL_PATHS = {
 };
 
 export const useSpecsStore = defineStore('specs', () => {
+  const convertToStreamSrc = (filePath) => {
+    if (!filePath) return '';
+    if (!window.__TAURI_INTERNALS__) {
+      return filePath;
+    }
+    let normalizedPath = filePath.replace(/\\/g, '/');
+    if (normalizedPath.startsWith('//?/')) {
+      normalizedPath = normalizedPath.substring(4);
+    } else if (normalizedPath.startsWith('//?')) {
+      normalizedPath = normalizedPath.substring(3);
+    }
+    return `https://stream.localhost/${normalizedPath}`;
+  };
+
   const currentSpecs = ref({});
   const autoDetectedSpecs = ref({});
   
@@ -47,6 +60,7 @@ export const useSpecsStore = defineStore('specs', () => {
   // Aplicar clase al body inmediatamente para evitar parpadeos
   if (typeof document !== 'undefined') document.documentElement.className = `theme-${theme.value}`;
   const resolvedPaths = ref({});
+  const resourceDir = ref('');
   
   const CONFIG = {
     INACTIVITY_LIMIT: 180000,
@@ -138,7 +152,14 @@ export const useSpecsStore = defineStore('specs', () => {
       if (window.__TAURI_INTERNALS__) {
         const resDir = await tauriAPI.getVideoPath();
         if (resDir) {
-          const base = resDir.replace(/\\/g, '/');
+          let cleanDir = resDir.replace(/\\/g, '/');
+          if (cleanDir.startsWith('//?/')) {
+            cleanDir = cleanDir.substring(4);
+          } else if (cleanDir.startsWith('//?')) {
+            cleanDir = cleanDir.substring(3);
+          }
+          resourceDir.value = cleanDir;
+          const base = resourceDir.value;
           console.log("[Zenit Specs] Base resource directory:", base);
           
           const internalEntries = Object.entries(INTERNAL_PATHS);
@@ -151,13 +172,13 @@ export const useSpecsStore = defineStore('specs', () => {
                 const exists = await tauriAPI.checkFileExists(absPath);
                 console.log(`[Zenit Specs] Check themed path: ${key} -> ${absPath} -> exists: ${exists}`);
                 if (exists) {
-                  newResolved[key] = convertFileSrc(absPath);
+                  newResolved[key] = convertToStreamSrc(absPath);
                 }
               } catch (e) {
                 console.warn(`Error checking background path ${absPath}:`, e);
               }
             } else {
-              newResolved[key] = convertFileSrc(absPath);
+              newResolved[key] = convertToStreamSrc(absPath);
             }
           }
           resolvedPaths.value = newResolved;
@@ -317,12 +338,28 @@ export const useSpecsStore = defineStore('specs', () => {
     }
 
     try {
-      const normalizedPath = filePath.replace(/\\/g, '/');
-      return convertFileSrc(normalizedPath);
+      return convertToStreamSrc(filePath);
     } catch (e) {
-      console.error("Error in convertFileSrc:", e);
+      console.error("Error in convertToStreamSrc:", e);
       return filePath;
     }
+  };
+
+  const getBackgroundVideoUrl = (themeSuffix, baseKey) => {
+    const fileName = `background-${baseKey}_${themeSuffix}.mp4`;
+    if (!window.__TAURI_INTERNALS__) {
+      return `/assets/videos/${fileName}`;
+    }
+    if (resourceDir.value) {
+      let cleanDir = resourceDir.value;
+      if (cleanDir.startsWith('//?/')) {
+        cleanDir = cleanDir.substring(4);
+      } else if (cleanDir.startsWith('//?')) {
+        cleanDir = cleanDir.substring(3);
+      }
+      return `https://stream.localhost/${cleanDir}/${fileName}`;
+    }
+    return `/assets/videos/${fileName}`;
   };
 
   return {
@@ -338,6 +375,7 @@ export const useSpecsStore = defineStore('specs', () => {
     loadSpecs,
     updateTheme,
     getVideoUrl,
+    getBackgroundVideoUrl,
     isAsus: computed(() => {
       const b = (currentSpecs.value.brand || '').toLowerCase();
       const m = (currentSpecs.value.model || '').toLowerCase();
