@@ -12,8 +12,7 @@ const formatText = (text) => {
   return String(text).replace(/_/g, '<br>');
 };
 
-const tryPc = (e) => {
-    if (e && e.target) e.target.blur();
+const tryPc = () => {
     emit('close');
     
     // Retraso de 200ms para que la animación se complete y evitar que el click/hover
@@ -21,6 +20,19 @@ const tryPc = (e) => {
     setTimeout(() => {
         tauriAPI.minimizeApp(specs.value.store, store.matchedBrand);
     }, 200);
+};
+
+const handlePointerUp = (e) => {
+    if (e && e.currentTarget) {
+        e.currentTarget.blur();
+        const rect = e.currentTarget.getBoundingClientRect();
+        const x = e.clientX;
+        const y = e.clientY;
+        const isInside = (x >= rect.left && x <= rect.right && y >= rect.top && y <= rect.bottom);
+        if (isInside) {
+            tryPc();
+        }
+    }
 };
 </script>
 
@@ -49,15 +61,8 @@ const tryPc = (e) => {
             <div class="spec-card">
                 <div class="spec-icon"><img src="/assets/ui/storage.svg" alt="SSD"></div>
                 <div class="spec-info">
-                    <div class="spec-label">Disco SSD</div>
+                    <div class="spec-label">Almacenamiento</div>
                     <div class="spec-value" v-html="formatText(specs.storage || 'Detectando...')"></div>
-                </div>
-            </div>
-            <div class="spec-card">
-                <div class="spec-icon"><img src="/assets/ui/gpu.svg" alt="GPU"></div>
-                <div class="spec-info">
-                    <div class="spec-label">Gráficos</div>
-                    <div class="spec-value" v-html="formatText(specs.gpu || 'Detectando...')"></div>
                 </div>
             </div>
             <div class="spec-card">
@@ -65,6 +70,13 @@ const tryPc = (e) => {
                 <div class="spec-info">
                     <div class="spec-label">Pantalla</div>
                     <div class="spec-value" v-html="formatText(specs.display || 'Detectando...')"></div>
+                </div>
+            </div>
+            <div class="spec-card">
+                <div class="spec-icon"><img src="/assets/ui/gpu.svg" alt="GPU"></div>
+                <div class="spec-info">
+                    <div class="spec-label">Gráficos</div>
+                    <div class="spec-value" v-html="formatText(specs.gpu || 'Detectando...')"></div>
                 </div>
             </div>
             <div class="spec-card">
@@ -79,7 +91,7 @@ const tryPc = (e) => {
             <button 
               class="view-pc-btn" 
               style="max-width: 400px;" 
-              @click="tryPc($event)"
+              @pointerup="handlePointerUp"
             >
               <span class="btn-text">Prueba esta PC</span>
             </button>

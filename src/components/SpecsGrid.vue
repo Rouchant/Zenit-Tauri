@@ -25,14 +25,25 @@ const gpuIcon = computed(() => {
   return '/assets/ui/gpu.svg';
 });
 
-const tryPc = (e) => {
-    if (e && e.target) e.target.blur();
-    
+const tryPc = () => {
     // Retraso de 200ms para que la animación se complete y evitar que el click/hover
     // se propague físicamente al botón de Inicio de Windows que está debajo.
     setTimeout(() => {
         tauriAPI.minimizeApp(store.currentSpecs.store, store.matchedBrand);
     }, 200);
+};
+
+const handlePointerUp = (e) => {
+    if (e && e.currentTarget) {
+        e.currentTarget.blur();
+        const rect = e.currentTarget.getBoundingClientRect();
+        const x = e.clientX;
+        const y = e.clientY;
+        const isInside = (x >= rect.left && x <= rect.right && y >= rect.top && y <= rect.bottom);
+        if (isInside) {
+            tryPc();
+        }
+    }
 };
 </script>
 
@@ -89,7 +100,7 @@ const tryPc = (e) => {
       <button 
         id="view-pc" 
         class="view-pc-btn" 
-        @click="tryPc($event)"
+        @pointerup="handlePointerUp"
       >
         <span class="btn-text">Prueba esta PC</span>
       </button>
