@@ -558,9 +558,9 @@ const updateVideoSources = () => {
   const themeSuffix = store.theme;
   const baseKey = store.isAsus ? 'asus' : 'generic';
   
-  // Los videos de fondo se resuelven directamente desde la carpeta pública de assets de la aplicación.
-  // Esto evita llamadas lentas al disco e IPC a través de Tauri (convertFileSrc) al cambiar de tema.
-  const newBg = `/assets/videos/background-${baseKey}_${themeSuffix}.mp4`;
+  // Los videos de fondo se resuelven a través de nuestro protocolo personalizado de streaming stream://
+  // para evitar microtirones y congelamientos en batería.
+  const newBg = store.getBackgroundVideoUrl(themeSuffix, baseKey);
   
   // Todos los fondos ahora tienen su propia variante temática específica, por lo que marcamos isBgThemed como verdadero
   const isThemed = true;

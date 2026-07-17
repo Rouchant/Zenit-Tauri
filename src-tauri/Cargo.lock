@@ -5743,7 +5743,9 @@ dependencies = [
 name = "zenit"
 version = "1.9.2"
 dependencies = [
+ "http",
  "log",
+ "percent-encoding",
  "regex",
  "serde",
  "serde_json",

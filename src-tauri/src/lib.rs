@@ -3,12 +3,14 @@ mod setup;
 mod commands;
 mod guardian;
 
-use std::fs;
+use std::fs::{self, File};
+use std::io::{Read, Seek, SeekFrom};
 use std::sync::Arc;
 use tokio::sync::Mutex;
 use tauri::{Manager, Emitter};
 use tauri_plugin_store::StoreExt;
 use tauri_plugin_global_shortcut::{GlobalShortcutExt, Shortcut, Modifiers, Code};
+use percent_encoding::percent_decode_str;
 
 use crate::state::AppState;
 use crate::setup::run_system_setup;
@@ -22,6 +24,132 @@ pub fn run() {
     std::env::set_var("WEBVIEW2_ADDITIONAL_BROWSER_ARGUMENTS", "--disable-gpu-video-decode");
 
     tauri::Builder::default()
+        .register_asynchronous_uri_scheme_protocol("stream", |_ctx, request, responder| {
+            let uri_path = request.uri().path().to_string();
+            let range_header = request.headers()
+                .get("range")
+                .and_then(|v| v.to_str().ok())
+                .map(|s| s.to_string());
+
+            log::info!("[Stream Protocol] Solicitud de URI path recibida: {}", uri_path);
+
+            tauri::async_runtime::spawn(async move {
+                // Decodificar el porcentaje (e.g. %20 -> espacio)
+                let decoded = percent_decode_str(&uri_path).decode_utf8_lossy().into_owned();
+                
+                // Normalizar barras
+                let normalized = decoded.replace('\\', "/");
+                
+                // Quitar todas las barras inclinadas iniciales
+                let mut cleaned = normalized.as_str();
+                while cleaned.starts_with('/') {
+                    cleaned = &cleaned[1..];
+                }
+                
+                // Si la ruta resultante empieza con "?/", es un prefijo UNC que quedó como "?/C:/..."
+                // Lo removemos para obtener una ruta de unidad normal de Windows ("C:/...")
+                let final_path = if cleaned.starts_with("?/") {
+                    &cleaned[2..]
+                } else {
+                    cleaned
+                };
+                
+                // Convertir barras a formato Windows
+                let file_path = final_path.replace('/', "\\");
+                log::info!("[Stream Protocol] Ruta de archivo resuelta: {}", file_path);
+                
+                let file_path_buf = std::path::PathBuf::from(&file_path);
+                
+                // Intentar abrir el archivo de video
+                let mut file = match File::open(&file_path_buf) {
+                    Ok(f) => f,
+                    Err(e) => {
+                        log::error!("[Stream Protocol] Error abriendo archivo {:?}: {}", file_path_buf, e);
+                        let response = http::Response::builder()
+                            .status(http::StatusCode::NOT_FOUND)
+                            .body(Vec::new())
+                            .unwrap();
+                        responder.respond(response);
+                        return;
+                    }
+                };
+
+                let metadata = match file.metadata() {
+                    Ok(m) => m,
+                    Err(e) => {
+                        log::error!("[Stream Protocol] Error obteniendo metadatos de {:?}: {}", file_path_buf, e);
+                        let response = http::Response::builder()
+                            .status(http::StatusCode::INTERNAL_SERVER_ERROR)
+                            .body(Vec::new())
+                            .unwrap();
+                        responder.respond(response);
+                        return;
+                    }
+                };
+
+                let file_size = metadata.len();
+                
+                let response = if let Some(range_val) = range_header {
+                    if let Some((start, end)) = parse_range(&range_val, file_size) {
+                        let chunk_size = end - start + 1;
+                        
+                        if let Err(e) = file.seek(SeekFrom::Start(start)) {
+                            log::error!("[Stream Protocol] Error de seek en {:?}: {}", file_path_buf, e);
+                            http::Response::builder()
+                                .status(http::StatusCode::INTERNAL_SERVER_ERROR)
+                                .body(Vec::new())
+                                .unwrap()
+                        } else {
+                            let mut buffer = vec![0; chunk_size as usize];
+                            match file.read_exact(&mut buffer) {
+                                Ok(_) => {
+                                    http::Response::builder()
+                                        .status(http::StatusCode::PARTIAL_CONTENT)
+                                        .header("Content-Type", "video/mp4")
+                                        .header("Accept-Ranges", "bytes")
+                                        .header("Content-Range", format!("bytes {}-{}/{}", start, end, file_size))
+                                        .header("Content-Length", chunk_size)
+                                        .body(buffer)
+                                        .unwrap()
+                                }
+                                Err(e) => {
+                                    log::error!("[Stream Protocol] Error leyendo trozo de {:?}: {}", file_path_buf, e);
+                                    http::Response::builder()
+                                        .status(http::StatusCode::INTERNAL_SERVER_ERROR)
+                                        .body(Vec::new())
+                                        .unwrap()
+                                }
+                            }
+                        }
+                    } else {
+                        http::Response::builder()
+                            .status(http::StatusCode::RANGE_NOT_SATISFIABLE)
+                            .header("Content-Range", format!("bytes */{}", file_size))
+                            .body(Vec::new())
+                            .unwrap()
+                    }
+                } else {
+                    let mut buffer = Vec::with_capacity(file_size as usize);
+                    if let Err(e) = file.read_to_end(&mut buffer) {
+                        log::error!("[Stream Protocol] Error leyendo archivo completo {:?}: {}", file_path_buf, e);
+                        http::Response::builder()
+                            .status(http::StatusCode::INTERNAL_SERVER_ERROR)
+                            .body(Vec::new())
+                            .unwrap()
+                    } else {
+                        http::Response::builder()
+                            .status(http::StatusCode::OK)
+                            .header("Content-Type", "video/mp4")
+                            .header("Accept-Ranges", "bytes")
+                            .header("Content-Length", file_size)
+                            .body(buffer)
+                            .unwrap()
+                    }
+                };
+                
+                responder.respond(response);
+            });
+        })
         // Configuración de Logs: Guarda logs en archivo y los muestra en consola/webview
         .plugin(
             tauri_plugin_log::Builder::default()
@@ -283,4 +411,31 @@ fn get_monitor_count() -> i32 {
 #[cfg(not(windows))]
 fn get_monitor_count() -> i32 {
     1
+}
+
+fn parse_range(range_header: &str, file_size: u64) -> Option<(u64, u64)> {
+    if !range_header.starts_with("bytes=") {
+        return None;
+    }
+    let range_str = &range_header["bytes=".len()..];
+    let parts: Vec<&str> = range_str.split('-').collect();
+    if parts.len() != 2 {
+        return None;
+    }
+    let start = parts[0].parse::<u64>().ok()?;
+    
+    // Limitamos el chunk size máximo a 2MB para buffering eficiente y bajo consumo de memoria
+    const MAX_CHUNK_SIZE: u64 = 2 * 1024 * 1024;
+    let end = if parts[1].is_empty() {
+        std::cmp::min(start + MAX_CHUNK_SIZE - 1, file_size - 1)
+    } else {
+        let requested_end = parts[1].parse::<u64>().ok()?;
+        std::cmp::min(requested_end, start + MAX_CHUNK_SIZE - 1)
+    };
+
+    if start <= end && end < file_size {
+        Some((start, end))
+    } else {
+        None
+    }
 }
