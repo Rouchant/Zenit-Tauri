@@ -364,6 +364,7 @@ const initMpvGlobal = async () => {
           'panscan': '1.0',
           'mute': 'yes',            // Silenciar todos los videos (kiosk mode)
           'audio': 'no',            // Desactivar completamente el decodificador de audio (ahorra CPU)
+          'input-default-bindings': 'no', // Desactivar atajos por defecto de mpv (evita Alt+F4, q, etc.)
         },
         observedProperties: [
           ['pause', 'flag'],

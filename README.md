@@ -2,7 +2,7 @@
 
 ![Zenit Logo](public/assets/logo.png)
 
-![Version](https://img.shields.io/badge/version-1.9.3-blue.svg)
+![Version](https://img.shields.io/badge/version-1.9.4-blue.svg)
 ![Tauri](https://img.shields.io/badge/framework-Tauri%20v2-FFC131.svg)
 ![Rust](https://img.shields.io/badge/backend-Rust-orange.svg)
 ![Vue 3](https://img.shields.io/badge/frontend-Vue%203-42b883.svg)
@@ -28,7 +28,7 @@ Zenit es una solución de nivel empresarial para **Showcase Terminals**, diseña
 
 ---
 
-## ✨ Características Principales (v1.9.3)
+## ✨ Características Principales (v1.9.4)
 
 ### 🖥️ Detección de Hardware Nativa (100% Rust & CIM/WMI)
 
@@ -70,7 +70,7 @@ Para garantizar un rendimiento óptimo en laptops de exhibición de cualquier ga
 
 ---
 
-## 📝 Notas de Versión (v1.9.3)
+## 📝 Notas de Versión (v1.9.4)
 
 - **Optimización de Recursos Multimedia**: Eliminación de la carpeta duplicada de videos en `public/assets/videos/`, liberando más de 72 MB de peso en el instalador y la compilación.
 - **Máxima Robustez en el Guardián de Teclado**:
@@ -149,7 +149,7 @@ npm install
 # Modo Desarrollo (HMR)
 npm run dev
 
-# Compilar para Producción (Genera Zenit_1.9.3_x64-setup.exe)
+# Compilar para Producción (Genera Zenit_1.9.4_x64-setup.exe)
 npm run tauri build
 ```
 
