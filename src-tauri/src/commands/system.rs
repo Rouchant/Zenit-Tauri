@@ -548,6 +548,18 @@ pub fn get_video_path(app: AppHandle) -> String {
     get_resource_dir(&app).to_string_lossy().into_owned()
 }
 
+#[tauri::command]
+pub fn log_frontend_debug(msg: String) {
+    if let Ok(mut file) = std::fs::OpenOptions::new()
+        .create(true)
+        .append(true)
+        .open("C:/Users/jmema/Proyectos/Zenit-Tauri/webview_debug.log")
+    {
+        use std::io::Write;
+        let _ = writeln!(file, "{}", msg);
+    }
+}
+
 /// Forza el brillo al 100% y desactiva el brillo adaptativo y el sueño mediante PowerShell.
 /// Se ejecuta cuando el kiosco entra en modo video/inactividad.
 #[tauri::command]

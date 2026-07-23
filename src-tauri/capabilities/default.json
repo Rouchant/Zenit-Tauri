@@ -17,12 +17,13 @@
     "core:window:allow-set-position",
     "core:window:allow-show",
     "core:window:allow-unminimize",
-    "dialog:allow-open",
+    "dialog:default",
     "log:default",
     "autostart:default",
     "store:default",
     "window-state:default",
     "notification:default",
-    "core:path:default"
+    "core:path:default",
+    "libmpv:default"
   ]
 }

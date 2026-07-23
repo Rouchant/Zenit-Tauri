@@ -2,34 +2,29 @@ use windows_sys::Win32::Foundation::*;
 use windows_sys::Win32::UI::WindowsAndMessaging::*;
 use windows_sys::Win32::UI::Input::KeyboardAndMouse::*;
 use windows_sys::Win32::System::LibraryLoader::GetModuleHandleW;
-use std::sync::atomic::{AtomicBool, AtomicU32, Ordering};
-use std::sync::OnceLock;
+use windows_sys::Win32::System::Threading::{GetCurrentThread, GetCurrentThreadId, SetThreadPriority, THREAD_PRIORITY_HIGHEST};
+use std::sync::atomic::{AtomicU32, AtomicIsize, Ordering};
 use std::ptr;
-use log::{info, error};
+use log::{info, error, debug};
 
-// Constantes de legibilidad adicionales
-const VK_OEM_PERIOD: u16 = 0xBE; 
-const VK_OEM_1: u16 = 0xBA;
-
-// Seguimiento granular por tecla física para máxima precisión
-static LWIN_DOWN: AtomicBool = AtomicBool::new(false);
-static RWIN_DOWN: AtomicBool = AtomicBool::new(false);
-static LCTRL_DOWN: AtomicBool = AtomicBool::new(false);
-static RCTRL_DOWN: AtomicBool = AtomicBool::new(false);
-static LSHIFT_DOWN: AtomicBool = AtomicBool::new(false);
-static RSHIFT_DOWN: AtomicBool = AtomicBool::new(false);
-static LALT_DOWN: AtomicBool = AtomicBool::new(false);
-static RALT_DOWN: AtomicBool = AtomicBool::new(false);
-
-static HOOK_HANDLE: OnceLock<HHOOK> = OnceLock::new();
+static HOOK_HANDLE: AtomicIsize = AtomicIsize::new(0);
 static GUARDIAN_THREAD_ID: AtomicU32 = AtomicU32::new(0);
 
 pub fn start_keyboard_guardian() {
+    // Si el hook ya está activo, evitar doble registro
+    if HOOK_HANDLE.load(Ordering::SeqCst) != 0 {
+        debug!("[Guardian] El hook ya está activo. Omitiendo registro duplicado.");
+        return;
+    }
+
     std::thread::spawn(|| {
         unsafe {
+            // Elevar la prioridad del hilo al nivel MÁXIMO para evitar lag o micro-congelamientos
+            SetThreadPriority(GetCurrentThread(), THREAD_PRIORITY_HIGHEST);
+
             // Almacenar el ID del hilo para poder enviar WM_QUIT desde stop_keyboard_guardian
             GUARDIAN_THREAD_ID.store(
-                windows_sys::Win32::System::Threading::GetCurrentThreadId(),
+                GetCurrentThreadId(),
                 Ordering::SeqCst,
             );
 
@@ -37,8 +32,8 @@ pub fn start_keyboard_guardian() {
             let hook = SetWindowsHookExW(WH_KEYBOARD_LL, Some(low_level_keyboard_proc), h_instance, 0);
 
             if hook != 0 {
-                let _ = HOOK_HANDLE.set(hook);
-                log::debug!("[Guardian] Hook de teclado registrado exitosamente.");
+                HOOK_HANDLE.store(hook, Ordering::SeqCst);
+                debug!("[Guardian] Hook de teclado registrado exitosamente con prioridad alta.");
                 let mut msg: MSG = std::mem::zeroed();
                 while GetMessageW(&mut msg, 0, 0, 0) != 0 {
                     TranslateMessage(&msg);
@@ -52,11 +47,12 @@ pub fn start_keyboard_guardian() {
 }
 
 pub fn stop_keyboard_guardian() {
-    if let Some(&hook) = HOOK_HANDLE.get() {
+    let hook = HOOK_HANDLE.swap(0, Ordering::SeqCst);
+    if hook != 0 {
         unsafe { 
             UnhookWindowsHookEx(hook);
             // Enviar WM_QUIT al hilo del guardian para que salga del loop de GetMessageW limpiamente
-            let tid = GUARDIAN_THREAD_ID.load(Ordering::SeqCst);
+            let tid = GUARDIAN_THREAD_ID.swap(0, Ordering::SeqCst);
             if tid != 0 {
                 PostThreadMessageW(tid, WM_QUIT, 0, 0);
             }
@@ -66,8 +62,10 @@ pub fn stop_keyboard_guardian() {
 }
 
 unsafe extern "system" fn low_level_keyboard_proc(n_code: i32, w_param: WPARAM, l_param: LPARAM) -> LRESULT {
+    let current_hook = HOOK_HANDLE.load(Ordering::Relaxed);
+
     if n_code < 0 || n_code != HC_ACTION as i32 {
-        return CallNextHookEx(0, n_code, w_param, l_param);
+        return CallNextHookEx(current_hook, n_code, w_param, l_param);
     }
 
     let kbd_struct = *(l_param as *const KBDLLHOOKSTRUCT);
@@ -75,55 +73,37 @@ unsafe extern "system" fn low_level_keyboard_proc(n_code: i32, w_param: WPARAM, 
     let event = w_param as u32;
     let is_down = event == WM_KEYDOWN || event == WM_SYSKEYDOWN;
 
-    // 1. Rastreo de modificadores para el resto de la lógica
-    match key {
-        k if k == VK_LWIN => LWIN_DOWN.store(is_down, Ordering::SeqCst),
-        k if k == VK_RWIN => RWIN_DOWN.store(is_down, Ordering::SeqCst),
-        k if k == VK_LCONTROL => LCTRL_DOWN.store(is_down, Ordering::SeqCst),
-        k if k == VK_RCONTROL => RCTRL_DOWN.store(is_down, Ordering::SeqCst),
-        k if k == VK_LSHIFT => LSHIFT_DOWN.store(is_down, Ordering::SeqCst),
-        k if k == VK_RSHIFT => RSHIFT_DOWN.store(is_down, Ordering::SeqCst),
-        k if k == VK_LMENU => LALT_DOWN.store(is_down, Ordering::SeqCst),
-        k if k == VK_RMENU => RALT_DOWN.store(is_down, Ordering::SeqCst),
-        _ => {}
-    }
-
     if is_down {
-        let win = LWIN_DOWN.load(Ordering::SeqCst) || RWIN_DOWN.load(Ordering::SeqCst);
-        let ctrl = LCTRL_DOWN.load(Ordering::SeqCst) || RCTRL_DOWN.load(Ordering::SeqCst);
-        let shift = LSHIFT_DOWN.load(Ordering::SeqCst) || RSHIFT_DOWN.load(Ordering::SeqCst);
-        let alt = LALT_DOWN.load(Ordering::SeqCst) || RALT_DOWN.load(Ordering::SeqCst);
+        // Consultar directamente al SO el estado físico real de las teclas modificadoras (< 0 indica presionada)
+        let win = (GetAsyncKeyState(VK_LWIN as i32) < 0) || (GetAsyncKeyState(VK_RWIN as i32) < 0);
+        let ctrl = (GetAsyncKeyState(VK_LCONTROL as i32) < 0) || (GetAsyncKeyState(VK_RCONTROL as i32) < 0);
+        let shift = (GetAsyncKeyState(VK_LSHIFT as i32) < 0) || (GetAsyncKeyState(VK_RSHIFT as i32) < 0);
+        let alt = (GetAsyncKeyState(VK_LMENU as i32) < 0) || (GetAsyncKeyState(VK_RMENU as i32) < 0);
 
-        // 2. Bypass para Admin (Copy, Paste, Cut, Task Manager)
+        // 1. Bypass para Admin (Copy, Paste, Cut, Task Manager)
         if ctrl && !win && !alt && (key == VK_C || key == VK_V || key == VK_X || (shift && key == VK_ESCAPE)) {
-            return CallNextHookEx(0, n_code, w_param, l_param);
+            return CallNextHookEx(current_hook, n_code, w_param, l_param);
         }
 
-        // 3. Bloqueos consolidados
+        // 2. Bloqueos consolidados
         let should_block = if win && key != VK_LWIN && key != VK_RWIN {
-            // Bloquear atajos de Windows (Win + ...) pero permitir tecla Windows sola
-            matches!(key, 
-                VK_TAB | VK_D | VK_R | VK_E | VK_L | VK_X | VK_I | VK_S | VK_A | VK_K | 
-                VK_P | VK_U | VK_V | VK_W | VK_Z | VK_C | VK_HOME | VK_M | VK_T | VK_B |
-                VK_H | VK_Q | VK_LEFT | VK_RIGHT | VK_UP | VK_DOWN |
-                VK_OEM_PERIOD | VK_OEM_1
-            )
+            // Bloquear únicamente Windows + L, Windows + I, Windows + X
+            matches!(key, VK_L | VK_I | VK_X)
         } else if alt {
-            // Bloquear Alt+Tab, Alt+Esc, Alt+F4, Alt+Espacio
-            matches!(key, VK_TAB | VK_ESCAPE | VK_F4 | VK_SPACE)
+            // Bloquear Alt+Esc, Alt+F4, Alt+Espacio (Se permite Alt+Tab para gestos de deslizamiento)
+            matches!(key, VK_ESCAPE | VK_F4 | VK_SPACE)
         } else if ctrl {
-            // Bloquear Ctrl+Esc y Ctrl+Win+...
+            // Bloquear Ctrl+Esc y Ctrl+Win+F4 (Se permiten Ctrl+Win+Left/Right/D para gestos)
             // PERO permitir Ctrl+Shift+Esc (Administrador de tareas)
-            (key == VK_ESCAPE && !shift) || (win && matches!(key, VK_LEFT | VK_RIGHT | VK_D | VK_F4))
+            (key == VK_ESCAPE && !shift) || (win && matches!(key, VK_F4))
         } else {
-            // Bloquear tecla Menú (Apps), Shift+F10 (Context Menu) y Shift+Escape (Administrador de procesos de WebView2)
-            key == VK_APPS || (shift && (key == VK_F10 || key == VK_ESCAPE))
+            // Bloquear tecla Menú (Apps) y Shift+Escape (Administrador de procesos de WebView2)
+            // (Se permite Shift+F10 para evitar interferencia en clic derecho del trackpad)
+            key == VK_APPS || (shift && key == VK_ESCAPE)
         };
 
         if should_block { return 1; }
     }
 
-
-    CallNextHookEx(0, n_code, w_param, l_param)
+    CallNextHookEx(current_hook, n_code, w_param, l_param)
 }
-

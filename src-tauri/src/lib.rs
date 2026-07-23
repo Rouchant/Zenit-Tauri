@@ -17,9 +17,12 @@ use crate::commands::{system, vault, window};
 /// Configura plugins, estado global, handlers de comandos y eventos de ventana.
 #[cfg_attr(mobile, tauri::mobile_entry_point)]
 pub fn run() {
-    // Desactivar decodificación por hardware de video para evitar cuelgues por transición de energía de la GPU
+    // Habilitar aceleración por hardware en video y rasterización GPU en WebView2
     #[cfg(windows)]
-    std::env::set_var("WEBVIEW2_ADDITIONAL_BROWSER_ARGUMENTS", "--disable-gpu-video-decode");
+    std::env::set_var(
+        "WEBVIEW2_ADDITIONAL_BROWSER_ARGUMENTS",
+        "--enable-gpu-rasterization --enable-hardware-overlays --ignore-gpu-blocklist --disable-background-timer-throttling --disable-backgrounding-occluded-windows --disable-renderer-backgrounding"
+    );
 
     tauri::Builder::default()
         // Configuración de Logs: Guarda logs en archivo y los muestra en consola/webview
@@ -58,9 +61,28 @@ pub fn run() {
                 let _ = win.set_focus();
             }
         }))
+        .plugin(tauri_plugin_libmpv::init())
 
         // Configuración Inicial (Setup)
         .setup(|app| {
+            // Configurar el directorio DLL para incluir el subdirectorio \lib\
+            // Esto permite que libmpv-wrapper.dll encuentre libmpv-2.dll y las dependencias de VC++ sin problemas.
+            #[cfg(windows)]
+            {
+                use std::os::windows::ffi::OsStrExt;
+                use tauri::Manager;
+                
+                let mut lib_dir = app.path().resource_dir().unwrap_or_default();
+                lib_dir.push("lib");
+                if lib_dir.exists() {
+                    let mut path_utf16: Vec<u16> = lib_dir.as_os_str().encode_wide().collect();
+                    path_utf16.push(0); // Null terminator
+                    unsafe {
+                        windows_sys::Win32::System::LibraryLoader::SetDllDirectoryW(path_utf16.as_ptr());
+                    }
+                }
+            }
+
             // 0. Bloqueo Nativo (Hard Block): Informa a Windows que la pantalla y el sistema DEBEN estar activos
             #[cfg(windows)]
             unsafe {
@@ -68,15 +90,7 @@ pub fn run() {
                 SetThreadExecutionState(ES_CONTINUOUS | ES_DISPLAY_REQUIRED | ES_SYSTEM_REQUIRED);
             }
 
-            // Forzar que la ventana principal se ubique en la pantalla principal del sistema (ej. Zenbook Duo)
-            if let Some(main_window) = app.get_webview_window("main") {
-                if let Ok(Some(primary_monitor)) = main_window.primary_monitor() {
-                    let pos = primary_monitor.position();
-                    let _ = main_window.set_fullscreen(false);
-                    let _ = main_window.set_position(*pos);
-                    let _ = main_window.set_fullscreen(true);
-                }
-            }
+
 
             // 1. Gestionar el Estado Global de la aplicación
             app.manage(AppState {
@@ -134,6 +148,16 @@ pub fn run() {
             // 7. Limpiar archivos huérfanos de videos borrados
             vault::cleanup_orphan_videos(app.handle());
 
+            // 8. Forzar que la ventana principal se ubique en la pantalla principal del sistema antes de mostrarse
+            if let Some(main_window) = app.get_webview_window("main") {
+                if let Ok(Some(primary_monitor)) = main_window.primary_monitor() {
+                    let pos = primary_monitor.position();
+                    let _ = main_window.set_fullscreen(false);
+                    let _ = main_window.set_position(*pos);
+                    let _ = main_window.set_fullscreen(true);
+                }
+            }
+
             Ok(())
         })
 
@@ -141,6 +165,7 @@ pub fn run() {
         .invoke_handler(tauri::generate_handler![
             system::get_system_specs,
             system::get_video_path,
+            system::log_frontend_debug,
             system::set_max_brightness,
             system::infer_processor_info,
             vault::select_video,

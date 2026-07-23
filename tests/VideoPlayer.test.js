@@ -2,7 +2,16 @@ import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { setActivePinia, createPinia } from 'pinia';
 import { mount } from '@vue/test-utils';
 import { useSpecsStore } from '../src/store/specs';
-import VideoPlayer from '../src/components/VideoPlayer.vue';
+
+// Usar vi.hoisted para declarar mocks antes de que vi.mock sea elevado
+const mocks = vi.hoisted(() => {
+  return {
+    commandMock: vi.fn().mockResolvedValue(),
+    setPropertyMock: vi.fn().mockResolvedValue(),
+    observePropertiesMock: vi.fn().mockResolvedValue(vi.fn()),
+    listenEventsMock: vi.fn().mockResolvedValue(vi.fn()),
+  };
+});
 
 // Mock de la API de Tauri para evitar errores durante la renderización
 vi.mock('../src/api/tauriApi', () => ({
@@ -12,27 +21,35 @@ vi.mock('../src/api/tauriApi', () => ({
   }
 }));
 
+// Mock de tauri-plugin-libmpv-api usando las funciones elevadas
+vi.mock('tauri-plugin-libmpv-api', () => ({
+  init: vi.fn().mockResolvedValue(null),
+  command: mocks.commandMock,
+  setProperty: mocks.setPropertyMock,
+  observeProperties: mocks.observePropertiesMock,
+  listenEvents: mocks.listenEventsMock,
+}));
+
 vi.mock('@tauri-apps/api/core', () => ({
   convertFileSrc: vi.fn((path) => `asset://${path}`),
 }));
 
+// El componente se importa después de definir los mocks para que tome las versiones mockeadas
+import VideoPlayer from '../src/components/VideoPlayer.vue';
+
 describe('Pruebas del Reproductor de Video (VideoPlayer.vue)', () => {
   beforeEach(() => {
     setActivePinia(createPinia());
-    
-    // Mock de HTMLMediaElement (video/audio) para evitar errores en happy-dom
-    // ya que no soporta reproducción multimedia real
-    window.HTMLMediaElement.prototype.play = vi.fn().mockResolvedValue();
-    window.HTMLMediaElement.prototype.pause = vi.fn();
-    window.HTMLMediaElement.prototype.load = vi.fn();
+    vi.clearAllMocks();
+    window.__TAURI_INTERNALS__ = {};
   });
 
-  it('debería cargar el primer video en el SRC y llamar a play()', async () => {
+  it('debería resolver los videos y mandar la instrucción loadfile a libmpv', async () => {
     const store = useSpecsStore();
-    // Inyectamos datos en el store
     store.currentSpecs.customVideoPaths = [
-      { name: 'Video de Prueba', path: 'C:\\Videos\\test1.mp4' },
+      { name: 'Video 1', path: 'C:\\Videos\\1.mp4' }
     ];
+    store.isMpvReady = true;
 
     const wrapper = mount(VideoPlayer, {
       global: {
@@ -42,21 +59,17 @@ describe('Pruebas del Reproductor de Video (VideoPlayer.vue)', () => {
         }
       }
     });
-    
-    // El src del elemento <video> debe apuntar al path cargado
-    const videoEl = wrapper.find('#promo-video');
-    expect(videoEl.attributes('src')).toBe('C:\\Videos\\test1.mp4');
-    
-    // play() debería haber sido invocado automáticamente (por el onMounted)
-    expect(window.HTMLMediaElement.prototype.play).toHaveBeenCalled();
+
+    // Esperar resolución asíncrona
+    await new Promise(r => setTimeout(r, 50));
+
+    expect(mocks.commandMock).toHaveBeenCalledWith('loadfile', ['C:\\Videos\\1.mp4', 'replace']);
+    expect(mocks.setPropertyMock).toHaveBeenCalledWith('pause', false);
   });
 
-  it('debería avanzar al siguiente video cuando se emite el evento ended (Loop)', async () => {
+  it('debería exponer mockVideoEl y responder a los comandos de play/pause del Watchdog', async () => {
     const store = useSpecsStore();
-    store.currentSpecs.customVideoPaths = [
-      { name: 'Video 1', path: 'C:\\Videos\\1.mp4' },
-      { name: 'Video 2', path: 'C:\\Videos\\2.mp4' }
-    ];
+    store.isMpvReady = true;
 
     const wrapper = mount(VideoPlayer, {
       global: {
@@ -66,39 +79,19 @@ describe('Pruebas del Reproductor de Video (VideoPlayer.vue)', () => {
         }
       }
     });
-    const videoEl = wrapper.find('#promo-video');
-    
-    // Inicialmente está en el video 1
-    expect(videoEl.attributes('src')).toBe('C:\\Videos\\1.mp4');
 
-    // Simulamos que el video termina su reproducción
-    await videoEl.trigger('ended');
+    // Esperar resolución
+    await new Promise(r => setTimeout(r, 50));
 
-    // El reproductor debería avanzar automáticamente al video 2
-    expect(wrapper.find('#promo-video').attributes('src')).toBe('C:\\Videos\\2.mp4');
-  });
+    const exposed = wrapper.vm.videoRef;
+    expect(exposed).toBeDefined();
 
-  it('debería salir del modo video al terminar el último de la lista', async () => {
-    const store = useSpecsStore();
-    store.currentSpecs.customVideoPaths = [
-      { name: 'Video Unico', path: 'C:\\Videos\\unico.mp4' }
-    ];
-    store.isVideoMode = true;
+    // Invocar play desde el mock expuesto para simular el Watchdog
+    await exposed.play();
+    expect(mocks.setPropertyMock).toHaveBeenCalledWith('pause', false);
 
-    const wrapper = mount(VideoPlayer, {
-      global: {
-        stubs: {
-          img: true,
-          svg: true
-        }
-      }
-    });
-    const videoEl = wrapper.find('#promo-video');
-
-    // Simulamos que el único video de la lista termina
-    await videoEl.trigger('ended');
-
-    // Al ser el último, isVideoMode debe pasar a false para volver a las Specs
-    expect(store.isVideoMode).toBe(false);
+    // Invocar pause
+    await exposed.pause();
+    expect(mocks.setPropertyMock).toHaveBeenCalledWith('pause', true);
   });
 });

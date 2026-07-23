@@ -60,7 +60,19 @@ const editableSpecs = reactive({
 const isAsus = computed(() => {
     const b = (editableSpecs.brand || '').toLowerCase();
     const m = (editableSpecs.model || '').toLowerCase();
-    return b.includes('asus') || m.includes('asus');
+    
+    // Si el modelo contiene 'asus', tiene prioridad absoluta
+    if (m.includes('asus')) {
+        return true;
+    }
+    
+    // Si la marca contiene otros fabricantes conocidos, NO es Asus.
+    const knownBrands = ['hp', 'lenovo', 'samsung', 'acer', 'dell', 'msi', 'gigabyte', 'asrock'];
+    if (knownBrands.some(brand => b.includes(brand))) {
+        return false;
+    }
+    
+    return b.includes('asus');
 });
 
 // Opciones filtradas según hardware (dependen de editableSpecs)

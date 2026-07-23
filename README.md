@@ -2,7 +2,7 @@
 
 ![Zenit Logo](public/assets/logo.png)
 
-![Version](https://img.shields.io/badge/version-1.9.2-blue.svg)
+![Version](https://img.shields.io/badge/version-1.9.3-blue.svg)
 ![Tauri](https://img.shields.io/badge/framework-Tauri%20v2-FFC131.svg)
 ![Rust](https://img.shields.io/badge/backend-Rust-orange.svg)
 ![Vue 3](https://img.shields.io/badge/frontend-Vue%203-42b883.svg)
@@ -28,7 +28,7 @@ Zenit es una solución de nivel empresarial para **Showcase Terminals**, diseña
 
 ---
 
-## ✨ Características Principales (v1.9.2)
+## ✨ Características Principales (v1.9.3)
 
 ### 🖥️ Detección de Hardware Nativa (100% Rust & CIM/WMI)
 
@@ -44,6 +44,15 @@ Zenit utiliza un motor de telemetría modularizado en Rust para una velocidad y 
 
 - **Soporte Non-16:9**: Adaptación dinámica para resoluciones exóticas (2.8K, WUXGA) mediante técnica de **Overscan de 2px**, eliminando franjas negras causadas por errores de redondeo de subpíxeles.
 - **Escalado Inteligente**: Soporte nativo para High-DPI (150%+) en laptops de 14", manteniendo la jerarquía visual y legibilidad.
+
+### 🎥 Reproducción de Video Nativa (libmpv Integration)
+
+Para garantizar un rendimiento óptimo en laptops de exhibición de cualquier gama, Zenit delega la reproducción multimedia a un motor de video nativo:
+
+- **Integración con libmpv (`tauri-plugin-libmpv-api`)**: En lugar de utilizar elementos `<video>` de HTML/Chromium que consumen alta CPU/GPU, Zenit inicializa y controla una instancia nativa de `libmpv` que corre por debajo del WebView transparente de Tauri.
+- **Decodificación por Hardware al 100%**: Configurado con `vo: gpu`, `hwdec: auto-safe`, `framedrop: vo` y `vd-lavc-fast: yes` para descargar la decodificación de video directamente a la GPU integrada o dedicada del equipo.
+- **Sincronización Dinámica sin Destellos**: Transición inteligente entre los videos promocionales y la vista de especificaciones. Utilizando un observador dinámico sobre la propiedad `time-pos` de MPV, la imagen estática de fallback del frontend se desvanece únicamente cuando el primer frame del video de fondo ya se está dibujando, eliminando parpadeos negros o fotogramas residuales (*ghost frames*).
+- **Desactivación Completa de Audio**: Configurado con `mute: yes` y `audio: no` para apagar el decodificador de audio nativo de MPV en entornos de exhibición (Retail), liberando ciclos adicionales de CPU/GPU.
 
 ### 🧠 Eficiencia de Recursos & Estabilidad (Green Kiosk)
 
@@ -61,7 +70,15 @@ Zenit utiliza un motor de telemetría modularizado en Rust para una velocidad y 
 
 ---
 
-## 📝 Notas de Versión (v1.9.2)
+## 📝 Notas de Versión (v1.9.3)
+
+- **Optimización de Recursos Multimedia**: Eliminación de la carpeta duplicada de videos en `public/assets/videos/`, liberando más de 72 MB de peso en el instalador y la compilación.
+- **Máxima Robustez en el Guardián de Teclado**:
+  - Implementación de `GetAsyncKeyState` para consulta del estado físico real del teclado a nivel de hardware, eliminando el problema de teclas pegadas y bloqueos del trackpad/ratón.
+  * Elevación de la prioridad del hilo del guardián a `THREAD_PRIORITY_HIGHEST` para latencia cero y eliminación de micro-congelamientos (*stuttering*).
+  * Gestión atómica segura con `AtomicIsize` para evitar fugas de recursos por registros duplicados.
+- **Ajuste de Atajos y Gestos del Trackpad**: Permite libremente gestos multitáctiles del trackpad (3 y 4 dedos) y atajos inofensivos de Windows, manteniendo únicamente el bloqueo de `Win+L`, `Win+I` y `Win+X`.
+- **Limpieza de Listeners Redundantes**: Transferencia nativa de la prevención de accesos directos al plugin `tauri-plugin-prevent-default`.
 
 - **Eliminación del Sistema de Doble Búfer**:
   - Reemplazo del complejo sistema de múltiples reproductores de video (A y B) por un solo elemento de video con intercambio reactivo de fuentes.
@@ -132,7 +149,7 @@ npm install
 # Modo Desarrollo (HMR)
 npm run dev
 
-# Compilar para Producción (Genera Zenit_1.9.2_x64-setup.exe)
+# Compilar para Producción (Genera Zenit_1.9.3_x64-setup.exe)
 npm run tauri build
 ```
 

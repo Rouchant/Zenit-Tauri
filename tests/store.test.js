@@ -74,4 +74,44 @@ describe('Pruebas de Estado Global (specs.js)', () => {
     // Verificamos que los campos NO modificados siguen intactos (merge correcto)
     expect(store.currentSpecs.processor).toBe('Intel Core i7-13700H');
   });
+
+  it('debería evaluar isAsus como true si el modelo contiene la palabra asus (prioridad absoluta), pero false si no la contiene y es de otra marca', () => {
+    const store = useSpecsStore();
+    
+    // Simular un equipo Lenovo con placa madre ASUS en el modelo (debe ser true por prioridad de modelo)
+    store.currentSpecs = {
+      brand: 'Lenovo',
+      model: 'Lenovo IdeaCentre with ASUS Motherboard'
+    };
+    
+    expect(store.isAsus).toBe(true);
+    expect(store.isGeneric).toBe(false);
+
+    // Simular un equipo ASRock con la palabra Asus en el modelo (debe ser true por prioridad de modelo)
+    store.currentSpecs = {
+      brand: 'ASRock',
+      model: 'ASRock B550M Pro4 Asus'
+    };
+    
+    expect(store.isAsus).toBe(true);
+    expect(store.isGeneric).toBe(false);
+
+    // Simular un equipo Lenovo real (modelo estándar, debe ser genérico/false)
+    store.currentSpecs = {
+      brand: 'Lenovo',
+      model: 'IdeaPad 3 15ALC6'
+    };
+    
+    expect(store.isAsus).toBe(false);
+    expect(store.isGeneric).toBe(true);
+
+    // Simular un equipo ASUS real
+    store.currentSpecs = {
+      brand: 'ASUS',
+      model: 'ROG Strix G15'
+    };
+    
+    expect(store.isAsus).toBe(true);
+    expect(store.isGeneric).toBe(false);
+  });
 });

@@ -7,11 +7,30 @@
     <script>
         // Aplicar el tema lo antes posible para evitar parpadeos (FOUC)
         (function () {
+            let theme = 'default';
+            try {
+                const storedTheme = localStorage.getItem('zenit-theme');
+                if (storedTheme) {
+                    theme = storedTheme;
+                }
+            } catch (e) {
+                console.warn('[Return] No se pudo leer el tema de localStorage:', e);
+            }
+
             const urlParams = new URLSearchParams(window.location.search);
             const store = urlParams.get('store') || 'none';
-            const theme = store === 'none' ? 'default' : store;
+            if (store !== 'none') {
+                theme = store;
+            }
             document.documentElement.className = 'theme-' + theme;
         })();
+
+        // Sincronizar en tiempo real cuando el tema cambie en la ventana principal
+        window.addEventListener('storage', (e) => {
+            if (e.key === 'zenit-theme' && e.newValue) {
+                document.documentElement.className = 'theme-' + e.newValue;
+            }
+        });
     </script>
     <style>
         @font-face {

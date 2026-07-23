@@ -16,12 +16,6 @@
     z-index: 2;
 }
 
-#info-view {
-    /* Aplica el desplazamiento dinámico mediante tus variables */
-    transform: translate(var(--shift-x, 0px), var(--shift-y, 0px));
-    /* Transición de 10 segundos para que el movimiento sea imperceptible */
-    transition: transform 10s ease-in-out;
-}
 
 .background-wrapper {
     position: absolute;
@@ -113,12 +107,16 @@
     position: relative;
     width: 100%;
     aspect-ratio: 16 / 9;
-    border-radius: 32px;
+    border-radius: 24px;
     overflow: hidden;
     box-shadow: 0 20px 60px rgba(0, 0, 0, 0.5);
     border: none;
     background: rgba(0, 0, 0, 1);
     transition: background-color 0.3s ease, width 0.3s ease;
+    
+    /* Optimización de Render GPU */
+    will-change: transform;
+    transform: translateZ(0);
     /* Fix for corner bleeding on some GPUs */
     mask-image: -webkit-radial-gradient(white, black);
     -webkit-mask-image: -webkit-radial-gradient(white, black);
@@ -149,6 +147,12 @@
     height: calc(100% + 3px);
     object-fit: cover;
     background: transparent;
+    border-radius: inherit;
+    
+    /* Optimización de Composición GPU */
+    will-change: transform, opacity;
+    transform: translate3d(0, 0, 0);
+    backface-visibility: hidden;
 }
 
 .specs-column {

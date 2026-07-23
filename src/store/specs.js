@@ -19,7 +19,7 @@ export const INTERNAL_VIDEOS = {
   ASUS_WARRANTY: '__ASUS_WARRANTY__'
 };
 
-const INTERNAL_PATHS = {
+export const INTERNAL_PATHS = {
   [INTERNAL_VIDEOS.ASUS_PROMO]: 'promo-asus.mp4',
   [INTERNAL_VIDEOS.GENERIC_PROMO]: 'promo-generic.mp4',
   [INTERNAL_VIDEOS.ASUS_LANDING]: 'landing-asus.mp4',
@@ -32,10 +32,23 @@ const INTERNAL_PATHS = {
 };
 
 export const useSpecsStore = defineStore('specs', () => {
-  const currentSpecs = ref({});
+  const currentSpecs = ref((() => {
+    try {
+      if (typeof localStorage !== 'undefined') {
+        const cached = localStorage.getItem('zenit-specs');
+        if (cached) {
+          return JSON.parse(cached);
+        }
+      }
+    } catch (e) {
+      console.warn('[Store Init] Failed to load cached specs:', e);
+    }
+    return {};
+  })());
   const autoDetectedSpecs = ref({});
   
   const isVideoMode = ref(false);
+  const isMpvReady = ref(false);
   const isModalOpen = ref(false);
   const isLoading = ref(true);
   const isBgThemed = ref(false);
@@ -117,6 +130,14 @@ export const useSpecsStore = defineStore('specs', () => {
     if (tauriStore) {
       await tauriStore.set('specs', currentSpecs.value);
       await tauriStore.save();
+    }
+    
+    try {
+      if (typeof localStorage !== 'undefined') {
+        localStorage.setItem('zenit-specs', JSON.stringify(currentSpecs.value));
+      }
+    } catch (e) {
+      console.warn('[Store Save] Failed to save specs to localStorage:', e);
     }
     
     updateTheme(specs.store);
@@ -288,6 +309,14 @@ export const useSpecsStore = defineStore('specs', () => {
       }
 
       updateTheme(currentSpecs.value.store);
+      
+      try {
+        if (typeof localStorage !== 'undefined') {
+          localStorage.setItem('zenit-specs', JSON.stringify(currentSpecs.value));
+        }
+      } catch (e) {
+        console.warn('[Store Load] Failed to save specs to localStorage:', e);
+      }
     } catch (err) {
       console.error('Failed to load specs:', err);
     } finally {
@@ -325,6 +354,43 @@ export const useSpecsStore = defineStore('specs', () => {
     }
   };
 
+  const getVideoRawPath = async (filePath) => {
+    if (!filePath) return '';
+    if (INTERNAL_PATHS[filePath]) {
+      if (!window.__TAURI_INTERNALS__) {
+        return `/resources/assets/${INTERNAL_PATHS[filePath]}`;
+      }
+      try {
+        let base = await tauriAPI.getVideoPath();
+        if (base.startsWith('\\\\?\\')) {
+          base = base.substring(4);
+        }
+        return `${base}\\${INTERNAL_PATHS[filePath]}`;
+      } catch (e) {
+        console.error("Error resolving video path in Rust:", e);
+        return `/${INTERNAL_PATHS[filePath]}`;
+      }
+    }
+    // Si es un video de fondo con ruta relativa (/assets/videos/background-...)
+    if (filePath.startsWith('/assets/videos/') || filePath.startsWith('assets/videos/')) {
+      const fileName = filePath.substring(filePath.lastIndexOf('/') + 1);
+      if (!window.__TAURI_INTERNALS__) {
+        return `/resources/assets/${fileName}`;
+      }
+      try {
+        let base = await tauriAPI.getVideoPath();
+        if (base.startsWith('\\\\?\\')) {
+          base = base.substring(4);
+        }
+        return `${base}\\${fileName}`;
+      } catch (e) {
+        console.error("Error resolving relative video path in Rust:", e);
+        return `/${fileName}`;
+      }
+    }
+    return filePath;
+  };
+
   return {
     currentSpecs,
     autoDetectedSpecs,
@@ -338,10 +404,24 @@ export const useSpecsStore = defineStore('specs', () => {
     loadSpecs,
     updateTheme,
     getVideoUrl,
+    getVideoRawPath,
+    isMpvReady,
     isAsus: computed(() => {
       const b = (currentSpecs.value.brand || '').toLowerCase();
       const m = (currentSpecs.value.model || '').toLowerCase();
-      return b.includes('asus') || m.includes('asus');
+      
+      // Si el modelo contiene 'asus', tiene prioridad absoluta
+      if (m.includes('asus')) {
+        return true;
+      }
+      
+      // Si la marca contiene otros fabricantes conocidos, NO es Asus.
+      const knownBrands = ['hp', 'lenovo', 'samsung', 'acer', 'dell', 'msi', 'gigabyte', 'asrock'];
+      if (knownBrands.some(brand => b.includes(brand))) {
+        return false;
+      }
+      
+      return b.includes('asus');
     }),
     isRTX: computed(() => {
       const g = (currentSpecs.value.gpu || '').toLowerCase();
@@ -350,7 +430,19 @@ export const useSpecsStore = defineStore('specs', () => {
     isGeneric: computed(() => {
       const b = (currentSpecs.value.brand || '').toLowerCase();
       const m = (currentSpecs.value.model || '').toLowerCase();
-      const asus = b.includes('asus') || m.includes('asus');
+      
+      // Si el modelo contiene 'asus', no es genérico (prioridad absoluta)
+      if (m.includes('asus')) {
+        return false;
+      }
+      
+      // Si la marca es de otro fabricante conocido, es genérico.
+      const knownBrands = ['hp', 'lenovo', 'samsung', 'acer', 'dell', 'msi', 'gigabyte', 'asrock'];
+      if (knownBrands.some(brand => b.includes(brand))) {
+        return true;
+      }
+
+      const asus = b.includes('asus');
       return !asus || b.includes('generico');
     }),
     matchedBrand: computed(() => {

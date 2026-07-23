@@ -1,5 +1,17 @@
 <template>
-  <div class="app-root">
+  <div class="app-root" :class="{ 'is-mpv-ready': store.isMpvReady }">
+
+    <!-- Preload Fallback Images to prevent load/decoding flashes -->
+    <div style="display: none; position: absolute; width: 0; height: 0; overflow: hidden; pointer-events: none;" aria-hidden="true">
+      <img src="/assets/images/fallback-bg/background-asus_default.png" />
+      <img src="/assets/images/fallback-bg/background-asus_falabella.png" />
+      <img src="/assets/images/fallback-bg/background-asus_ripley.png" />
+      <img src="/assets/images/fallback-bg/background-asus_paris.png" />
+      <img src="/assets/images/fallback-bg/background-generic_default.png" />
+      <img src="/assets/images/fallback-bg/background-generic_falabella.png" />
+      <img src="/assets/images/fallback-bg/background-generic_ripley.png" />
+      <img src="/assets/images/fallback-bg/background-generic_paris.png" />
+    </div>
 
     <!-- Background Media Layers (Plano de fondo a pantalla física completa) -->
     <div class="background-wrapper">
@@ -8,44 +20,26 @@
         id="bg-image"
         :src="store.isAsus ? `/assets/images/fallback-bg/background-asus_${store.theme}.png` : `/assets/images/fallback-bg/background-generic_${store.theme}.png`"
         class="bg-fixed-image"
-        style="opacity: 0.8;"
+        style="will-change: opacity;"
+        :style="{ 
+          opacity: (!store.isMpvReady || isBgVideoFailed || showStaticFallback) ? 1 : 0.001,
+          transition: (!store.isMpvReady || isBgVideoFailed || showStaticFallback) ? 'none' : 'opacity 0.4s ease'
+        }"
       />
-
-      <!-- Video Layer -->
-      <video 
-        v-if="currentBgVideoSrc"
-        v-show="shouldBePlaying"
-        id="bg-video" 
-        autoplay 
-        loop 
-        muted 
-        playsinline 
-        preload="auto"
-        :poster="store.isAsus ? `/assets/images/fallback-bg/background-asus_${store.theme}.png` : `/assets/images/fallback-bg/background-generic_${store.theme}.png`"
-        ref="bgVideo"
-        class="background-media"
-        style="background-color: transparent; transition: opacity 0.5s ease;"
-        :key="(store.isAsus ? 'asus_' : 'generic_') + store.theme"
-        :src="currentBgVideoSrc"
-        @error="handleBgVideoError"
-        @playing="() => { bgRetryCount = 0; isBgVideoFailed = false; }"
-      ></video>
     </div>
 
     <!-- Header siempre pegado arriba y al ancho de la ventana -->
     <Transition name="fade">
-      <Header />
+      <Header v-show="!renderVideoView" />
     </Transition>
 
     <!-- Video View (Inactivity) - Fuera de app-container para ocupar pantalla completa real -->
-    <Transition name="fade">
-      <div id="video-view" v-if="store.isVideoMode" class="view active physical-fullscreen">
-       <VideoPlayer ref="videoPlayerRef" />
-      </div>
-    </Transition>
+    <div id="video-view" v-if="renderVideoView" class="view active physical-fullscreen">
+     <VideoPlayer ref="videoPlayerRef" />
+    </div>
 
     <!-- Contenedor Escalable del Contenido (Transparente y centrado en la pantalla física) -->
-    <div class="app-container" :class="{ 'is-loading': store.isLoading }">
+    <div class="app-container" :class="{ 'is-loading': store.isLoading }" v-show="!renderVideoView">
       <!-- Info View -->
       <div id="info-view" class="view active">
         <!-- Espaciador invisible para preservar la alineación exacta de las especificaciones -->
@@ -70,7 +64,6 @@
           >
             <div class="landing-video-container">
               <video 
-                v-if="currentLandingVideoSrc"
                 id="landing-video" 
                 autoplay 
                 loop 
@@ -228,22 +221,29 @@
 </template>
 
 <script setup>
-import { onMounted, onUnmounted, ref, watch, reactive, nextTick, computed } from 'vue';
+import { onMounted, onUnmounted, ref, watch, reactive, nextTick, computed, defineAsyncComponent } from 'vue';
 import { useSpecsStore } from './store/specs';
 import { tauriAPI } from './api/tauriApi';
 import { listen } from '@tauri-apps/api/event';
+import { invoke } from '@tauri-apps/api/core';
 import { timers } from '@/utils/timers';
+import { init, command, setProperty, observeProperties } from 'tauri-plugin-libmpv-api';
 
 // Components
 import Header from './components/Header.vue';
 import SpecsGrid from './components/SpecsGrid.vue';
-import VideoPlayer from './components/VideoPlayer.vue';
-import AdminModal from './components/Modals/AdminModal.vue';
-import PasswordModal from './components/Modals/PasswordModal.vue';
-import SpecsModal from './components/Modals/SpecsModal.vue';
-import FirstStartModal from './components/Modals/FirstStartModal.vue';
+
+// Lazy loaded components (Modals & Inactivity Video) to improve startup performance
+const VideoPlayer = defineAsyncComponent(() => import('./components/VideoPlayer.vue'));
+const AdminModal = defineAsyncComponent(() => import('./components/Modals/AdminModal.vue'));
+const PasswordModal = defineAsyncComponent(() => import('./components/Modals/PasswordModal.vue'));
+const SpecsModal = defineAsyncComponent(() => import('./components/Modals/SpecsModal.vue'));
+const FirstStartModal = defineAsyncComponent(() => import('./components/Modals/FirstStartModal.vue'));
 
 const store = useSpecsStore();
+if (typeof window !== 'undefined') {
+  window.specsStore = store;
+}
 const inactivityTimer = ref(null);
 const showPasswordModal = ref(false);
 const showAdminModal = ref(false);
@@ -251,9 +251,8 @@ const showSpecsModal = ref(false);
 const showFirstStartModal = ref(false);
 const passwordMode = ref('settings');
 
-const bgVideo = ref(null);
 const landingVideo = ref(null);
-const videoPlayerRef = ref(null); // Ref al componente VideoPlayer para acceso directo al elemento <video>
+const videoPlayerRef = ref(null); // Ref al componente VideoPlayer para control
 const isInternalFocusHack = ref(false);
 const isLandingReady = ref(false);
 const currentBgVideoSrc = ref('');
@@ -264,15 +263,18 @@ const showWarrantyOverlay = ref(false);
 const bgRetryCount = ref(0);
 const landingRetryCount = ref(0);
 const isBgVideoFailed = ref(false);
+const showStaticFallback = ref(true);
+const renderVideoView = ref(false);
+let lastMpvBgPath = ''; // Guard: última ruta cargada en MPV para evitar loadfile redundantes
+const isBgVideoLoading = ref(false);
+let unlistenMpvProps = null;
+let bgVideoTimeout = null;
 
 watch(currentBgVideoSrc, () => {
   isBgVideoFailed.value = false;
-  nextTick(() => {
-    if (bgVideo.value) {
-      bgVideo.value.load();
-      bgVideo.value.play().catch(() => {});
-    }
-  });
+  if (store.isMpvReady) {
+    playBgVideoNative();
+  }
 });
 
 
@@ -340,13 +342,148 @@ const handleHotspotClick = (mode) => {
 // Solo se pausan al minimizar explícitamente (botón "Prueba esta PC") o al abrir modales.
 
 
-const pauseInfoVideos = () => {
-  if (bgVideo.value) {
-    bgVideo.value.pause();
+const initMpvGlobal = async () => {
+  if (store.isMpvReady) return;
+  try {
+    if (window.__TAURI_INTERNALS__) {
+      await invoke('log_frontend_debug', { msg: '[App JS] Starting global init of libmpv...' });
+      await init({
+        initialOptions: {
+          'vo': 'gpu',
+          'hwdec': 'auto-safe',     // Selección automática segura de decodificación por hardware
+          'fbo-format': 'rgba8',    // Evita colapsar bus de RAM compartida en equipos de gama baja
+          'scale': 'bicubic',       // Más nítido que bilinear para pantallas premium, pero ligero en i3
+          'dither': 'ordered',      // Suaviza degradados en pantallas premium sin impacto de GPU
+          'framedrop': 'vo',        // Salta frames si la GPU/CPU va lenta (evita cámara lenta)
+          'vd-lavc-fast': 'yes',    // Decodificación rápida en codecs H.264/HEVC
+          'cache': 'no',            // Desactiva la caché innecesaria de red
+          'demuxer-max-bytes': '10MiB', // Límite de RAM bajo y seguro para el N300
+          'keep-open': 'yes',
+          'force-window': 'yes',
+          'loop-file': 'inf',
+          'panscan': '1.0',
+          'mute': 'yes',            // Silenciar todos los videos (kiosk mode)
+          'audio': 'no',            // Desactivar completamente el decodificador de audio (ahorra CPU)
+        },
+        observedProperties: [
+          ['pause', 'flag'],
+          ['time-pos', 'double', 'none'],
+        ]
+      });
+      store.isMpvReady = true;
+      console.log('[App] Global libmpv initialized');
+      await invoke('log_frontend_debug', { msg: '[App JS] Global init of libmpv succeeded!' });
+    }
+  } catch (e) {
+    console.error('[App] Failed to initialize global libmpv:', e);
+    try {
+      const errStr = e instanceof Error ? e.stack || e.message : String(e);
+      await invoke('log_frontend_debug', { msg: `[App JS] Global init of libmpv failed: ${errStr}` });
+    } catch (ignore) {}
   }
+};
+
+const playBgVideoNative = async () => {
+  if (!store.isMpvReady || store.isVideoMode || store.isModalOpen || !shouldBePlaying.value) {
+    return;
+  }
+  const rawBgPath = await store.getVideoRawPath(currentBgVideoSrc.value);
+  if (!rawBgPath || rawBgPath === lastMpvBgPath) return; // Guard contra spam
+
+  if (bgVideoTimeout) {
+    clearTimeout(bgVideoTimeout);
+    bgVideoTimeout = null;
+  }
+  if (unlistenMpvProps) {
+    unlistenMpvProps();
+    unlistenMpvProps = null;
+  }
+
+  lastMpvBgPath = rawBgPath;
+  showStaticFallback.value = true;
+  isBgVideoLoading.value = true;
+  console.log('[App] Playing background video on libmpv:', rawBgPath);
+  try {
+    if (window.__TAURI_INTERNALS__) {
+      unlistenMpvProps = await observeProperties([
+        ['time-pos', 'double', 'none']
+      ], ({ name, data }) => {
+        if (name === 'time-pos' && typeof data === 'number' && data > 0) {
+          console.log('[App MPV] First frame detected via time-pos. Hiding fallback & cleaning listener.');
+          showStaticFallback.value = false;
+          isBgVideoLoading.value = false;
+          if (unlistenMpvProps) {
+            unlistenMpvProps();
+            unlistenMpvProps = null;
+          }
+          if (bgVideoTimeout) {
+            clearTimeout(bgVideoTimeout);
+            bgVideoTimeout = null;
+          }
+        }
+      });
+    }
+
+    await command('loadfile', [rawBgPath]);
+    await setProperty('keep-open', 'yes');
+    await setProperty('loop-file', 'inf');
+    await setProperty('panscan', 1.0);
+    await setProperty('pause', false);
+    
+    // Temporizador de seguridad de 1000ms por si falla la actualización del time-pos
+    bgVideoTimeout = setTimeout(() => {
+      if (isBgVideoLoading.value) {
+        console.warn('[App] Safety timeout for background video reached. Fading out fallback.');
+        if (!store.isVideoMode && !store.isModalOpen && shouldBePlaying.value) {
+          showStaticFallback.value = false;
+        }
+        isBgVideoLoading.value = false;
+        if (unlistenMpvProps) {
+          unlistenMpvProps();
+          unlistenMpvProps = null;
+        }
+      }
+      bgVideoTimeout = null;
+    }, 1000);
+  } catch (e) {
+    console.error('[App] Failed to play bg video on libmpv:', e);
+    lastMpvBgPath = ''; // Permitir reintento en caso de error
+    isBgVideoLoading.value = false;
+    if (unlistenMpvProps) {
+      unlistenMpvProps();
+      unlistenMpvProps = null;
+    }
+    if (bgVideoTimeout) {
+      clearTimeout(bgVideoTimeout);
+      bgVideoTimeout = null;
+    }
+    try {
+      if (window.__TAURI_INTERNALS__) {
+        const errStr = e instanceof Error ? e.stack || e.message : String(e);
+        await invoke('log_frontend_debug', { msg: `[App JS] Failed to play bg video on libmpv: ${errStr}` });
+      }
+    } catch (ignore) {}
+  }
+};
+
+const pauseInfoVideos = async () => {
+  if (store.isMpvReady && !store.isVideoMode) {
+    await setProperty('pause', true).catch(() => {});
+  }
+  lastMpvBgPath = ''; // Resetear guard para que al reanudar se recargue
   
   if (landingVideo.value) {
     landingVideo.value.pause();
+    if (store.isVideoMode) {
+      try {
+        landingVideo.value.src = "";
+        landingVideo.value.removeAttribute('src');
+        landingVideo.value.load();
+        console.log('[Video GC] Liberados recursos de landingVideo por inactividad.');
+      } catch (e) {
+        console.warn("[Video GC] Error al liberar recursos en pausa:", e);
+      }
+    }
   }
 };
 
@@ -371,6 +508,13 @@ const resumeInfoVideos = (delayMs = 0) => {
         return;
       }
 
+      // Si el video no tiene src (liberado por GC en inactividad), lo restauramos
+      if (!videoEl.getAttribute('src') || videoEl.src === "") {
+        console.log(`[Video GC] Restaurando src para ${name} al salir de inactividad.`);
+        videoEl.src = currentLandingVideoSrc.value;
+        videoEl.load();
+      }
+
       videoEl.play()
         .then(() => {
           console.log(`[Videos] ${name} reproduciéndose con éxito en intento ${attempt}.`);
@@ -385,7 +529,9 @@ const resumeInfoVideos = (delayMs = 0) => {
         });
     };
 
-    playVideo(bgVideo, "bgVideo");
+    if (store.isMpvReady) {
+      playBgVideoNative();
+    }
     playVideo(landingVideo, "landingVideo");
   };
 
@@ -396,21 +542,7 @@ const resumeInfoVideos = (delayMs = 0) => {
   }
 };
 
-const handleBgVideoError = () => {
-  if (bgRetryCount.value < 3) {
-    bgRetryCount.value++;
-    console.warn(`Background video error detected, reloading (retry ${bgRetryCount.value}/3)...`);
-    setTimeout(() => {
-      if (bgVideo.value) {
-        bgVideo.value.load();
-        bgVideo.value.play().catch(() => {});
-      }
-    }, 2000);
-  } else {
-    console.error("Background video failed after max retries. Keeping static fallback.");
-    isBgVideoFailed.value = true;
-  }
-};
+
 
 const handleLandingVideoError = () => {
   if (landingRetryCount.value < 3) {
@@ -441,10 +573,6 @@ const checkVideosPlayState = () => {
     }
   } else {
     if (!store.isModalOpen) {
-      if (bgVideo.value && bgVideo.value.paused) {
-        console.warn('[Watchdog] bgVideo estaba pausado pero debería reproducirse. Reanudando...');
-        bgVideo.value.play().catch((e) => console.warn('[Watchdog] Failed to play bgVideo:', e));
-      }
       if (landingVideo.value && landingVideo.value.paused) {
         console.warn('[Watchdog] landingVideo estaba pausado pero debería reproducirse. Reanudando...');
         landingVideo.value.play().catch((e) => console.warn('[Watchdog] Failed to play landingVideo:', e));
@@ -476,7 +604,9 @@ watch(() => store.isLoading, async (loading) => {
         
         // 3. Reproducir videos ahora que la ventana es visible
         if (!store.isModalOpen && !store.isVideoMode) {
-          bgVideo.value?.play().catch(() => {});
+          if (store.isMpvReady) {
+            playBgVideoNative();
+          }
           landingVideo.value?.play().catch(() => {});
         }
         
@@ -530,7 +660,19 @@ const onFirstStartCompleted = () => {
 // 2. Gestión de Modo Video (Screensaver)
 watch(() => store.isVideoMode, (isVideo) => {
   if (isVideo) {
+    renderVideoView.value = true;
     pauseInfoVideos();
+    // Ocultar la imagen estática para que los videos de inactividad (MPV detrás del WebView) sean visibles
+    showStaticFallback.value = false;
+    isBgVideoLoading.value = false;
+    if (bgVideoTimeout) {
+      clearTimeout(bgVideoTimeout);
+      bgVideoTimeout = null;
+    }
+    if (unlistenMpvProps) {
+      unlistenMpvProps();
+      unlistenMpvProps = null;
+    }
     // Ocultar ventana de Garantía Perfecta al entrar en inactividad
     showWarrantyOverlay.value = false;
     // Acciones de Kiosko
@@ -544,13 +686,16 @@ watch(() => store.isVideoMode, (isVideo) => {
       });
     }
   } else {
-    // Salir de modo video: siempre marcar como reproducible y reanudar
-    // (shouldBePlaying puede haber quedado en false si se minimizó antes de entrar al screensaver)
-    if (!store.isModalOpen) {
-      shouldBePlaying.value = true;
-      resumeInfoVideos();
-      resetTimer();
-    }
+    // Salir de modo video de forma instantánea (corte limpio)
+    showStaticFallback.value = true;
+    renderVideoView.value = false;
+    nextTick(() => {
+      if (!store.isModalOpen) {
+        shouldBePlaying.value = true;
+        resumeInfoVideos();
+        resetTimer();
+      }
+    });
   }
 });
 
@@ -565,7 +710,15 @@ const updateVideoSources = () => {
   // Todos los fondos ahora tienen su propia variante temática específica, por lo que marcamos isBgThemed como verdadero
   const isThemed = true;
 
-  console.log("[Zenit App] updateVideoSources:", { themeSuffix, baseKey, newBg, isThemed });
+  console.log("[Zenit App] updateVideoSources:", { 
+    themeSuffix, 
+    baseKey, 
+    newBg, 
+    isThemed, 
+    isAsus: store.isAsus, 
+    brand: store.currentSpecs?.brand, 
+    model: store.currentSpecs?.model 
+  });
 
   if (currentBgVideoSrc.value !== newBg) {
     currentBgVideoSrc.value = newBg;
@@ -590,6 +743,15 @@ watch([
 // Desactivar estado listo únicamente si cambia la ruta real del video para evitar parpadeos/bloqueos visuales
 watch(currentLandingVideoSrc, () => {
   isLandingReady.value = false;
+  if (landingVideo.value) {
+    try {
+      landingVideo.value.pause();
+      landingVideo.value.src = "";
+      landingVideo.value.load();
+    } catch (e) {
+      console.warn("[Video GC] Error al liberar recursos de video:", e);
+    }
+  }
 });
 
 // 3. Gestión de Carga Inicial
@@ -672,18 +834,7 @@ const updateScale = () => {
   document.documentElement.style.setProperty('--scale-y', scale);
 };
 
-let pixelShiftInterval = null;
-const initPixelShift = () => {
-  // Move 1-2 pixels every 2 minutes to prevent OLED burn-in
-  pixelShiftInterval = setInterval(() => {
-    const x = (Math.random() * 4 - 2).toFixed(1) + 'px';
-    const y = (Math.random() * 4 - 2).toFixed(1) + 'px';
-    document.documentElement.style.setProperty('--shift-x', x);
-    document.documentElement.style.setProperty('--shift-y', y);
-  }, 120000);
-};
-
-// Pixel Shift para OLED se inicializa en onMounted
+// App setup se inicializa en onMounted
 
 onMounted(async () => {
   updateScale();
@@ -691,6 +842,10 @@ onMounted(async () => {
   
   await store.loadSpecs();
   updateVideoSources();
+  if (window.__TAURI_INTERNALS__) {
+    await initMpvGlobal();
+    playBgVideoNative();
+  }
   
   // Forzar brillo al 100% y desactivar suspensión de pantalla en AC al arrancar
   tauriAPI.setMaxBrightness();
@@ -700,7 +855,6 @@ onMounted(async () => {
   } else {
     resetTimer();
   }
-  initPixelShift();
 
   window.addEventListener('mousemove', throttledResetTimer);
   window.addEventListener('keydown', resetTimer);
@@ -727,6 +881,7 @@ onMounted(async () => {
     unlistenPause = await listen('pause-info-videos', () => {
       console.log('[Tauri Event] pause-info-videos recibido. Pausando videos.');
       shouldBePlaying.value = false;
+      showStaticFallback.value = true; // Cubrir el fondo transparente para evitar flash negro al restaurar
       showWarrantyOverlay.value = false; // Cerrar overlay de garantía al ir a "Prueba esta PC"
       if (inactivityTimer.value) {
         clearTimeout(inactivityTimer.value);
@@ -794,6 +949,10 @@ onUnmounted(() => {
   if (unlistenActivity) unlistenActivity();
   if (unlistenPlay) unlistenPlay();
   if (unlistenPause) unlistenPause();
+  if (unlistenMpvProps) {
+    unlistenMpvProps();
+    unlistenMpvProps = null;
+  }
   
   if (watchdogInterval) clearInterval(watchdogInterval);
   
@@ -805,7 +964,6 @@ if (timers.rafWatchdog) {
   timers.rafWatchdog.active = false;
   if (timers.rafWatchdog.frameId) { cancelAnimationFrame(timers.rafWatchdog.frameId); timers.rafWatchdog.frameId = null; }
 }
-  if (pixelShiftInterval) clearInterval(pixelShiftInterval);
 });
 </script>
 
@@ -816,13 +974,18 @@ if (timers.rafWatchdog) {
   overflow: hidden;
   position: relative;
   background: var(--bg-dark);
+  transition: background 0.3s ease;
+}
+
+.app-root.is-mpv-ready {
+  background: transparent !important;
 }
 
 
 /* Transitions */
 .fade-enter-active,
 .fade-leave-active {
-  transition: opacity 0.8s ease;
+  transition: opacity 0.3s ease;
 }
 
 .fade-enter-from,

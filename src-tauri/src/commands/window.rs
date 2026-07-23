@@ -1,18 +1,27 @@
-use tauri::{AppHandle, Manager, LogicalPosition, LogicalSize, Emitter};
-use std::sync::Arc;
 use crate::state::AppState;
-use windows_sys::Win32::UI::WindowsAndMessaging::*;
-use windows_sys::Win32::UI::Input::KeyboardAndMouse::*;
+use std::sync::Arc;
+use tauri::{AppHandle, Emitter, LogicalPosition, LogicalSize, Manager};
 use windows_sys::Win32::Foundation::*;
+use windows_sys::Win32::UI::Input::KeyboardAndMouse::*;
+use windows_sys::Win32::UI::WindowsAndMessaging::*;
 
 // --- COMANDOS TAURI ---
 
 /// Minimiza la aplicación principal y muestra una pequeña ventana de retorno.
 /// También inicia la vigilancia de inactividad para restaurar la app automáticamente.
 #[tauri::command]
-pub async fn minimize_app(app: AppHandle, state: tauri::State<'_, AppState>, store: Option<String>, brand: Option<String>) -> Result<(), String> {
-    let main_window = app.get_webview_window("main").ok_or("Main window not found")?;
-    let return_window = app.get_webview_window("return").ok_or("Return window not found")?;
+pub async fn minimize_app(
+    app: AppHandle,
+    state: tauri::State<'_, AppState>,
+    store: Option<String>,
+    brand: Option<String>,
+) -> Result<(), String> {
+    let main_window = app
+        .get_webview_window("main")
+        .ok_or("Main window not found")?;
+    let return_window = app
+        .get_webview_window("return")
+        .ok_or("Return window not found")?;
 
     // Desactivar temporalmente la vigilancia de foco para evitar bucles durante la minimización
     {
@@ -51,8 +60,30 @@ pub fn quit_app(app: AppHandle) {
 }
 
 /// Cierra la ventana de salpicadura (splashscreen) si está activa.
+/// También ubica la ventana principal en el monitor primario del sistema.
 #[tauri::command]
 pub async fn close_splashscreen(app: AppHandle) -> Result<(), String> {
+    // 1. Forzar que la ventana principal se ubique en la pantalla principal del sistema (ej. Zenbook Duo)
+    if let Some(main_window) = app.get_webview_window("main") {
+        let mut needs_reposition = true;
+        if let (Ok(Some(curr)), Ok(Some(prim))) = (main_window.current_monitor(), main_window.primary_monitor()) {
+            if curr.position() == prim.position() {
+                needs_reposition = false;
+            }
+        }
+        
+        if needs_reposition {
+            if let Ok(Some(primary_monitor)) = main_window.primary_monitor() {
+                let pos = primary_monitor.position();
+                let _ = main_window.set_fullscreen(false);
+                let _ = main_window.set_position(*pos);
+                let _ = main_window.set_fullscreen(true);
+            }
+        }
+        let _ = main_window.set_focus();
+    }
+
+    // 2. Cerrar la ventana de salpicadura
     if let Some(splash) = app.get_webview_window("splashscreen") {
         let _ = splash.close();
     }
@@ -62,16 +93,24 @@ pub async fn close_splashscreen(app: AppHandle) -> Result<(), String> {
 /// Activa o desactiva el estado "Siempre al frente" (Always on Top) de la ventana principal.
 /// También actualiza el flag de persistencia para evitar que el loop de foco lo revierta.
 #[tauri::command]
-pub async fn set_always_on_top(app: AppHandle, state: tauri::State<'_, AppState>, on_top: bool) -> Result<(), String> {
-    let main_window = app.get_webview_window("main").ok_or("Main window not found")?;
-    
+pub async fn set_always_on_top(
+    app: AppHandle,
+    state: tauri::State<'_, AppState>,
+    on_top: bool,
+) -> Result<(), String> {
+    let main_window = app
+        .get_webview_window("main")
+        .ok_or("Main window not found")?;
+
     // Sincronizar el estado de persistencia nativo
     {
         let mut guard = state.enforce_always_on_top.lock().await;
         *guard = on_top;
     }
 
-    main_window.set_always_on_top(on_top).map_err(|e| e.to_string())
+    main_window
+        .set_always_on_top(on_top)
+        .map_err(|e| e.to_string())
 }
 
 // --- LÓGICA INTERNA (ABSTRACCIÓN) ---
@@ -80,8 +119,12 @@ pub async fn set_always_on_top(app: AppHandle, state: tauri::State<'_, AppState>
 /// Unminimize -> Show -> Focus -> Force Foreground.
 pub async fn restore_app_logic(app: &AppHandle) -> Result<(), String> {
     let state = app.state::<AppState>();
-    let main_window = app.get_webview_window("main").ok_or("Main window not found")?;
-    let return_window = app.get_webview_window("return").ok_or("Return window not found")?;
+    let main_window = app
+        .get_webview_window("main")
+        .ok_or("Main window not found")?;
+    let return_window = app
+        .get_webview_window("return")
+        .ok_or("Return window not found")?;
 
     {
         let mut guard = state.enforce_always_on_top.lock().await;
@@ -101,7 +144,7 @@ pub async fn restore_app_logic(app: &AppHandle) -> Result<(), String> {
     // 4. Restaurar la ventana principal
     let res_unmin = main_window.unminimize();
     let res_show = main_window.show();
-    
+
     // TRUCO ULTRA AGRESIVO: Simular la tecla ESCAPE
     // Esto cierra el Menú Inicio o cualquier menú contextual que esté robando el foco.
     unsafe {
@@ -118,13 +161,18 @@ pub async fn restore_app_logic(app: &AppHandle) -> Result<(), String> {
 }
 
 /// Configura la posición de la ventana de retorno en el lateral derecho (centrado verticalmente) del monitor principal.
-async fn position_return_window(main: &tauri::WebviewWindow, ret: &tauri::WebviewWindow, store: Option<String>, brand: Option<String>) -> Result<(), String> {
+async fn position_return_window(
+    main: &tauri::WebviewWindow,
+    ret: &tauri::WebviewWindow,
+    store: Option<String>,
+    brand: Option<String>,
+) -> Result<(), String> {
     if let Ok(Some(monitor)) = main.primary_monitor() {
         let scale_factor = monitor.scale_factor();
         let work_area = monitor.work_area();
         let work_area_size = work_area.size.to_logical::<f64>(scale_factor);
         let work_area_pos = work_area.position.to_logical::<f64>(scale_factor);
-        
+
         // Lógica de escalado físico constante (Neutraliza el DPI de Windows para el contenedor)
         let dpi_factor = scale_factor;
         let physical_width = monitor.size().width as f64;
@@ -137,12 +185,12 @@ async fn position_return_window(main: &tauri::WebviewWindow, ret: &tauri::Webvie
         let width = target_physical_width / dpi_factor;
         let height = target_physical_height / dpi_factor;
         let window_size = LogicalSize::new(width, height);
-        
+
         // Posicionar relativo al área de trabajo visible (excluye barra de tareas)
         // Desplazamos levemente hacia arriba (-30.0 px lógicos) para balance óptico
         let x = work_area_pos.x + work_area_size.width - window_size.width - 20.0;
         let y = work_area_pos.y + (work_area_size.height - window_size.height) / 2.0 - 30.0;
-        
+
         let _ = ret.set_size(window_size);
         let _ = ret.set_position(LogicalPosition::new(x, y));
     }
@@ -153,7 +201,7 @@ async fn position_return_window(main: &tauri::WebviewWindow, ret: &tauri::Webvie
         store: String,
         brand: String,
     }
-    
+
     let _ = ret.emit(
         "set-return-context",
         ReturnContext {
@@ -161,6 +209,9 @@ async fn position_return_window(main: &tauri::WebviewWindow, ret: &tauri::Webvie
             brand: brand.unwrap_or_else(|| "".to_string()),
         },
     );
+
+    // Esperar 50ms para que el SO aplique el tamaño/posición y el WebView aplique el tema de forma invisible
+    tokio::time::sleep(tokio::time::Duration::from_millis(50)).await;
 
     ret.show().map_err(|e| e.to_string())?;
     ret.set_always_on_top(true).map_err(|e| e.to_string())?;
@@ -170,8 +221,11 @@ async fn position_return_window(main: &tauri::WebviewWindow, ret: &tauri::Webvie
             SetWindowPos(
                 hwnd.0 as HWND,
                 -1isize as HWND, // HWND_TOPMOST
-                0, 0, 0, 0,
-                SWP_NOMOVE | SWP_NOSIZE | SWP_SHOWWINDOW // Eliminado SWP_NOACTIVATE para activar la ventana nativamente
+                0,
+                0,
+                0,
+                0,
+                SWP_NOMOVE | SWP_NOSIZE | SWP_SHOWWINDOW, // Eliminado SWP_NOACTIVATE para activar la ventana nativamente
             );
         }
     }
@@ -183,7 +237,7 @@ async fn position_return_window(main: &tauri::WebviewWindow, ret: &tauri::Webvie
         // Cuando se restaure la app principal, la ventana se oculta (visible=false) y este hilo termina.
         while ret_clone.is_visible().unwrap_or(false) {
             tokio::time::sleep(tokio::time::Duration::from_millis(500)).await;
-            
+
             // Volvemos a comprobar la visibilidad tras el sleep para evitar condiciones de carrera
             if !ret_clone.is_visible().unwrap_or(false) {
                 break;
@@ -194,10 +248,13 @@ async fn position_return_window(main: &tauri::WebviewWindow, ret: &tauri::Webvie
                     SetWindowPos(
                         hwnd.0 as HWND,
                         -1isize as HWND, // HWND_TOPMOST
-                        0, 0, 0, 0,
+                        0,
+                        0,
+                        0,
+                        0,
                         // SWP_NOACTIVATE es CRÍTICO para no robar el foco del usuario (ej. escribiendo en otra app)
                         // NO usar SWP_SHOWWINDOW aquí para evitar mostrarla si se acaba de ocultar
-                        SWP_NOMOVE | SWP_NOSIZE | SWP_NOACTIVATE
+                        SWP_NOMOVE | SWP_NOSIZE | SWP_NOACTIVATE,
                     );
                 }
             }
@@ -212,30 +269,32 @@ async fn position_return_window(main: &tauri::WebviewWindow, ret: &tauri::Webvie
 async fn start_idle_monitor(app: AppHandle, state: tauri::State<'_, AppState>) {
     let app_clone = app.clone();
     let state_clone = Arc::clone(&state.maximize_timer);
-    
+
     let mut timer_guard = state_clone.lock().await;
-    if let Some(handle) = timer_guard.take() { handle.abort(); }
+    if let Some(handle) = timer_guard.take() {
+        handle.abort();
+    }
 
     let handle = tauri::async_runtime::spawn(async move {
-        const IDLE_LIMIT_MS: u32 = 180_000; // 3 minutos
-        const POLL_INTERVAL: u64 = 2;       // Cada 2 segundos
+        const IDLE_LIMIT_MS: u32 = 180_000; // 20 segundos para pruebas
+        const POLL_INTERVAL: u64 = 2; // Cada 2 segundos
         const ACTIVITY_THRESHOLD: u32 = 3_000; // 3 segundos de actividad para detectar "retorno"
 
         let start_tick = unsafe { windows_sys::Win32::System::SystemInformation::GetTickCount() };
         let mut is_restored = false;
-        
+
         // Pequeño margen de seguridad para evitar falsos positivos por latencia en VMs
         tokio::time::sleep(tokio::time::Duration::from_millis(500)).await;
 
         loop {
             tokio::time::sleep(tokio::time::Duration::from_secs(POLL_INTERVAL)).await;
             let idle_time = get_system_idle_time(start_tick);
-            
+
             // Si el PC está inactivo por más de 3 min, restaurar Zenit (Modo Kiosk Activo)
             if !is_restored && idle_time >= IDLE_LIMIT_MS {
                 // Notificar al frontend ANTES de restaurar para que cambie a modo video mientras está oculto
                 let _ = app_clone.emit("trigger-inactivity-video", ());
-                
+
                 // Pequeño margen para que el WebView procese el cambio de estado
                 tokio::time::sleep(tokio::time::Duration::from_millis(150)).await;
 
@@ -279,7 +338,9 @@ async fn start_restore_monitor(app: AppHandle, state: tauri::State<'_, AppState>
     let state_clone = Arc::clone(&state.restore_timer);
 
     let mut timer_guard = state_clone.lock().await;
-    if let Some(handle) = timer_guard.take() { handle.abort(); }
+    if let Some(handle) = timer_guard.take() {
+        handle.abort();
+    }
 
     let handle = tauri::async_runtime::spawn(async move {
         let main_window = match app_clone.get_webview_window("main") {
@@ -348,12 +409,18 @@ fn get_system_idle_time(start_tick: u32) -> u32 {
         cbSize: std::mem::size_of::<LASTINPUTINFO>() as u32,
         dwTime: 0,
     };
-    
+
     let last_input = unsafe {
-        if GetLastInputInfo(&mut lii) != 0 { lii.dwTime } else { current }
+        if GetLastInputInfo(&mut lii) != 0 {
+            lii.dwTime
+        } else {
+            current
+        }
     };
 
-    if last_input < start_tick { current.wrapping_sub(start_tick) } 
-    else { current.wrapping_sub(last_input) }
+    if last_input < start_tick {
+        current.wrapping_sub(start_tick)
+    } else {
+        current.wrapping_sub(last_input)
+    }
 }
-

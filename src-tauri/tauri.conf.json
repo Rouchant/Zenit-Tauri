@@ -1,7 +1,7 @@
 {
   "$schema": "../node_modules/@tauri-apps/cli/config.schema.json",
   "productName": "Zenit",
-  "version": "1.9.2",
+  "version": "1.9.3",
   "identifier": "com.zenit.app",
   "build": {
     "frontendDist": "../dist_app",
@@ -25,6 +25,7 @@
         "center": true,
         "focus": true,
         "devtools": false,
+        "transparent": true,
         "visible": false
       },
       {
@@ -60,7 +61,7 @@
       }
     ],
     "security": {
-      "csp": "default-src 'self' asset: http://asset.localhost https://asset.localhost https://tauri.localhost http://tauri.localhost; img-src 'self' data: asset: http://asset.localhost https://asset.localhost https://tauri.localhost http://tauri.localhost; media-src 'self' asset: http://asset.localhost https://asset.localhost https://tauri.localhost http://tauri.localhost; connect-src 'self' asset: http://asset.localhost https://asset.localhost https://tauri.localhost http://tauri.localhost",
+      "csp": "default-src 'self' asset: http://asset.localhost https://asset.localhost https://tauri.localhost http://tauri.localhost http://ipc.localhost https://ipc.localhost ipc.localhost; img-src 'self' data: asset: http://asset.localhost https://asset.localhost https://tauri.localhost http://tauri.localhost; media-src 'self' asset: http://asset.localhost https://asset.localhost https://tauri.localhost http://tauri.localhost; connect-src 'self' asset: http://asset.localhost https://asset.localhost https://tauri.localhost http://tauri.localhost http://ipc.localhost https://ipc.localhost ipc.localhost; style-src 'self' 'unsafe-inline';",
       "assetProtocol": {
         "enable": true,
         "scope": [
@@ -102,7 +103,8 @@
     },
     "resources": {
       "resources/assets/**/*": "",
-      "Install-Kiosk.ps1": "Install-Kiosk.ps1"
+      "Install-Kiosk.ps1": "Install-Kiosk.ps1",
+      "lib/**/*": "lib"
     }
   }
 }

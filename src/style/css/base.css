@@ -12,10 +12,6 @@
     --price-primary-size: 52px;
     --price-secondary-size: 48px;
     --price-logo-size: 24px;
-
-    /* OLED Pixel Shift */
-    --shift-x: 0px;
-    --shift-y: 0px;
 }
 
 .is-loading * {
@@ -37,7 +33,7 @@
 }
 
 html {
-    background-color: var(--bg-dark);
+    background-color: transparent !important;
     height: 100vh;
     width: 100vw;
     overflow: hidden;
@@ -54,7 +50,7 @@ html {
 }
 
 body {
-    background-color: var(--bg-dark);
+    background-color: transparent !important;
     color: var(--text);
     overflow: hidden;
     height: 100vh;
