@@ -81,6 +81,51 @@ const finishSetup = async () => {
 
 <template>
   <div class="first-start-overlay">
+
+    <!-- TRIÁNGULO VISUAL ESQUINA SUPERIOR DERECHA (PUNTO DE CLIC) -->
+    <div class="corner-triangle top-right-triangle">
+      <svg width="60" height="60" viewBox="0 0 60 60" fill="none" xmlns="http://www.w3.org/2000/svg">
+        <path d="M60 0H0L60 60V0Z" fill="var(--primary, #00f2aa)" fill-opacity="0.85"/>
+        <path d="M57 3H10L57 50V3Z" fill="#ffffff" fill-opacity="0.25"/>
+      </svg>
+    </div>
+
+    <!-- INDICADOR ESQUINA SUPERIOR DERECHA: PANEL CONFIGURACIÓN -->
+    <div class="corner-callout top-right-callout">
+      <div class="callout-icon-box">
+        <svg xmlns="http://www.w3.org/2000/svg" width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+          <path d="M12.22 2h-.44a2 2 0 0 0-2 2v.18a2 2 0 0 1-1 1.73l-.43.25a2 2 0 0 1-2 0l-.15-.08a2 2 0 0 0-2.73.73l-.22.38a2 2 0 0 0 .73 2.73l.15.1a2 2 0 0 1 1 1.72v.51a2 2 0 0 1-1 1.74l-.15.09a2 2 0 0 0-.73 2.73l.22.38a2 2 0 0 0 2.73.73l.15-.08a2 2 0 0 1 2 0l.43.25a2 2 0 0 1 1 1.73V20a2 2 0 0 0 2 2h.44a2 2 0 0 0 2-2v-.18a2 2 0 0 1 1-1.73l.43-.25a2 2 0 0 1 2 0l.15.08a2 2 0 0 0 2.73-.73l.22-.38a2 2 0 0 0-.73-2.73l-.15-.08a2 2 0 0 1-1-1.74v-.5a2 2 0 0 1 1-1.74l.15-.09a2 2 0 0 0 .73-2.73l-.22-.38a2 2 0 0 0-2.73-.73l-.15.08a2 2 0 0 1-2 0l-.43-.25a2 2 0 0 1-1-1.73V4a2 2 0 0 0-2-2z"/>
+          <circle cx="12" cy="12" r="3"/>
+        </svg>
+      </div>
+      <div class="callout-content">
+        <h4>Panel de Configuración</h4>
+        <p>Haz <strong>4 clics rápidos aquí</strong> en el triángulo de la esquina.</p>
+      </div>
+    </div>
+
+    <!-- TRIÁNGULO VISUAL ESQUINA INFERIOR DERECHA (PUNTO DE CLIC) -->
+    <div class="corner-triangle bottom-right-triangle">
+      <svg width="60" height="60" viewBox="0 0 60 60" fill="none" xmlns="http://www.w3.org/2000/svg">
+        <path d="M60 60H0L60 0V60Z" fill="#ff4d4d" fill-opacity="0.85"/>
+        <path d="M57 57H10L57 10V57Z" fill="#ffffff" fill-opacity="0.25"/>
+      </svg>
+    </div>
+
+    <!-- INDICADOR ESQUINA INFERIOR DERECHA: CIERRE DE APP -->
+    <div class="corner-callout bottom-right-callout">
+      <div class="callout-icon-box danger">
+        <svg xmlns="http://www.w3.org/2000/svg" width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+          <path d="M18.36 6.64a9 9 0 1 1-12.73 0"/>
+          <line x1="12" y1="2" x2="12" y2="12"/>
+        </svg>
+      </div>
+      <div class="callout-content">
+        <h4>Cerrar la Aplicación</h4>
+        <p>Haz <strong>4 clics rápidos aquí</strong> + tu clave, o usa <kbd class="kbd-key">Ctrl</kbd>+<kbd class="kbd-key">Shift</kbd>+<kbd class="kbd-key">Alt</kbd>+<kbd class="kbd-key">Z</kbd>.</p>
+      </div>
+    </div>
+
     <div class="first-start-container">
       
       <!-- Encabezado -->
@@ -175,7 +220,7 @@ const finishSetup = async () => {
   left: 0;
   width: 100vw;
   height: 100vh;
-  background: rgba(10, 11, 18, 0.93);
+  background: #000000;
   display: flex;
   justify-content: center;
   align-items: center;
@@ -186,54 +231,57 @@ const finishSetup = async () => {
 
 .first-start-container {
   width: 100%;
-  max-width: 960px;
-  background: rgba(25, 28, 40, 0.95);
+  max-width: 860px;
+  max-height: 88vh;
+  overflow-y: auto;
+  background: rgba(25, 28, 40, 1);
   border: 1px solid rgba(255, 255, 255, 0.1);
-  border-radius: 24px;
-  padding: 40px;
-  box-shadow: 0 30px 80px rgba(0, 0, 0, 0.6);
+  border-radius: 20px;
+  padding: 28px 32px;
+  box-shadow: none;
   position: relative;
   display: flex;
   flex-direction: column;
   align-items: center;
-  animation: slideUpFade 0.7s cubic-bezier(0.16, 1, 0.3, 1) forwards;
 }
 
-@keyframes slideUpFade {
-  from {
-    opacity: 0;
-    transform: translateY(30px);
-  }
-  to {
-    opacity: 1;
-    transform: translateY(0);
-  }
+/* Scrollbar estilizada */
+.first-start-container::-webkit-scrollbar {
+  width: 6px;
+}
+.first-start-container::-webkit-scrollbar-track {
+  background: rgba(0, 0, 0, 0.2);
+  border-radius: 3px;
+}
+.first-start-container::-webkit-scrollbar-thumb {
+  background: rgba(255, 255, 255, 0.15);
+  border-radius: 3px;
 }
 
 /* Encabezado */
 .wizard-header {
   text-align: center;
-  margin-bottom: 35px;
+  margin-bottom: 20px;
   position: relative;
 }
 
 .wizard-title {
-  font-size: 2.8rem;
+  font-size: 2.2rem;
   font-weight: 900;
-  letter-spacing: 12px;
+  letter-spacing: 10px;
   color: var(--white, #ffffff);
   margin: 0;
-  text-shadow: 0 2px 10px rgba(0, 0, 0, 0.5);
+  text-shadow: none;
   font-family: 'Outfit', 'Inter', sans-serif;
 }
 
 .wizard-subtitle {
-  font-size: 0.8rem;
+  font-size: 0.75rem;
   font-weight: 700;
-  letter-spacing: 4px;
+  letter-spacing: 3px;
   color: var(--primary, #00f2aa);
-  margin-top: 5px;
-  margin-bottom: 15px;
+  margin-top: 4px;
+  margin-bottom: 10px;
 }
 
 .wizard-decorator-line {
@@ -256,56 +304,56 @@ const finishSetup = async () => {
 }
 
 .mt-xl {
-  margin-top: 40px;
+  margin-top: 24px;
 }
 
 .section-num-title {
-  font-size: 1.25rem;
+  font-size: 1.1rem;
   font-weight: 800;
   color: var(--white, #ffffff);
-  margin: 0 0 6px 0;
+  margin: 0 0 4px 0;
   display: flex;
   align-items: center;
-  gap: 12px;
+  gap: 10px;
   letter-spacing: 0.5px;
 }
 
 .section-num-title span {
-  font-size: 0.9rem;
+  font-size: 0.8rem;
   font-weight: 900;
   color: var(--primary, #00f2aa);
   background: rgba(var(--primary-rgb, 0, 242, 170), 0.1);
-  padding: 2px 8px;
-  border-radius: 6px;
+  padding: 2px 7px;
+  border-radius: 5px;
   border: 1px solid rgba(var(--primary-rgb, 0, 242, 170), 0.2);
 }
 
 .section-desc {
-  font-size: 0.85rem;
+  font-size: 0.8rem;
   color: rgba(255, 255, 255, 0.5);
-  margin: 0 0 20px 0;
+  margin: 0 0 14px 0;
 }
 
 /* Grilla de Temas */
 .themes-grid {
   display: grid;
   grid-template-columns: repeat(4, 1fr);
-  gap: 20px;
+  gap: 14px;
   width: 100%;
 }
 
 .theme-card {
   background: rgba(255, 255, 255, 0.015);
   border: 1px solid rgba(255, 255, 255, 0.05);
-  border-radius: 18px;
-  padding: 22px 18px;
+  border-radius: 14px;
+  padding: 14px 12px;
   cursor: pointer;
   position: relative;
   display: flex;
   flex-direction: column;
   align-items: center;
   justify-content: space-between;
-  min-height: 180px;
+  min-height: 145px;
   text-align: center;
   transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
   user-select: none;
@@ -315,14 +363,14 @@ const finishSetup = async () => {
   background: rgba(255, 255, 255, 0.04);
   border-color: rgba(var(--primary-rgb, 0, 242, 170), 0.3);
   transform: translateY(-4px);
-  box-shadow: 0 10px 25px rgba(0, 0, 0, 0.2);
+  box-shadow: none;
 }
 
 .theme-card.active {
   background: rgba(var(--theme-color, 0, 242, 170), 0.06);
   border-color: var(--theme-color, #00f2aa);
   transform: translateY(-4px);
-  box-shadow: 0 12px 30px rgba(0, 0, 0, 0.4);
+  box-shadow: none;
 }
 
 .theme-card-badge {
@@ -336,7 +384,7 @@ const finishSetup = async () => {
   padding: 3px 10px;
   border-radius: 20px;
   letter-spacing: 0.5px;
-  box-shadow: 0 4px 10px rgba(0,0,0,0.2);
+  box-shadow: none;
 }
 
 .theme-logo-wrapper {
@@ -482,34 +530,128 @@ const finishSetup = async () => {
   animation: shake 0.4s ease;
 }
 
+/* Triángulos Marcadores en las Esquinas Supremas */
+.corner-triangle {
+  position: fixed;
+  z-index: 10006;
+  pointer-events: none;
+}
+
+.top-right-triangle {
+  top: 0;
+  right: 0;
+  color: var(--primary, #00f2aa);
+}
+
+.bottom-right-triangle {
+  bottom: 0;
+  right: 0;
+  color: #ff4d4d;
+}
+
+/* Tarjetas Flotantes en las Esquinas */
+.corner-callout {
+  position: fixed;
+  z-index: 10005;
+  background: rgba(20, 24, 38, 0.95);
+  border: 1px solid rgba(255, 255, 255, 0.15);
+  backdrop-filter: blur(12px);
+  border-radius: 14px;
+  padding: 10px 14px;
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  max-width: 270px;
+  box-shadow: 0 10px 30px rgba(0, 0, 0, 0.5);
+}
+
+.top-right-callout {
+  top: 15px;
+  right: 68px;
+}
+
+.bottom-right-callout {
+  bottom: 15px;
+  right: 68px;
+}
+
+.callout-icon-box {
+  width: 42px;
+  height: 42px;
+  min-width: 42px;
+  border-radius: 12px;
+  background: rgba(var(--primary-rgb, 0, 242, 170), 0.15);
+  color: var(--primary, #00f2aa);
+  border: 1px solid rgba(var(--primary-rgb, 0, 242, 170), 0.3);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.callout-icon-box.danger {
+  background: rgba(255, 77, 77, 0.15);
+  color: #ff4d4d;
+  border-color: rgba(255, 77, 77, 0.3);
+}
+
+.callout-content h4 {
+  font-size: 0.9rem;
+  font-weight: 800;
+  color: #ffffff;
+  margin: 0 0 3px 0;
+  letter-spacing: 0.3px;
+}
+
+.callout-content p {
+  font-size: 0.78rem;
+  color: rgba(255, 255, 255, 0.75);
+  margin: 0;
+  line-height: 1.35;
+}
+
+.kbd-key {
+  font-family: monospace;
+  background: rgba(255, 255, 255, 0.15);
+  border: 1px solid rgba(255, 255, 255, 0.25);
+  border-radius: 4px;
+  padding: 1px 5px;
+  font-size: 0.7rem;
+  color: #ffffff;
+}
+
+@keyframes pulseFloating {
+  0% { transform: translateY(0); }
+  100% { transform: translateY(-4px); }
+}
+
 /* Footer & Botón final */
 .wizard-footer {
   width: 100%;
   display: flex;
   justify-content: center;
-  margin-top: 40px;
+  margin-top: 24px;
 }
 
 .btn-finish-setup {
   display: flex;
   align-items: center;
-  gap: 12px;
+  gap: 10px;
   background: linear-gradient(135deg, var(--primary, #00f2aa) 0%, var(--secondary, #007bb0) 100%);
   border: none;
   color: #05050a;
-  padding: 16px 40px;
-  font-size: 1rem;
+  padding: 12px 32px;
+  font-size: 0.92rem;
   font-weight: 800;
   letter-spacing: 2px;
-  border-radius: 14px;
+  border-radius: 12px;
   cursor: pointer;
   transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
-  box-shadow: 0 4px 15px rgba(0, 0, 0, 0.25);
+  box-shadow: none;
 }
 
 .btn-finish-setup:hover {
   transform: scale(1.03);
-  box-shadow: 0 8px 25px rgba(0, 0, 0, 0.4);
+  box-shadow: none;
 }
 
 .btn-finish-setup:active {

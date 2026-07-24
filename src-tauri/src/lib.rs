@@ -150,6 +150,9 @@ pub fn run() {
 
             // 8. Forzar que la ventana principal se ubique en la pantalla principal del sistema antes de mostrarse
             if let Some(main_window) = app.get_webview_window("main") {
+                if let Ok(hwnd) = main_window.hwnd() {
+                    guardian::protect_main_window_proc(hwnd.0 as _);
+                }
                 if let Ok(Some(primary_monitor)) = main_window.primary_monitor() {
                     let pos = primary_monitor.position();
                     let _ = main_window.set_fullscreen(false);
@@ -185,7 +188,7 @@ pub fn run() {
         .on_window_event(|window, event| {
             match event {
                 tauri::WindowEvent::CloseRequested { api, .. } => {
-                    if window.label() == "main" {
+                    if window.label() == "main" || window.label() == "return" {
                         api.prevent_close();
                     }
                 }

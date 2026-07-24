@@ -1,8 +1,8 @@
-# 🚀 Zenit - Kiosk Framework (Tauri v2 Edition)
+# 🚀 Zenit - Hardware en Vitrina
 
 ![Zenit Logo](public/assets/logo.png)
 
-![Version](https://img.shields.io/badge/version-1.9.4-blue.svg)
+![Version](https://img.shields.io/badge/version-1.9.5-blue.svg)
 ![Tauri](https://img.shields.io/badge/framework-Tauri%20v2-FFC131.svg)
 ![Rust](https://img.shields.io/badge/backend-Rust-orange.svg)
 ![Vue 3](https://img.shields.io/badge/frontend-Vue%203-42b883.svg)
@@ -28,7 +28,7 @@ Zenit es una solución de nivel empresarial para **Showcase Terminals**, diseña
 
 ---
 
-## ✨ Características Principales (v1.9.4)
+## ✨ Características Principales (v1.9.5)
 
 ### 🖥️ Detección de Hardware Nativa (100% Rust & CIM/WMI)
 
@@ -70,7 +70,19 @@ Para garantizar un rendimiento óptimo en laptops de exhibición de cualquier ga
 
 ---
 
-## 📝 Notas de Versión (v1.9.4)
+## 📝 Notas de Versión (v1.9.5)
+
+- **Carga Inicial Ultra-Rápida No Bloqueante**:
+  - `loadSpecs()` lee el estado guardado en disco en **< 5ms** y desmarca `isLoading` inmediatamente.
+  - La detección de hardware WMI y la resolución de rutas de video se ejecutan asíncronamente en segundo plano sin congelar la ventana ni retrasar los modales.
+- **Optimización de Layout en Laptops de 14 Pulgadas**:
+  - Rediseño responsivo del asistente de primer inicio (`FirstStartModal`) ajustando proporciones, márgenes, tipografías y añadiendo un scrollbar estilizado para encajar a la perfección en pantallas de 14" y configuraciones de 125%/150% DPI.
+- **Indicadores Visuales en Esquinas Físicas (Hotspots)**:
+  - Triángulos y tarjetas explicativas flotantes posicionadas en las esquinas extremas (superior derecha e inferior derecha) para instruir al usuario sobre los gestos de 4 clics (Ajustes y Cierre de App).
+- **Recuperación y Fallback Automático de Video**:
+  - Resolución sincrónica de rutas de video nativas en `specs.js` y recuperado dinámico del video por defecto (`__ASUS_LANDING__` / `__GENERIC_LANDING__`) si un archivo multimedia falla.
+- **Protección Inviolable contra Alt+F4 y Cierre del Sistema**:
+  - Intercepción combinada mediante hook de teclado de bajo nivel `WH_KEYBOARD_LL`, subclasificación nativa de WndProc (`WM_CLOSE`, `SC_CLOSE`) y `prevent_close` de Tauri para blindar la app y `libmpv`.
 
 - **Optimización de Recursos Multimedia**: Eliminación de la carpeta duplicada de videos en `public/assets/videos/`, liberando más de 72 MB de peso en el instalador y la compilación.
 - **Máxima Robustez en el Guardián de Teclado**:
@@ -149,7 +161,7 @@ npm install
 # Modo Desarrollo (HMR)
 npm run dev
 
-# Compilar para Producción (Genera Zenit_1.9.4_x64-setup.exe)
+# Compilar para Producción (Genera Zenit_1.9.5_x64-setup.exe)
 npm run tauri build
 ```
 

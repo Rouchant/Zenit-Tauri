@@ -365,6 +365,7 @@ const initMpvGlobal = async () => {
           'mute': 'yes',            // Silenciar todos los videos (kiosk mode)
           'audio': 'no',            // Desactivar completamente el decodificador de audio (ahorra CPU)
           'input-default-bindings': 'no', // Desactivar atajos por defecto de mpv (evita Alt+F4, q, etc.)
+          'input-vo-keyboard': 'no',       // Desactivar procesamiento de eventos de teclado en la ventana nativa de MPV
         },
         observedProperties: [
           ['pause', 'flag'],
@@ -546,17 +547,46 @@ const resumeInfoVideos = (delayMs = 0) => {
 
 
 const handleLandingVideoError = () => {
+  if (!currentLandingVideoSrc.value || currentLandingVideoSrc.value === '') {
+    return;
+  }
   if (landingRetryCount.value < 3) {
     landingRetryCount.value++;
-    console.warn(`Landing video error detected, reloading (retry ${landingRetryCount.value}/3)...`);
+    console.warn(`[Landing Video] Error de reproducción detectado, reintentando (${landingRetryCount.value}/3)...`);
     setTimeout(() => {
       if (landingVideo.value) {
         landingVideo.value.load();
         landingVideo.value.play().catch(() => {});
       }
-    }, 2000);
+    }, 1000);
   } else {
-    console.error("Landing video failed after max retries.");
+    console.error("[Landing Video] Fallo al cargar video. Restableciendo al video por defecto del store...");
+    landingRetryCount.value = 0;
+    
+    // Restablecer la configuración al video interno por defecto
+    const defaultVideoKey = store.isAsus ? '__ASUS_LANDING__' : '__GENERIC_LANDING__';
+    store.currentSpecs.landingVideoType = 'default';
+    store.currentSpecs.customLandingVideoPath = defaultVideoKey;
+    store.currentSpecs.customLandingVideoName = store.isAsus ? 'Original Asus (Home)' : 'Original Windows 11 (Home)';
+    
+    // Obtener la ruta resuelta desde el store y aplicarla al reproductor
+    const defaultUrl = store.getVideoUrl(defaultVideoKey);
+    if (defaultUrl) {
+      currentLandingVideoSrc.value = defaultUrl;
+    }
+    
+    nextTick(() => {
+      if (landingVideo.value) {
+        try {
+          landingVideo.value.load();
+          if (!store.isModalOpen && !store.isVideoMode && shouldBePlaying.value) {
+            landingVideo.value.play().catch((e) => console.warn('[Landing Video Fallback] Error al reproducir video por defecto:', e));
+          }
+        } catch (e) {
+          console.error('[Landing Video Fallback] Error en recarga:', e);
+        }
+      }
+    });
   }
 };
 
@@ -594,7 +624,7 @@ watch(() => store.isLoading, async (loading) => {
         await document.fonts.ready.catch(() => {});
       }
       
-      // 2. Dar 500ms para que el primer frame del video e imágenes se pinten en segundo plano
+      // 2. Transición rápida a la ventana principal
       setTimeout(async () => {
         const { getCurrentWebviewWindow } = await import('@tauri-apps/api/webviewWindow');
         const mainWin = getCurrentWebviewWindow();
@@ -614,8 +644,8 @@ watch(() => store.isLoading, async (loading) => {
         // Cerrar la ventana de salpicadura nativamente
         setTimeout(async () => {
           await tauriAPI.closeSplashscreen();
-        }, 200);
-      }, 500);
+        }, 100);
+      }, 100);
     } catch (err) {
       console.warn('No se pudo gestionar la ventana de salpicadura:', err);
     }
@@ -711,16 +741,6 @@ const updateVideoSources = () => {
   // Todos los fondos ahora tienen su propia variante temática específica, por lo que marcamos isBgThemed como verdadero
   const isThemed = true;
 
-  console.log("[Zenit App] updateVideoSources:", { 
-    themeSuffix, 
-    baseKey, 
-    newBg, 
-    isThemed, 
-    isAsus: store.isAsus, 
-    brand: store.currentSpecs?.brand, 
-    model: store.currentSpecs?.model 
-  });
-
   if (currentBgVideoSrc.value !== newBg) {
     currentBgVideoSrc.value = newBg;
   }
@@ -739,18 +759,20 @@ watch([
   () => store.isAsus,
   () => store.currentSpecs.customLandingVideoPath,
   () => store.theme,
-], updateVideoSources);
+  () => store.resolvedPaths,
+], updateVideoSources, { deep: true, immediate: true });
 
-// Desactivar estado listo únicamente si cambia la ruta real del video para evitar parpadeos/bloqueos visuales
-watch(currentLandingVideoSrc, () => {
+// Cargar y reproducir el video de landing cuando cambie la fuente resuelta
+watch(currentLandingVideoSrc, (newSrc) => {
   isLandingReady.value = false;
-  if (landingVideo.value) {
+  if (landingVideo.value && newSrc) {
     try {
-      landingVideo.value.pause();
-      landingVideo.value.src = "";
       landingVideo.value.load();
+      if (!store.isModalOpen && !store.isVideoMode && shouldBePlaying.value) {
+        landingVideo.value.play().catch(() => {});
+      }
     } catch (e) {
-      console.warn("[Video GC] Error al liberar recursos de video:", e);
+      console.warn("[Video] Error al recargar landingVideo:", e);
     }
   }
 });
@@ -842,18 +864,26 @@ onMounted(async () => {
   window.addEventListener('resize', updateScale);
   
   await store.loadSpecs();
-  updateVideoSources();
+
+  // Si es el primer inicio, activar el modal e isModalOpen ANTES de iniciar reproducción de video
+  if (!store.currentSpecs.firstStartCompleted) {
+    showFirstStartModal.value = true;
+    store.isModalOpen = true;
+  }
+
   if (window.__TAURI_INTERNALS__) {
     await initMpvGlobal();
-    playBgVideoNative();
+    if (!store.isModalOpen) {
+      playBgVideoNative();
+    } else {
+      pauseInfoVideos();
+    }
   }
   
   // Forzar brillo al 100% y desactivar suspensión de pantalla en AC al arrancar
   tauriAPI.setMaxBrightness();
   
-  if (!store.currentSpecs.firstStartCompleted) {
-    showFirstStartModal.value = true;
-  } else {
+  if (store.currentSpecs.firstStartCompleted) {
     resetTimer();
   }
 

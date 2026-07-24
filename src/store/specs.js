@@ -59,6 +59,7 @@ export const useSpecsStore = defineStore('specs', () => {
   })());
   // Aplicar clase al body inmediatamente para evitar parpadeos
   if (typeof document !== 'undefined') document.documentElement.className = `theme-${theme.value}`;
+  const baseResourceDir = ref('');
   const resolvedPaths = ref({});
   
   const CONFIG = {
@@ -155,55 +156,19 @@ export const useSpecsStore = defineStore('specs', () => {
     }
 
     try {
-      // 0. Resolver rutas de recursos internos (videos en src-tauri/resources)
-      if (window.__TAURI_INTERNALS__) {
-        const resDir = await tauriAPI.getVideoPath();
-        if (resDir) {
-          const base = resDir.replace(/\\/g, '/');
-          console.log("[Zenit Specs] Base resource directory:", base);
-          
-          const internalEntries = Object.entries(INTERNAL_PATHS);
-          
-          const newResolved = { ...resolvedPaths.value };
-          for (const [key, fileName] of internalEntries) {
-            const absPath = `${base}/${fileName}`;
-            if (key.includes('_')) {
-              try {
-                const exists = await tauriAPI.checkFileExists(absPath);
-                console.log(`[Zenit Specs] Check themed path: ${key} -> ${absPath} -> exists: ${exists}`);
-                if (exists) {
-                  newResolved[key] = convertFileSrc(absPath);
-                }
-              } catch (e) {
-                console.warn(`Error checking background path ${absPath}:`, e);
-              }
-            } else {
-              newResolved[key] = convertFileSrc(absPath);
-            }
-          }
-          resolvedPaths.value = newResolved;
-        }
-      }
-
       // 1. Cargar specs del store persistente (reemplaza config.json y localStorage)
       let storedSpecs = null;
       if (tauriStore) {
         storedSpecs = await tauriStore.get('specs');
       }
 
-      // 2. Detectar hardware automáticamente via PowerShell
-      autoDetectedSpecs.value = await tauriAPI.getSystemSpecs().catch(() => ({
-        brand: 'Computadora', processor: 'Microprocesador', ram: '8GB', storage: '512GB SSD',
-        gpu: 'Graficos integrados', display: '1920x1080', os: 'Windows', cores: 4, threads: 8
-      }));
-
-      // 3. Merge: Auto-detectado < Store persistente
+      // 2. Establecer specs iniciales desde disco/store de inmediato
       currentSpecs.value = { 
         ...autoDetectedSpecs.value, 
         ...(storedSpecs || {}) 
       };
       
-      // Si ya existen especificaciones guardadas en disco (instalaciones existentes), asumimos primer inicio completo
+      // Si ya existen especificaciones guardadas en disco, asumimos primer inicio completo
       if (storedSpecs && Object.keys(storedSpecs).length > 0) {
         currentSpecs.value.firstStartCompleted = true;
       }
@@ -243,10 +208,9 @@ export const useSpecsStore = defineStore('specs', () => {
         delete currentSpecs.value.onlyDelivery;
       }
 
-      // Migrar path viejo (string) a array si existe
+      // Migración de rutas de video
       if (currentSpecs.value.customVideoPath && !currentSpecs.value.customVideoPaths) {
         const oldPath = currentSpecs.value.customVideoPath;
-        // Extraer nombre de archivo como nombre de display en la migración
         const oldName = oldPath.split(/[\/\\]/).pop()?.replace(/\.[^.]+$/, '') || 'Video 1';
         currentSpecs.value.customVideoPaths = [{ name: oldName, path: oldPath }];
         delete currentSpecs.value.customVideoPath;
@@ -266,57 +230,101 @@ export const useSpecsStore = defineStore('specs', () => {
         ];
       }
 
-      // 4. Lógica de pre-selección inteligente de videos
-      const isAsusBrand = (currentSpecs.value.brand || '').toLowerCase().includes('asus') || (currentSpecs.value.model || '').toLowerCase().includes('asus');
-      const isRTXGpu = (currentSpecs.value.gpu || '').toLowerCase().includes('rtx');
-
-      // Pre-selección de Landing (Home)
-      if (!currentSpecs.value.customLandingVideoPath) {
-          if (isRTXGpu) {
-              currentSpecs.value.customLandingVideoPath = INTERNAL_VIDEOS.GAMING_XBOX;
-              currentSpecs.value.customLandingVideoName = 'Xbox Game Pass (Gaming)';
-          } else {
-              currentSpecs.value.customLandingVideoPath = INTERNAL_VIDEOS.GENERIC_LANDING;
-              currentSpecs.value.customLandingVideoName = 'Original Windows 11 (Home)';
-          }
-      } else if (!currentSpecs.value.customLandingVideoName) {
-          // Migración: Si tiene path pero no nombre, intentar buscar en internos
-          const allOptions = [
-            { name: '🏠 Original Asus (Home)', path: INTERNAL_VIDEOS.ASUS_LANDING },
-            { name: '🏢 Original Windows 11 (Home)', path: INTERNAL_VIDEOS.GENERIC_LANDING },
-            { name: '🎮 Xbox Game Pass (Gaming)', path: INTERNAL_VIDEOS.GAMING_XBOX }
-          ];
-          const matched = allOptions.find(o => o.path === currentSpecs.value.customLandingVideoPath);
-          if (matched) {
-              currentSpecs.value.customLandingVideoName = matched.name;
-          }
-      }
-
-      // Pre-selección de Inactividad (Slots)
-      const hasAnyCustomSet = currentSpecs.value.customVideoPaths && currentSpecs.value.customVideoPaths.some(p => p.path);
-      if (!hasAnyCustomSet) {
-          if (isRTXGpu && isAsusBrand) {
-              currentSpecs.value.customVideoPaths[0] = { name: 'TUF Gaming: Durabilidad', path: INTERNAL_VIDEOS.TUF_DURABILITY };
-              currentSpecs.value.customVideoPaths[1] = { name: 'Promo Asus', path: INTERNAL_VIDEOS.ASUS_PROMO };
-          } else if (isRTXGpu) {
-              currentSpecs.value.customVideoPaths[0] = { name: 'Windows Gaming', path: INTERNAL_VIDEOS.WINDOWS_GAMING };
-          } else if (isAsusBrand) {
-              currentSpecs.value.customVideoPaths[0] = { name: 'Promo Genérica', path: INTERNAL_VIDEOS.GENERIC_PROMO };
-              currentSpecs.value.customVideoPaths[1] = { name: 'Promo Asus', path: INTERNAL_VIDEOS.ASUS_PROMO };
-          } else {
-              currentSpecs.value.customVideoPaths[0] = { name: 'Promo Genérica', path: INTERNAL_VIDEOS.GENERIC_PROMO };
-          }
-      }
-
       updateTheme(currentSpecs.value.store);
-      
-      try {
-        if (typeof localStorage !== 'undefined') {
-          localStorage.setItem('zenit-specs', JSON.stringify(currentSpecs.value));
+
+      // Desmarcar isLoading INMEDIATAMENTE para que la ventana y modal aparezcan sin retraso WMI
+      isLoading.value = false;
+
+      // 3. Tareas en segundo plano (No bloqueantes): Resolución de rutas en paralelo y detección de Hardware via WMI
+      const bgTask = (async () => {
+        try {
+          if (window.__TAURI_INTERNALS__) {
+            const resDir = await tauriAPI.getVideoPath();
+            if (resDir) {
+              baseResourceDir.value = resDir.replace(/\\/g, '/');
+              const base = baseResourceDir.value;
+              const internalEntries = Object.entries(INTERNAL_PATHS);
+              const newResolved = { ...resolvedPaths.value };
+              
+              // Verificación PARALELA de archivos internos con Promise.all
+              await Promise.all(internalEntries.map(async ([key, fileName]) => {
+                const absPath = `${base}/${fileName}`;
+                if (key.includes('_')) {
+                  try {
+                    const exists = await tauriAPI.checkFileExists(absPath);
+                    if (exists) {
+                      newResolved[key] = convertFileSrc(absPath);
+                    }
+                  } catch (e) {}
+                } else {
+                  newResolved[key] = convertFileSrc(absPath);
+                }
+              }));
+              resolvedPaths.value = newResolved;
+            }
+
+            // Detección WMI de hardware en segundo plano
+            const detected = await tauriAPI.getSystemSpecs().catch(() => ({
+              brand: 'Computadora', processor: 'Microprocesador', ram: '8GB', storage: '512GB SSD',
+              gpu: 'Graficos integrados', display: '1920x1080', os: 'Windows', cores: 4, threads: 8
+            }));
+            
+            autoDetectedSpecs.value = detected;
+            currentSpecs.value = { 
+              ...autoDetectedSpecs.value, 
+              ...currentSpecs.value 
+            };
+
+            // Pre-selección inteligente de videos
+            const isAsusBrand = (currentSpecs.value.brand || '').toLowerCase().includes('asus') || (currentSpecs.value.model || '').toLowerCase().includes('asus');
+            const isRTXGpu = (currentSpecs.value.gpu || '').toLowerCase().includes('rtx');
+
+            if (!currentSpecs.value.customLandingVideoPath) {
+                if (isRTXGpu) {
+                    currentSpecs.value.customLandingVideoPath = INTERNAL_VIDEOS.GAMING_XBOX;
+                    currentSpecs.value.customLandingVideoName = 'Xbox Game Pass (Gaming)';
+                } else {
+                    currentSpecs.value.customLandingVideoPath = INTERNAL_VIDEOS.GENERIC_LANDING;
+                    currentSpecs.value.customLandingVideoName = 'Original Windows 11 (Home)';
+                }
+            } else if (!currentSpecs.value.customLandingVideoName) {
+                const allOptions = [
+                  { name: '🏠 Original Asus (Home)', path: INTERNAL_VIDEOS.ASUS_LANDING },
+                  { name: '🏢 Original Windows 11 (Home)', path: INTERNAL_VIDEOS.GENERIC_LANDING },
+                  { name: '🎮 Xbox Game Pass (Gaming)', path: INTERNAL_VIDEOS.GAMING_XBOX }
+                ];
+                const matched = allOptions.find(o => o.path === currentSpecs.value.customLandingVideoPath);
+                if (matched) {
+                    currentSpecs.value.customLandingVideoName = matched.name;
+                }
+            }
+
+            const hasAnyCustomSet = currentSpecs.value.customVideoPaths && currentSpecs.value.customVideoPaths.some(p => p.path);
+            if (!hasAnyCustomSet) {
+                if (isRTXGpu && isAsusBrand) {
+                    currentSpecs.value.customVideoPaths[0] = { name: 'TUF Gaming: Durabilidad', path: INTERNAL_VIDEOS.TUF_DURABILITY };
+                    currentSpecs.value.customVideoPaths[1] = { name: 'Promo Asus', path: INTERNAL_VIDEOS.ASUS_PROMO };
+                } else if (isRTXGpu) {
+                    currentSpecs.value.customVideoPaths[0] = { name: 'Windows Gaming', path: INTERNAL_VIDEOS.WINDOWS_GAMING };
+                } else if (isAsusBrand) {
+                    currentSpecs.value.customVideoPaths[0] = { name: 'Promo Genérica', path: INTERNAL_VIDEOS.GENERIC_PROMO };
+                    currentSpecs.value.customVideoPaths[1] = { name: 'Promo Asus', path: INTERNAL_VIDEOS.ASUS_PROMO };
+                } else {
+                    currentSpecs.value.customVideoPaths[0] = { name: 'Promo Genérica', path: INTERNAL_VIDEOS.GENERIC_PROMO };
+                }
+            }
+
+            try {
+              if (typeof localStorage !== 'undefined') {
+                localStorage.setItem('zenit-specs', JSON.stringify(currentSpecs.value));
+              }
+            } catch (e) {}
+          }
+        } catch (bgErr) {
+          console.warn('[Zenit Specs] Background load error:', bgErr);
         }
-      } catch (e) {
-        console.warn('[Store Load] Failed to save specs to localStorage:', e);
-      }
+      })();
+      return bgTask;
     } catch (err) {
       console.error('Failed to load specs:', err);
     } finally {
@@ -335,7 +343,9 @@ export const useSpecsStore = defineStore('specs', () => {
 
     // 2. Si es una clave interna de INTERNAL_VIDEOS pero aún no se ha resuelto
     if (INTERNAL_PATHS[filePath]) {
-      // Intentar una ruta relativa como último recurso si no estamos en Tauri
+      if (window.__TAURI_INTERNALS__ && baseResourceDir.value) {
+        return convertFileSrc(`${baseResourceDir.value}/${INTERNAL_PATHS[filePath]}`);
+      }
       return window.__TAURI_INTERNALS__ ? '' : `/resources/assets/${INTERNAL_PATHS[filePath]}`;
     }
 
@@ -399,6 +409,7 @@ export const useSpecsStore = defineStore('specs', () => {
     isLoading,
     isBgThemed,
     theme,
+    resolvedPaths,
     CONFIG,
     saveCustom,
     loadSpecs,
