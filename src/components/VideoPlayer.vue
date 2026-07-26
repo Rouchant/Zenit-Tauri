@@ -315,7 +315,7 @@ defineExpose({ videoRef: mockVideoEl });
                   <div class="retail-badge badge-card">EXCLUSIVO TARJETA</div>
                   <div class="price-val-wrapper">
                     <div class="price-value price-primary-val">
-                      {{ store.currentSpecs.pricePrimary }}
+                      {{ store.formattedPricePrimary }}
                     </div>
                     <div class="store-logo-inline" v-if="['falabella', 'ripley', 'paris'].includes(store.theme)">
                        <img v-if="store.theme === 'falabella'" src="/assets/images/T-FALABELLA.svg" class="store-logo-sub" />
@@ -330,7 +330,7 @@ defineExpose({ videoRef: mockVideoEl });
                   <div class="retail-badge badge-all">TODO MEDIO DE PAGO</div>
                   <div class="price-val-wrapper">
                     <div class="price-value price-secondary-val">
-                      {{ store.currentSpecs.priceSecondary }}
+                      {{ store.formattedPriceSecondary }}
                     </div>
                   </div>
                 </div>
@@ -393,7 +393,7 @@ defineExpose({ videoRef: mockVideoEl });
 }
 
 .video-overlay.state-visible.state-dimmed {
-  opacity: 0.5;
+  opacity: 0.8;
 }
 
 .video-overlay.pos-top-right.state-hidden {
@@ -410,10 +410,10 @@ defineExpose({ videoRef: mockVideoEl });
 .inactivity-info-box {
   position: relative;
   z-index: 1;
-  width: auto;
+  width: max-content;
   min-width: 16vw;
-  max-width: 28vw;
-  background: rgba(10, 10, 10, 0.72);
+  max-width: 36vw;
+  background: rgba(10, 10, 10, 1);
   border: none;
   border-radius: 0.8vw;
   padding: 1.0vw;
@@ -487,6 +487,8 @@ defineExpose({ videoRef: mockVideoEl });
   align-items: center;
   gap: 0.6vw;
   width: 100%;
+  white-space: nowrap;
+  flex-wrap: nowrap;
 }
 
 .price-val-wrapper {
@@ -494,6 +496,8 @@ defineExpose({ videoRef: mockVideoEl });
   align-items: center;
   gap: 0.5vw;
   flex-wrap: nowrap;
+  white-space: nowrap;
+  flex-shrink: 0;
 }
 
 .retail-badge {
@@ -522,18 +526,21 @@ defineExpose({ videoRef: mockVideoEl });
 .price-value {
   font-weight: 800;
   line-height: 1;
+  white-space: nowrap;
 }
 
 .price-primary-val {
-  font-size: 1.4vw;
+  font-size: clamp(1.1vw, 1.35vw, 1.4vw);
   color: var(--primary, #00f2ff);
   letter-spacing: -0.02vw;
+  white-space: nowrap;
 }
 
 .price-secondary-val {
-  font-size: 1.4vw;
+  font-size: clamp(1.1vw, 1.35vw, 1.4vw);
   color: rgba(255, 255, 255, 0.9);
   letter-spacing: -0.015vw;
+  white-space: nowrap;
 }
 
 .store-logo-inline {
@@ -551,7 +558,7 @@ defineExpose({ videoRef: mockVideoEl });
   object-fit: contain;
 }
 
-/* Distribucion Dinamica para un solo precio */
+/* Distribución Dinámica para un solo precio */
 .prices-container.single-price-layout {
   justify-content: flex-start;
   gap: 0;
@@ -563,19 +570,24 @@ defineExpose({ videoRef: mockVideoEl });
   gap: 0.6vw;
   flex: none;
   width: 100%;
+  white-space: nowrap;
+  flex-wrap: nowrap;
 }
 
 .prices-container.single-price-layout .price-primary-val {
-  font-size: 2.0vw;
+  font-size: clamp(1.3vw, 1.7vw, 2.0vw);
+  white-space: nowrap;
 }
 
 .prices-container.single-price-layout .price-secondary-val {
-  font-size: 2.0vw;
+  font-size: clamp(1.3vw, 1.7vw, 2.0vw);
+  white-space: nowrap;
 }
 
 .prices-container.single-price-layout .retail-badge {
   font-size: 0.68vw;
   padding: 0.26vw 0.55vw;
+  white-space: nowrap;
 }
 
 .prices-container.single-price-layout .store-logo-sub {

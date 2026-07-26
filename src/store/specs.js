@@ -31,6 +31,21 @@ export const INTERNAL_PATHS = {
   [INTERNAL_VIDEOS.ASUS_WARRANTY]: 'Asus_Garantia_Perfecta.mp4'
 };
 
+export const formatPrice = (val) => {
+  if (val === null || val === undefined || val === '') return '';
+  const digits = String(val).replace(/\D/g, '');
+  if (!digits) return '';
+  return '$' + digits.replace(/\B(?=(\d{3})+(?!\d))/g, '.');
+};
+
+export const cleanPrice = (val) => {
+  if (val === null || val === undefined || val === '') return '';
+  const digits = String(val).replace(/\D/g, '');
+  if (!digits) return '';
+  const parsed = parseInt(digits, 10);
+  return isNaN(parsed) ? '' : String(parsed);
+};
+
 export const useSpecsStore = defineStore('specs', () => {
   const currentSpecs = ref((() => {
     try {
@@ -119,6 +134,14 @@ export const useSpecsStore = defineStore('specs', () => {
 
     if (!specs.os) specs.os = 'Windows 11 Home';
 
+    // Clean price fields to numeric only
+    if (specs.pricePrimary !== undefined) {
+      specs.pricePrimary = cleanPrice(specs.pricePrimary);
+    }
+    if (specs.priceSecondary !== undefined) {
+      specs.priceSecondary = cleanPrice(specs.priceSecondary);
+    }
+
     // Merge to avoid losing non-editable fields (like auto-detected ones)
     currentSpecs.value = { ...currentSpecs.value, ...specs };
 
@@ -167,6 +190,14 @@ export const useSpecsStore = defineStore('specs', () => {
         ...autoDetectedSpecs.value, 
         ...(storedSpecs || {}) 
       };
+
+      // Limpieza retroactiva de precios existentes en disco / cache
+      if (currentSpecs.value.pricePrimary !== undefined) {
+        currentSpecs.value.pricePrimary = cleanPrice(currentSpecs.value.pricePrimary);
+      }
+      if (currentSpecs.value.priceSecondary !== undefined) {
+        currentSpecs.value.priceSecondary = cleanPrice(currentSpecs.value.priceSecondary);
+      }
       
       // Si ya existen especificaciones guardadas en disco, asumimos primer inicio completo
       if (storedSpecs && Object.keys(storedSpecs).length > 0) {
@@ -456,6 +487,8 @@ export const useSpecsStore = defineStore('specs', () => {
       const asus = b.includes('asus');
       return !asus || b.includes('generico');
     }),
+    formattedPricePrimary: computed(() => formatPrice(currentSpecs.value?.pricePrimary)),
+    formattedPriceSecondary: computed(() => formatPrice(currentSpecs.value?.priceSecondary)),
     matchedBrand: computed(() => {
       const brand = (currentSpecs.value.brand || '').toLowerCase();
       const model = (currentSpecs.value.model || '').toLowerCase();

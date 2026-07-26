@@ -158,7 +158,7 @@
                      <div class="price-row">
                        <div class="retail-badge badge-card">EXCLUSIVO TARJETA</div>
                        <div class="price-primary">
-                         {{ store.currentSpecs.pricePrimary }}
+                         {{ store.formattedPricePrimary }}
                        </div>
                        <div class="store-logo-inline" v-if="['falabella', 'ripley', 'paris'].includes(store.theme)">
                           <img v-if="store.theme === 'falabella'" src="/assets/images/T-FALABELLA.svg" class="store-logo-sub" />
@@ -171,7 +171,7 @@
                      <div class="price-row">
                        <div class="retail-badge badge-all">TODO MEDIO DE PAGO</div>
                        <div class="price-secondary">
-                         {{ store.currentSpecs.priceSecondary }}
+                         {{ store.formattedPriceSecondary }}
                        </div>
                      </div>
                   </div>
@@ -233,10 +233,12 @@ import { init, command, setProperty, observeProperties } from 'tauri-plugin-libm
 import Header from './components/Header.vue';
 import SpecsGrid from './components/SpecsGrid.vue';
 
-// Lazy loaded components (Modals & Inactivity Video) to improve startup performance
+// Direct imports for instant modal transition
+import AdminModal from './components/Modals/AdminModal.vue';
+import PasswordModal from './components/Modals/PasswordModal.vue';
+
+// Lazy loaded components (Inactivity Video & Heavy Modals)
 const VideoPlayer = defineAsyncComponent(() => import('./components/VideoPlayer.vue'));
-const AdminModal = defineAsyncComponent(() => import('./components/Modals/AdminModal.vue'));
-const PasswordModal = defineAsyncComponent(() => import('./components/Modals/PasswordModal.vue'));
 const SpecsModal = defineAsyncComponent(() => import('./components/Modals/SpecsModal.vue'));
 const FirstStartModal = defineAsyncComponent(() => import('./components/Modals/FirstStartModal.vue'));
 
@@ -812,11 +814,14 @@ const openPassword = (mode) => {
 };
 
 const onPasswordVerified = () => {
-  showPasswordModal.value = false;
   if (passwordMode.value === 'exit') {
+    showPasswordModal.value = false;
     tauriAPI.quitApp();
   } else {
     showAdminModal.value = true;
+    nextTick(() => {
+      showPasswordModal.value = false;
+    });
   }
 };
 

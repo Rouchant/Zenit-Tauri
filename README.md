@@ -2,7 +2,7 @@
 
 ![Zenit Logo](public/assets/logo.png)
 
-![Version](https://img.shields.io/badge/version-1.9.5-blue.svg)
+![Version](https://img.shields.io/badge/version-1.9.6-blue.svg)
 ![Tauri](https://img.shields.io/badge/framework-Tauri%20v2-FFC131.svg)
 ![Rust](https://img.shields.io/badge/backend-Rust-orange.svg)
 ![Vue 3](https://img.shields.io/badge/frontend-Vue%203-42b883.svg)
@@ -28,7 +28,7 @@ Zenit es una solución de nivel empresarial para **Showcase Terminals**, diseña
 
 ---
 
-## ✨ Características Principales (v1.9.5)
+## ✨ Características Principales (v1.9.6)
 
 ### 🖥️ Detección de Hardware Nativa (100% Rust & CIM/WMI)
 

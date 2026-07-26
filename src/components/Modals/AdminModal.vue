@@ -279,6 +279,63 @@ const clearPrices = () => {
     notify('Zenit', 'Precios limpiados ✓');
 };
 
+const isPrimaryAllSelected = ref(false);
+const isSecondaryAllSelected = ref(false);
+
+const selectPriceAll = (field, e) => {
+    e.target.setSelectionRange(0, e.target.value.length);
+    if (field === 'pricePrimary') {
+        isPrimaryAllSelected.value = true;
+    } else {
+        isSecondaryAllSelected.value = true;
+    }
+};
+
+const clearPriceSelection = (field) => {
+    if (field === 'pricePrimary') {
+        isPrimaryAllSelected.value = false;
+    } else {
+        isSecondaryAllSelected.value = false;
+    }
+};
+
+const getMaskTokens = (val, isAllSelected = false) => {
+    const digits = String(val || '').replace(/\D/g, '').slice(0, 9);
+    const len = digits.length;
+    const numLeadingZeros = 9 - len;
+    const padded = '0'.repeat(numLeadingZeros) + digits;
+    const shouldSelect = isAllSelected && len > 0;
+    
+    const tokens = [];
+    for (let i = 0; i < 9; i++) {
+        const isDimmed = i < numLeadingZeros;
+        const isSelected = shouldSelect && !isDimmed;
+        
+        tokens.push({ char: padded[i], dimmed: isDimmed, selected: isSelected });
+        
+        if (i === 2) {
+            const dotDimmed = 2 < numLeadingZeros;
+            tokens.push({ char: '.', dimmed: dotDimmed, selected: shouldSelect && !dotDimmed });
+        } else if (i === 5) {
+            const dotDimmed = 5 < numLeadingZeros;
+            tokens.push({ char: '.', dimmed: dotDimmed, selected: shouldSelect && !dotDimmed });
+        }
+    }
+    return tokens;
+};
+
+const primaryMaskTokens = computed(() => getMaskTokens(editableSpecs.pricePrimary, isPrimaryAllSelected.value));
+const secondaryMaskTokens = computed(() => getMaskTokens(editableSpecs.priceSecondary, isSecondaryAllSelected.value));
+
+const isPrimaryFocused = ref(false);
+const isSecondaryFocused = ref(false);
+
+const handlePriceInput = (field, e) => {
+    const clean = e.target.value.replace(/\D/g, '').slice(0, 9);
+    editableSpecs[field] = clean;
+    clearPriceSelection(field);
+};
+
 const isHardwareLimitReached = computed(() => {
     const fields = ['model', 'processor', 'gen', 'coresAndThreads', 'ram', 'ramType', 'storage', 'gpu', 'display', 'os'];
     return fields.some(f => editableSpecs[f] && editableSpecs[f].length >= 80);
@@ -563,16 +620,66 @@ const isHardwareLimitReached = computed(() => {
                             <!-- Precio Tarjeta -->
                             <div class="input-group">
                                 <label for="price-primary">Precio con Tarjeta</label>
-                                <div class="input-with-action">
-                                    <input id="price-primary" name="pricePrimary" type="text" v-model="editableSpecs.pricePrimary" placeholder="Ej: $899.990" maxlength="28" autocomplete="off">
+                                <div class="price-masked-field">
+                                    <span class="price-currency-symbol">$</span>
+                                    <div class="price-mask-wrapper">
+                                        <input 
+                                            id="price-primary" 
+                                            name="pricePrimary" 
+                                            type="text" 
+                                            :value="editableSpecs.pricePrimary" 
+                                            @input="handlePriceInput('pricePrimary', $event)" 
+                                            @dblclick="selectPriceAll('pricePrimary', $event)"
+                                            @click="clearPriceSelection('pricePrimary')"
+                                            @focus="isPrimaryFocused = true; clearPriceSelection('pricePrimary')"
+                                            @blur="isPrimaryFocused = false; clearPriceSelection('pricePrimary')"
+                                            maxlength="9" 
+                                            inputmode="numeric"
+                                            autocomplete="off" 
+                                            class="price-real-input"
+                                        >
+                                        <div class="price-mask-display" aria-hidden="true">
+                                            <span 
+                                                v-for="(token, idx) in primaryMaskTokens" 
+                                                :key="idx" 
+                                                :class="{ 'dimmed-digit': token.dimmed, 'active-digit': !token.dimmed, 'selected-digit': token.selected }"
+                                            >{{ token.char }}</span>
+                                            <span v-if="isPrimaryFocused && !isPrimaryAllSelected" class="blinking-caret"></span>
+                                        </div>
+                                    </div>
                                 </div>
                             </div>
 
                             <!-- Precio Todo Medio -->
                             <div class="input-group">
                                 <label for="price-secondary">Precio Todo Medio de Pago</label>
-                                <div class="input-with-action">
-                                    <input id="price-secondary" name="priceSecondary" type="text" v-model="editableSpecs.priceSecondary" placeholder="Ej: $1.099.990" maxlength="28" autocomplete="off">
+                                <div class="price-masked-field">
+                                    <span class="price-currency-symbol">$</span>
+                                    <div class="price-mask-wrapper">
+                                        <input 
+                                            id="price-secondary" 
+                                            name="priceSecondary" 
+                                            type="text" 
+                                            :value="editableSpecs.priceSecondary" 
+                                            @input="handlePriceInput('priceSecondary', $event)" 
+                                            @dblclick="selectPriceAll('priceSecondary', $event)"
+                                            @click="clearPriceSelection('priceSecondary')"
+                                            @focus="isSecondaryFocused = true; clearPriceSelection('priceSecondary')"
+                                            @blur="isSecondaryFocused = false; clearPriceSelection('priceSecondary')"
+                                            maxlength="9" 
+                                            inputmode="numeric"
+                                            autocomplete="off" 
+                                            class="price-real-input"
+                                        >
+                                        <div class="price-mask-display" aria-hidden="true">
+                                            <span 
+                                                v-for="(token, idx) in secondaryMaskTokens" 
+                                                :key="idx" 
+                                                :class="{ 'dimmed-digit': token.dimmed, 'active-digit': !token.dimmed, 'selected-digit': token.selected }"
+                                            >{{ token.char }}</span>
+                                            <span v-if="isSecondaryFocused && !isSecondaryAllSelected" class="blinking-caret"></span>
+                                        </div>
+                                    </div>
                                 </div>
                             </div>
 
@@ -583,10 +690,6 @@ const isHardwareLimitReached = computed(() => {
                                     Limpiar Precios
                                 </button>
                             </div>
-                        </div>
-
-                        <div v-if="(editableSpecs.pricePrimary && editableSpecs.pricePrimary.length >= 28) || (editableSpecs.priceSecondary && editableSpecs.priceSecondary.length >= 28)" class="price-limit-error">
-                            ⚠️ Máximo 28 caracteres permitidos en el precio
                         </div>
                     </div>
                 </section>
@@ -806,5 +909,102 @@ const isHardwareLimitReached = computed(() => {
   border-radius: 50% !important;
   background: var(--primary, #00f2ff) !important;
   border: none !important;
+}
+
+.price-masked-field {
+    display: flex;
+    align-items: center;
+    background: rgba(255, 255, 255, 0.03);
+    border: 1px solid rgba(255, 255, 255, 0.1);
+    border-radius: 10px;
+    padding: 0 14px;
+    height: 42px;
+    position: relative;
+    transition: all 0.2s ease;
+}
+
+.price-masked-field:focus-within {
+    border-color: var(--primary, #00f2ff);
+    background: rgba(255, 255, 255, 0.06);
+    box-shadow: 0 0 12px rgba(0, 242, 255, 0.15);
+}
+
+.price-currency-symbol {
+    font-size: 1.1rem;
+    font-weight: 700;
+    color: var(--primary, #00f2ff);
+    margin-right: 8px;
+    user-select: none;
+}
+
+.price-mask-wrapper {
+    position: relative;
+    flex: 1;
+    height: 100%;
+    display: flex;
+    align-items: center;
+}
+
+.price-real-input {
+    position: absolute;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    opacity: 0;
+    z-index: 2;
+    cursor: text;
+    border: none;
+    outline: none;
+    background: transparent;
+    color: transparent;
+    caret-color: var(--primary, #00f2ff);
+}
+
+.price-mask-display {
+    position: relative;
+    z-index: 1;
+    font-size: 1rem;
+    font-weight: 600;
+    font-family: 'Consolas', 'Courier New', monospace;
+    letter-spacing: 1px;
+    pointer-events: none;
+    user-select: none;
+}
+
+.dimmed-digit {
+    opacity: 0.3;
+    color: #ffffff;
+}
+
+.active-digit {
+    opacity: 1;
+    color: #ffffff;
+    font-weight: 700;
+}
+
+.selected-digit {
+    background-color: var(--primary, #00f2ff);
+    color: #000000 !important;
+    font-weight: 800;
+    border-radius: 0 !important;
+    padding: 2px 0;
+    opacity: 1 !important;
+}
+
+@keyframes blinkCaret {
+    0%, 100% { opacity: 1; }
+    50% { opacity: 0; }
+}
+
+.blinking-caret {
+    display: inline-block;
+    width: 2px;
+    height: 1.15em;
+    background-color: var(--primary, #00f2ff);
+    margin-left: 2px;
+    vertical-align: text-bottom;
+    animation: blinkCaret 0.9s step-start infinite;
+    box-shadow: 0 0 6px var(--primary, #00f2ff);
 }
 </style>
