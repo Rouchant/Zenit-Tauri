@@ -27,10 +27,14 @@ onMounted(async () => {
 });
 
 const SYSTEM_VIDEOS_CATALOG = [
-    { name: '🏠 Original Asus AI (Home)', path: INTERNAL_VIDEOS.ASUS_LANDING },
-    { name: '🏢 Original Genérico Win 11 (Home)', path: INTERNAL_VIDEOS.GENERIC_LANDING },
-    { name: '🔥 Original Asus Durabilidad (Promo)', path: INTERNAL_VIDEOS.ASUS_PROMO },
-    { name: '🪟 Original Genérico (Promo) Move to Win 11', path: INTERNAL_VIDEOS.GENERIC_PROMO },
+    { name: '🚀 Asus: Another Level', path: INTERNAL_VIDEOS.ASUS_ANOTHER_LEVEL },
+    { name: '📺 Asus OLED', path: INTERNAL_VIDEOS.ASUS_OLED },
+    { name: '✨ Asus OLED Lumina', path: INTERNAL_VIDEOS.ASUS_OLED_LUMINA },
+    { name: '🌟 Asus Vivobook: WOW the World', path: INTERNAL_VIDEOS.ASUS_VIVOBOOK_WOW },
+    { name: '🤖 Asus AI PC', path: INTERNAL_VIDEOS.ASUS_LANDING },
+    { name: '🏢 Genérico Win 11 (Home)', path: INTERNAL_VIDEOS.GENERIC_LANDING },
+    { name: '🔥 Asus Durabilidad (Promo)', path: INTERNAL_VIDEOS.ASUS_PROMO },
+    { name: '🪟 Genérico (Promo) Move to Win 11', path: INTERNAL_VIDEOS.GENERIC_PROMO },
     { name: '🎮 Xbox Game Pass (Gaming)', path: INTERNAL_VIDEOS.GAMING_XBOX },
     { name: '💻 Windows: Home of Gaming', path: INTERNAL_VIDEOS.WINDOWS_GAMING },
     { name: '✨ ROG Calidad y Durabilidad', path: INTERNAL_VIDEOS.QUALITY_DURABILITY },
@@ -79,6 +83,10 @@ const isAsus = computed(() => {
 const INTERNAL_OPTIONS = computed(() => {
     return SYSTEM_VIDEOS_CATALOG.filter(v => {
         const asusVideos = [
+            INTERNAL_VIDEOS.ASUS_ANOTHER_LEVEL,
+            INTERNAL_VIDEOS.ASUS_OLED,
+            INTERNAL_VIDEOS.ASUS_OLED_LUMINA,
+            INTERNAL_VIDEOS.ASUS_VIVOBOOK_WOW,
             INTERNAL_VIDEOS.ASUS_PROMO,
             INTERNAL_VIDEOS.ASUS_LANDING,
             INTERNAL_VIDEOS.QUALITY_DURABILITY,
@@ -242,7 +250,7 @@ const deleteSavedVideo = async (path) => {
                 } else {
                     // Fallback Inteligente (Asus vs Genérico)
                     const isAsus = store.isAsus;
-                    editableSpecs.customLandingVideoPath = isAsus ? INTERNAL_VIDEOS.ASUS_LANDING : INTERNAL_VIDEOS.GENERIC_LANDING;
+                    editableSpecs.customLandingVideoPath = isAsus ? INTERNAL_VIDEOS.ASUS_ANOTHER_LEVEL : INTERNAL_VIDEOS.GENERIC_LANDING;
                     onVaultSelectionChange(null, 'landing');
                     editableSpecs.landingVideoType = 'default';
                 }
