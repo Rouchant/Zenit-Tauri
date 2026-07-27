@@ -478,12 +478,12 @@ const pauseInfoVideos = async () => {
   
   if (landingVideo.value) {
     landingVideo.value.pause();
-    if (store.isVideoMode) {
+    if (store.isVideoMode || store.isModalOpen) {
       try {
         landingVideo.value.src = "";
         landingVideo.value.removeAttribute('src');
         landingVideo.value.load();
-        console.log('[Video GC] Liberados recursos de landingVideo por inactividad.');
+        console.log('[Video GC] Liberados recursos de landingVideo por inactividad o modal.');
       } catch (e) {
         console.warn("[Video GC] Error al liberar recursos en pausa:", e);
       }

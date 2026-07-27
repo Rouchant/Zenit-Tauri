@@ -57,7 +57,40 @@ pub fn run_system_setup() {
             .stdout(Stdio::null()).stderr(Stdio::null())
             .creation_flags(NO_WINDOW).status();
     });
+
+    disable_power_throttling();
 }
+
+/// Desactiva el Power Throttling / EcoQoS (Modo Eficiencia) de Windows 11 para evitar que las ventanas en segundo plano entren en suspensión.
+#[cfg(windows)]
+pub fn disable_power_throttling() {
+    use windows_sys::Win32::System::Threading::*;
+
+    #[repr(C)]
+    struct ProcessPowerThrottlingState {
+        version: u32,
+        control_mask: u32,
+        state_mask: u32,
+    }
+
+    unsafe {
+        let mut state = ProcessPowerThrottlingState {
+            version: 1, // PROCESS_POWER_THROTTLING_CURRENT_VERSION
+            control_mask: 0x1, // PROCESS_POWER_THROTTLING_EXECUTION_SPEED
+            state_mask: 0, // 0 = Desactiva el modo eficiencia/suspensión por ahorro de energía
+        };
+
+        let _ = SetProcessInformation(
+            GetCurrentProcess(),
+            ProcessPowerThrottling,
+            &mut state as *mut _ as *const _,
+            std::mem::size_of::<ProcessPowerThrottlingState>() as u32,
+        );
+    }
+}
+
+#[cfg(not(windows))]
+pub fn disable_power_throttling() {}
 
 /// Limpia los directorios de caché de WebView2 para evitar acumulación de archivos temporales.
 /// Se ejecuta al inicio, antes de que el motor de renderizado bloquee los archivos.
