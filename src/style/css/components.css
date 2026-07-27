@@ -539,6 +539,15 @@
 
 
 
+.store-status-pill.status-comment {
+    color: whitesmoke;
+    border-color: rgba(245, 245, 245, 0.4);
+    background: #000000;
+    user-select: none;
+    white-space: nowrap;
+    text-transform: uppercase;
+}
+
 .store-status-pill.status-touch {
     color: whitesmoke;
     border-color: rgba(245, 245, 245, 0.4);

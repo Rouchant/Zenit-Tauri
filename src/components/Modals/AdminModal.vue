@@ -54,6 +54,7 @@ const editableSpecs = reactive({
     videoType: 'default',
     landingVideoType: 'default',
     showAsusWarrantyTicker: store.currentSpecs.showAsusWarrantyTicker !== undefined ? store.currentSpecs.showAsusWarrantyTicker : false,
+    customComment: store.currentSpecs.customComment || '',
     ...store.currentSpecs,
     coresAndThreads: store.currentSpecs.coresAndThreads || (store.currentSpecs.cores ? `${store.currentSpecs.cores} Núcleos / ${store.currentSpecs.threads} Hilos` : ''),
     customVideoPaths: initCustomVideoPaths()
@@ -602,96 +603,117 @@ const isHardwareLimitReached = computed(() => {
             <div v-if="activeTab === 'tienda'" class="tab-content">
                 <section class="settings-section">
                     <div class="price-settings-zone">
-                        <div style="display: flex; flex-direction: column; gap: 15px; max-width: 50%;">
-                            <!-- SKU -->
-                            <div class="input-group">
-                                <label for="sku-input">SKU del Producto</label>
-                                <div class="input-with-action">
-                                    <input 
-                                        id="sku-input" 
-                                        name="sku" 
-                                        type="text" 
-                                        v-model="editableSpecs.sku" 
-                                        placeholder="inserte SKU"
-                                        @input="editableSpecs.sku = editableSpecs.sku.replace(/\D/g, '')"
-                                        autocomplete="off"
-                                        maxlength="80"
-                                    >
-                                </div>
-                            </div>
-
-                            <!-- Precio Tarjeta -->
-                            <div class="input-group">
-                                <label for="price-primary">Precio con Tarjeta</label>
-                                <div class="price-masked-field">
-                                    <span class="price-currency-symbol">$</span>
-                                    <div class="price-mask-wrapper">
+                        <div style="display: flex; gap: 30px; align-items: flex-start;">
+                            <!-- Columna Izquierda: SKU y Precios -->
+                            <div style="flex: 1; display: flex; flex-direction: column; gap: 15px;">
+                                <!-- SKU -->
+                                <div class="input-group">
+                                    <label for="sku-input">SKU del Producto</label>
+                                    <div class="input-with-action">
                                         <input 
-                                            id="price-primary" 
-                                            name="pricePrimary" 
+                                            id="sku-input" 
+                                            name="sku" 
                                             type="text" 
-                                            :value="editableSpecs.pricePrimary" 
-                                            @input="handlePriceInput('pricePrimary', $event)" 
-                                            @dblclick="selectPriceAll('pricePrimary', $event)"
-                                            @click="clearPriceSelection('pricePrimary')"
-                                            @focus="isPrimaryFocused = true; clearPriceSelection('pricePrimary')"
-                                            @blur="isPrimaryFocused = false; clearPriceSelection('pricePrimary')"
-                                            maxlength="9" 
-                                            inputmode="numeric"
-                                            autocomplete="off" 
-                                            class="price-real-input"
+                                            v-model="editableSpecs.sku" 
+                                            placeholder="inserte SKU"
+                                            @input="editableSpecs.sku = editableSpecs.sku.replace(/\D/g, '')"
+                                            autocomplete="off"
+                                            maxlength="32"
                                         >
-                                        <div class="price-mask-display" aria-hidden="true">
-                                            <span 
-                                                v-for="(token, idx) in primaryMaskTokens" 
-                                                :key="idx" 
-                                                :class="{ 'dimmed-digit': token.dimmed, 'active-digit': !token.dimmed, 'selected-digit': token.selected }"
-                                            >{{ token.char }}</span>
-                                            <span v-if="isPrimaryFocused && !isPrimaryAllSelected" class="blinking-caret"></span>
+                                    </div>
+                                </div>
+
+                                <!-- Precio Tarjeta -->
+                                <div class="input-group">
+                                    <label for="price-primary">Precio con Tarjeta</label>
+                                    <div class="price-masked-field">
+                                        <span class="price-currency-symbol">$</span>
+                                        <div class="price-mask-wrapper">
+                                            <input 
+                                                id="price-primary" 
+                                                name="pricePrimary" 
+                                                type="text" 
+                                                :value="editableSpecs.pricePrimary" 
+                                                @input="handlePriceInput('pricePrimary', $event)" 
+                                                @dblclick="selectPriceAll('pricePrimary', $event)"
+                                                @click="clearPriceSelection('pricePrimary')"
+                                                @focus="isPrimaryFocused = true; clearPriceSelection('pricePrimary')"
+                                                @blur="isPrimaryFocused = false; clearPriceSelection('pricePrimary')"
+                                                maxlength="9" 
+                                                inputmode="numeric"
+                                                autocomplete="off" 
+                                                class="price-real-input"
+                                            >
+                                            <div class="price-mask-display" aria-hidden="true">
+                                                <span 
+                                                    v-for="(token, idx) in primaryMaskTokens" 
+                                                    :key="idx" 
+                                                    :class="{ 'dimmed-digit': token.dimmed, 'active-digit': !token.dimmed, 'selected-digit': token.selected }"
+                                                >{{ token.char }}</span>
+                                                <span v-if="isPrimaryFocused && !isPrimaryAllSelected" class="blinking-caret"></span>
+                                            </div>
                                         </div>
                                     </div>
                                 </div>
-                            </div>
 
-                            <!-- Precio Todo Medio -->
-                            <div class="input-group">
-                                <label for="price-secondary">Precio Todo Medio de Pago</label>
-                                <div class="price-masked-field">
-                                    <span class="price-currency-symbol">$</span>
-                                    <div class="price-mask-wrapper">
-                                        <input 
-                                            id="price-secondary" 
-                                            name="priceSecondary" 
-                                            type="text" 
-                                            :value="editableSpecs.priceSecondary" 
-                                            @input="handlePriceInput('priceSecondary', $event)" 
-                                            @dblclick="selectPriceAll('priceSecondary', $event)"
-                                            @click="clearPriceSelection('priceSecondary')"
-                                            @focus="isSecondaryFocused = true; clearPriceSelection('priceSecondary')"
-                                            @blur="isSecondaryFocused = false; clearPriceSelection('priceSecondary')"
-                                            maxlength="9" 
-                                            inputmode="numeric"
-                                            autocomplete="off" 
-                                            class="price-real-input"
-                                        >
-                                        <div class="price-mask-display" aria-hidden="true">
-                                            <span 
-                                                v-for="(token, idx) in secondaryMaskTokens" 
-                                                :key="idx" 
-                                                :class="{ 'dimmed-digit': token.dimmed, 'active-digit': !token.dimmed, 'selected-digit': token.selected }"
-                                            >{{ token.char }}</span>
-                                            <span v-if="isSecondaryFocused && !isSecondaryAllSelected" class="blinking-caret"></span>
+                                <!-- Precio Todo Medio -->
+                                <div class="input-group">
+                                    <label for="price-secondary">Precio Todo Medio de Pago</label>
+                                    <div class="price-masked-field">
+                                        <span class="price-currency-symbol">$</span>
+                                        <div class="price-mask-wrapper">
+                                            <input 
+                                                id="price-secondary" 
+                                                name="priceSecondary" 
+                                                type="text" 
+                                                :value="editableSpecs.priceSecondary" 
+                                                @input="handlePriceInput('priceSecondary', $event)" 
+                                                @dblclick="selectPriceAll('priceSecondary', $event)"
+                                                @click="clearPriceSelection('priceSecondary')"
+                                                @focus="isSecondaryFocused = true; clearPriceSelection('priceSecondary')"
+                                                @blur="isSecondaryFocused = false; clearPriceSelection('priceSecondary')"
+                                                maxlength="9" 
+                                                inputmode="numeric"
+                                                autocomplete="off" 
+                                                class="price-real-input"
+                                            >
+                                            <div class="price-mask-display" aria-hidden="true">
+                                                <span 
+                                                    v-for="(token, idx) in secondaryMaskTokens" 
+                                                    :key="idx" 
+                                                    :class="{ 'dimmed-digit': token.dimmed, 'active-digit': !token.dimmed, 'selected-digit': token.selected }"
+                                                >{{ token.char }}</span>
+                                                <span v-if="isSecondaryFocused && !isSecondaryAllSelected" class="blinking-caret"></span>
+                                            </div>
                                         </div>
                                     </div>
                                 </div>
+
+                                <!-- Limpiar Precios -->
+                                <div style="display: flex; justify-content: flex-start; margin-top: 5px;">
+                                    <button class="btn-clean-action" @click="clearPrices">
+                                        <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="lucide lucide-eraser"><path d="m7 21-4.3-4.3c-1-1-1-2.5 0-3.4l9.9-9.9c1-1 2.5-1 3.4 0l4.4 4.4c1 1 1 2.5 0 3.4L7 21Z"/><path d="m22 21-5.9-5.9"/><path d="m11 5 9 9"/></svg>
+                                        Limpiar Precios
+                                    </button>
+                                </div>
                             </div>
 
-                            <!-- Limpiar Precios -->
-                            <div style="display: flex; justify-content: flex-start; margin-top: 5px;">
-                                <button class="btn-clean-action" @click="clearPrices">
-                                    <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="lucide lucide-eraser"><path d="m7 21-4.3-4.3c-1-1-1-2.5 0-3.4l9.9-9.9c1-1 2.5-1 3.4 0l4.4 4.4c1 1 1 2.5 0 3.4L7 21Z"/><path d="m22 21-5.9-5.9"/><path d="m11 5 9 9"/></svg>
-                                    Limpiar Precios
-                                </button>
+                            <!-- Columna Derecha: Comentario Personalizado -->
+                            <div style="flex: 1; display: flex; flex-direction: column; gap: 15px;">
+                                <div class="input-group">
+                                    <label for="custom-comment-input">COMENTARIO (Máx. 16 caracteres): </label>
+                                    <div class="input-with-action">
+                                        <input 
+                                            id="custom-comment-input" 
+                                            name="customComment" 
+                                            type="text" 
+                                            v-model="editableSpecs.customComment" 
+                                            placeholder="inserte comentario"
+                                            autocomplete="off"
+                                            maxlength="16"
+                                        >
+                                    </div>
+                                </div>
                             </div>
                         </div>
                     </div>
