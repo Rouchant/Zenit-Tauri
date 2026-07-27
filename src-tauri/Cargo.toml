@@ -1,6 +1,6 @@
 [package]
 name = "zenit"
-version = "1.9.7"
+version = "1.9.8"
 description = "Zenit - Showcase App for POS Laptops"
 authors = ["Zenit"]
 license = "ISC"

@@ -17,26 +17,22 @@ export const INTERNAL_VIDEOS = {
   QUALITY_DURABILITY: '__QUALITY_DURABILITY__',
   TUF_DURABILITY: '__TUF_DURABILITY__',
   ASUS_WARRANTY: '__ASUS_WARRANTY__',
-  ASUS_ANOTHER_LEVEL: '__ASUS_ANOTHER_LEVEL__',
   ASUS_OLED: '__ASUS_OLED__',
-  ASUS_OLED_LUMINA: '__ASUS_OLED_LUMINA__',
   ASUS_VIVOBOOK_WOW: '__ASUS_VIVOBOOK_WOW__'
 };
 
 export const INTERNAL_PATHS = {
-  [INTERNAL_VIDEOS.ASUS_PROMO]: 'promo-asus.mp4',
-  [INTERNAL_VIDEOS.GENERIC_PROMO]: 'promo-generic.mp4',
-  [INTERNAL_VIDEOS.ASUS_LANDING]: 'landing-asus.mp4',
-  [INTERNAL_VIDEOS.GENERIC_LANDING]: 'landing-generic.mp4',
-  [INTERNAL_VIDEOS.GAMING_XBOX]: 'gaming_xbox_game_pass.mp4',
-  [INTERNAL_VIDEOS.WINDOWS_GAMING]: 'windows_the_home_of_gaming.mp4',
-  [INTERNAL_VIDEOS.QUALITY_DURABILITY]: 'BUILT-TO-LAST-Quality-and-Durability.mp4',
-  [INTERNAL_VIDEOS.TUF_DURABILITY]: 'Quality_and_Durability_TUF_Gaming.mp4',
-  [INTERNAL_VIDEOS.ASUS_WARRANTY]: 'Asus_Garantia_Perfecta.mp4',
-  [INTERNAL_VIDEOS.ASUS_ANOTHER_LEVEL]: 'asus_another_level.mp4',
-  [INTERNAL_VIDEOS.ASUS_OLED]: 'asus-oled.mp4',
-  [INTERNAL_VIDEOS.ASUS_OLED_LUMINA]: 'asus-oled-lumina.mp4',
-  [INTERNAL_VIDEOS.ASUS_VIVOBOOK_WOW]: 'Asus_vivobook_WOW_the_world.mp4'
+  [INTERNAL_VIDEOS.ASUS_PROMO]: 'videos/assets/asus/promo-asus.mp4',
+  [INTERNAL_VIDEOS.GENERIC_PROMO]: 'videos/assets/generic/promo-generic.mp4',
+  [INTERNAL_VIDEOS.ASUS_LANDING]: 'videos/assets/asus/landing-asus.mp4',
+  [INTERNAL_VIDEOS.GENERIC_LANDING]: 'videos/assets/generic/landing-generic.mp4',
+  [INTERNAL_VIDEOS.GAMING_XBOX]: 'videos/assets/generic/gaming_xbox_game_pass.mp4',
+  [INTERNAL_VIDEOS.WINDOWS_GAMING]: 'videos/assets/generic/windows_the_home_of_gaming.mp4',
+  [INTERNAL_VIDEOS.QUALITY_DURABILITY]: 'videos/assets/asus/BUILT-TO-LAST-Quality-and-Durability.mp4',
+  [INTERNAL_VIDEOS.TUF_DURABILITY]: 'videos/assets/asus/Quality_and_Durability_TUF_Gaming.mp4',
+  [INTERNAL_VIDEOS.ASUS_WARRANTY]: 'videos/assets/asus/Asus_Garantia_Perfecta.mp4',
+  [INTERNAL_VIDEOS.ASUS_OLED]: 'videos/assets/asus/asus-oled.mp4',
+  [INTERNAL_VIDEOS.ASUS_VIVOBOOK_WOW]: 'videos/assets/asus/Asus_vivobook_WOW_the_world.mp4'
 };
 
 export const formatPrice = (val) => {
@@ -318,11 +314,8 @@ export const useSpecsStore = defineStore('specs', () => {
             const isAsusBrand = (currentSpecs.value.brand || '').toLowerCase().includes('asus') || (currentSpecs.value.model || '').toLowerCase().includes('asus');
             const isRTXGpu = (currentSpecs.value.gpu || '').toLowerCase().includes('rtx');
 
-            if (!currentSpecs.value.customLandingVideoPath) {
-                if (isAsusBrand) {
-                    currentSpecs.value.customLandingVideoPath = INTERNAL_VIDEOS.ASUS_ANOTHER_LEVEL;
-                    currentSpecs.value.customLandingVideoName = '🚀 Asus: Another Level';
-                } else if (isRTXGpu) {
+            if (!currentSpecs.value.customLandingVideoPath || currentSpecs.value.customLandingVideoPath === '__ASUS_ANOTHER_LEVEL__') {
+                if (isRTXGpu) {
                     currentSpecs.value.customLandingVideoPath = INTERNAL_VIDEOS.GAMING_XBOX;
                     currentSpecs.value.customLandingVideoName = 'Xbox Game Pass (Gaming)';
                 } else {
@@ -331,12 +324,10 @@ export const useSpecsStore = defineStore('specs', () => {
                 }
             } else if (!currentSpecs.value.customLandingVideoName) {
                 const allOptions = [
-                  { name: '🚀 Asus: Another Level', path: INTERNAL_VIDEOS.ASUS_ANOTHER_LEVEL },
                   { name: '🤖 Asus AI PC', path: INTERNAL_VIDEOS.ASUS_LANDING },
                   { name: '🏢 Genérico Win 11 (Home)', path: INTERNAL_VIDEOS.GENERIC_LANDING },
                   { name: '🎮 Xbox Game Pass (Gaming)', path: INTERNAL_VIDEOS.GAMING_XBOX },
                   { name: '📺 Asus OLED', path: INTERNAL_VIDEOS.ASUS_OLED },
-                  { name: '✨ Asus OLED Lumina', path: INTERNAL_VIDEOS.ASUS_OLED_LUMINA },
                   { name: '🌟 Asus Vivobook: WOW the World', path: INTERNAL_VIDEOS.ASUS_VIVOBOOK_WOW }
                 ];
                 const matched = allOptions.find(o => o.path === currentSpecs.value.customLandingVideoPath);
@@ -392,7 +383,7 @@ export const useSpecsStore = defineStore('specs', () => {
       if (window.__TAURI_INTERNALS__ && baseResourceDir.value) {
         return convertFileSrc(`${baseResourceDir.value}/${INTERNAL_PATHS[filePath]}`);
       }
-      return window.__TAURI_INTERNALS__ ? '' : `/resources/assets/${INTERNAL_PATHS[filePath]}`;
+      return window.__TAURI_INTERNALS__ ? '' : `/resources/${INTERNAL_PATHS[filePath]}`;
     }
 
     // 3. Para rutas de archivos externos (Bóveda) o fallbacks
@@ -414,14 +405,15 @@ export const useSpecsStore = defineStore('specs', () => {
     if (!filePath) return '';
     if (INTERNAL_PATHS[filePath]) {
       if (!window.__TAURI_INTERNALS__) {
-        return `/resources/assets/${INTERNAL_PATHS[filePath]}`;
+        return `/resources/${INTERNAL_PATHS[filePath]}`;
       }
       try {
         let base = await tauriAPI.getVideoPath();
         if (base.startsWith('\\\\?\\')) {
           base = base.substring(4);
         }
-        return `${base}\\${INTERNAL_PATHS[filePath]}`;
+        const relWin = INTERNAL_PATHS[filePath].replace(/\//g, '\\');
+        return `${base}\\${relWin}`;
       } catch (e) {
         console.error("Error resolving video path in Rust:", e);
         return `/${INTERNAL_PATHS[filePath]}`;
@@ -431,17 +423,17 @@ export const useSpecsStore = defineStore('specs', () => {
     if (filePath.startsWith('/assets/videos/') || filePath.startsWith('assets/videos/')) {
       const fileName = filePath.substring(filePath.lastIndexOf('/') + 1);
       if (!window.__TAURI_INTERNALS__) {
-        return `/resources/assets/${fileName}`;
+        return `/resources/videos/background/${fileName}`;
       }
       try {
         let base = await tauriAPI.getVideoPath();
         if (base.startsWith('\\\\?\\')) {
           base = base.substring(4);
         }
-        return `${base}\\${fileName}`;
+        return `${base}\\videos\\background\\${fileName}`;
       } catch (e) {
         console.error("Error resolving relative video path in Rust:", e);
-        return `/${fileName}`;
+        return `/videos/background/${fileName}`;
       }
     }
     return filePath;

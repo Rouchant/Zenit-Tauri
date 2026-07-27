@@ -1,7 +1,7 @@
 {
   "$schema": "../node_modules/@tauri-apps/cli/config.schema.json",
   "productName": "Zenit",
-  "version": "1.9.7",
+  "version": "1.9.8",
   "identifier": "com.zenit.app",
   "build": {
     "frontendDist": "../dist_app",
@@ -101,7 +101,9 @@
       }
     },
     "resources": {
-      "resources/assets/**/*": "",
+      "resources/videos/background/*": "videos/background",
+      "resources/videos/assets/generic/*": "videos/assets/generic",
+      "resources/videos/assets/asus/*": "videos/assets/asus",
       "Install-Kiosk.ps1": "Install-Kiosk.ps1",
       "lib/**/*": "lib"
     }

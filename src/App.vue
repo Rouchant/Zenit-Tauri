@@ -566,10 +566,10 @@ const handleLandingVideoError = () => {
     landingRetryCount.value = 0;
     
     // Restablecer la configuración al video interno por defecto
-    const defaultVideoKey = store.isAsus ? '__ASUS_ANOTHER_LEVEL__' : '__GENERIC_LANDING__';
+    const defaultVideoKey = '__GENERIC_LANDING__';
     store.currentSpecs.landingVideoType = 'default';
     store.currentSpecs.customLandingVideoPath = defaultVideoKey;
-    store.currentSpecs.customLandingVideoName = store.isAsus ? 'Asus: Another Level' : 'Genérico Win 11 (Home)';
+    store.currentSpecs.customLandingVideoName = 'Genérico Win 11 (Home)';
     
     // Obtener la ruta resuelta desde el store y aplicarla al reproductor
     const defaultUrl = store.getVideoUrl(defaultVideoKey);
@@ -749,7 +749,7 @@ const updateVideoSources = () => {
   
   store.isBgThemed = isThemed;
 
-  const newLanding = store.getVideoUrl(store.currentSpecs.customLandingVideoPath || (store.isAsus ? '__ASUS_ANOTHER_LEVEL__' : '__GENERIC_LANDING__'));
+  const newLanding = store.getVideoUrl(store.currentSpecs.customLandingVideoPath || '__GENERIC_LANDING__');
   if (currentLandingVideoSrc.value !== newLanding) {
     currentLandingVideoSrc.value = newLanding;
   }

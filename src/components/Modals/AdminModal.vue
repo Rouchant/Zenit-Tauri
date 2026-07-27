@@ -27,9 +27,7 @@ onMounted(async () => {
 });
 
 const SYSTEM_VIDEOS_CATALOG = [
-    { name: '🚀 Asus: Another Level', path: INTERNAL_VIDEOS.ASUS_ANOTHER_LEVEL },
     { name: '📺 Asus OLED', path: INTERNAL_VIDEOS.ASUS_OLED },
-    { name: '✨ Asus OLED Lumina', path: INTERNAL_VIDEOS.ASUS_OLED_LUMINA },
     { name: '🌟 Asus Vivobook: WOW the World', path: INTERNAL_VIDEOS.ASUS_VIVOBOOK_WOW },
     { name: '🤖 Asus AI PC', path: INTERNAL_VIDEOS.ASUS_LANDING },
     { name: '🏢 Genérico Win 11 (Home)', path: INTERNAL_VIDEOS.GENERIC_LANDING },
@@ -83,9 +81,7 @@ const isAsus = computed(() => {
 const INTERNAL_OPTIONS = computed(() => {
     return SYSTEM_VIDEOS_CATALOG.filter(v => {
         const asusVideos = [
-            INTERNAL_VIDEOS.ASUS_ANOTHER_LEVEL,
             INTERNAL_VIDEOS.ASUS_OLED,
-            INTERNAL_VIDEOS.ASUS_OLED_LUMINA,
             INTERNAL_VIDEOS.ASUS_VIVOBOOK_WOW,
             INTERNAL_VIDEOS.ASUS_PROMO,
             INTERNAL_VIDEOS.ASUS_LANDING,
@@ -248,9 +244,8 @@ const deleteSavedVideo = async (path) => {
                     editableSpecs.customLandingVideoPath = successor.path;
                     editableSpecs.customLandingVideoName = successor.name;
                 } else {
-                    // Fallback Inteligente (Asus vs Genérico)
-                    const isAsus = store.isAsus;
-                    editableSpecs.customLandingVideoPath = isAsus ? INTERNAL_VIDEOS.ASUS_ANOTHER_LEVEL : INTERNAL_VIDEOS.GENERIC_LANDING;
+                    // Fallback a Genérico
+                    editableSpecs.customLandingVideoPath = INTERNAL_VIDEOS.GENERIC_LANDING;
                     onVaultSelectionChange(null, 'landing');
                     editableSpecs.landingVideoType = 'default';
                 }
