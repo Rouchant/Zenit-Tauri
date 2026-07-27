@@ -269,7 +269,7 @@ const finishSetup = async () => {
   font-size: 2.2rem;
   font-weight: 900;
   letter-spacing: 10px;
-  color: var(--white, #ffffff);
+  color: var(--white);
   margin: 0;
   text-shadow: none;
   font-family: 'Outfit', 'Inter', sans-serif;
@@ -310,7 +310,7 @@ const finishSetup = async () => {
 .section-num-title {
   font-size: 1.1rem;
   font-weight: 800;
-  color: var(--white, #ffffff);
+  color: var(--white);
   margin: 0 0 4px 0;
   display: flex;
   align-items: center;
@@ -419,7 +419,7 @@ const finishSetup = async () => {
 .theme-info h3 {
   font-size: 0.95rem;
   font-weight: 700;
-  color: var(--white, #ffffff);
+  color: var(--white);
   margin: 0 0 4px 0;
 }
 
@@ -472,7 +472,7 @@ const finishSetup = async () => {
   border: 1px solid rgba(255, 255, 255, 0.1);
   padding: 14px 50px 14px 20px;
   border-radius: 12px;
-  color: var(--white, #ffffff);
+  color: var(--white);
   font-size: 1rem;
   outline: none;
   transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
@@ -597,7 +597,7 @@ const finishSetup = async () => {
 .callout-content h4 {
   font-size: 0.9rem;
   font-weight: 800;
-  color: #ffffff;
+  color: var(--white);
   margin: 0 0 3px 0;
   letter-spacing: 0.3px;
 }
@@ -616,7 +616,7 @@ const finishSetup = async () => {
   border-radius: 4px;
   padding: 1px 5px;
   font-size: 0.7rem;
-  color: #ffffff;
+  color: var(--white);
 }
 
 @keyframes pulseFloating {

@@ -5,6 +5,10 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>Cargando Zenit</title>
   <style>
+    :root {
+      --white: #F0F0F0;
+    }
+
     * {
       box-sizing: border-box;
       margin: 0;
@@ -32,7 +36,7 @@
       flex-direction: column;
       justify-content: center;
       align-items: center;
-      color: #ffffff;
+      color: var(--white);
       text-align: center;
       position: relative;
       /* Refuerzo anti-artifacts para bordes redondeados en WebView2 (Chromium) */
@@ -73,7 +77,7 @@
       font-size: 2.2rem;
       font-weight: 700;
       letter-spacing: 4px;
-      background: whitesmoke;
+      background: var(--white);
       -webkit-background-clip: text;
       background-clip: text;
       -webkit-text-fill-color: transparent;

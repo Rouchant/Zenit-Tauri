@@ -7,7 +7,7 @@
     border: none;
     padding: 15.5px 29.5px;
     border-radius: 24px;
-    color: var(--white, #ffffff);
+    color: var(--white);
     font-family: 'Outfit', sans-serif;
     font-size: 24px;
     font-weight: 600;
@@ -34,7 +34,7 @@
 .warranty-btn-shield {
     width: 32px;
     height: 32px;
-    stroke: var(--white, #ffffff);
+    stroke: var(--white);
     filter: drop-shadow(0 2px 0px #000000);
 }
 
@@ -152,7 +152,7 @@
     height: 52px;
     border-radius: 50%;
     background: #1a2ab8;
-    color: #ffffff;
+    color: var(--white);
     display: flex;
     align-items: center;
     justify-content: center;

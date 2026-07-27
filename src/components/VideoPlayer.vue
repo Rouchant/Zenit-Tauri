@@ -466,7 +466,7 @@ defineExpose({ videoRef: mockVideoEl });
 .model-name {
   font-size: 1.1vw;
   font-weight: 700;
-  color: #ffffff;
+  color: var(--white);
   line-height: 1.25;
   letter-spacing: -0.015vw;
   word-break: break-word;
@@ -519,13 +519,13 @@ defineExpose({ videoRef: mockVideoEl });
 
 .badge-card {
   background: #000000;
-  color: #ffffff;
+  color: var(--white);
   border: 0.09vw solid var(--primary, #00f2ff);
 }
 
 .badge-all {
   background: #555555;
-  color: #ffffff;
+  color: var(--white);
 }
 
 .price-value {
@@ -625,7 +625,7 @@ defineExpose({ videoRef: mockVideoEl });
 
 
 .store-status-inactivity.status-comment {
-  color: whitesmoke;
+  color: var(--white);
   border-color: rgba(245, 245, 245, 0.4);
   background: #000000;
   white-space: nowrap;
@@ -633,13 +633,13 @@ defineExpose({ videoRef: mockVideoEl });
 }
 
 .store-status-inactivity.status-touch {
-  color: whitesmoke;
+  color: var(--white);
   border-color: rgba(245, 245, 245, 0.4);
   background: #000000;
 }
 
 .store-status-inactivity.status-touch svg {
-  fill: whitesmoke;
+  fill: var(--white);
   stroke: none;
   width: 1.5vw;
   height: 1.5vw;

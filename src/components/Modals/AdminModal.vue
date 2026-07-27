@@ -999,12 +999,12 @@ const isHardwareLimitReached = computed(() => {
 
 .dimmed-digit {
     opacity: 0.3;
-    color: #ffffff;
+    color: var(--white);
 }
 
 .active-digit {
     opacity: 1;
-    color: #ffffff;
+    color: var(--white);
     font-weight: 700;
 }
 

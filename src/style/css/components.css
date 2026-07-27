@@ -213,7 +213,7 @@
     width: 92%;
     margin: auto auto 0 auto;
     border-radius: 24px;
-    background: whitesmoke; /* Fondo negro sólido para evitar desfases y huecos grises de anti-aliasing en las esquinas */
+    background: var(--white); /* Fondo con var(--white) */
     /* Sombra con bordes nítidos */
     box-shadow: 0 0 0 3px rgba(255, 255, 255, 0.45),
         0 8px 0px rgba(0, 0, 0, 1);
@@ -224,7 +224,7 @@
 
 .view-pc-btn {
     width: 100%; /* Rellenar el wrapper */
-    background: whitesmoke; /* Transparente para evitar que el fondo del botón tape la sombra/borde del wrapper en las esquinas */
+    background: var(--white); /* Transparente para evitar que el fondo del botón tape la sombra/borde del wrapper en las esquinas */
     border: none;
     outline: none;
     color: var(--bg-dark);
@@ -261,11 +261,11 @@
     left: 50%;
     transform: translate(-50%, -50%) rotate(0deg);
     background: conic-gradient(
-        #FFFFFF 0%,
+        var(--white) 0%,
         var(--primary) 10%,
         var(--secondary) 50%,
         var(--primary) 90%,
-        #FFFFFF 100%
+        var(--white) 100%
     );
     animation: rotate-border-transform 4s linear infinite;
     pointer-events: none;
@@ -540,7 +540,7 @@
 
 
 .store-status-pill.status-comment {
-    color: whitesmoke;
+    color: var(--white);
     border-color: rgba(245, 245, 245, 0.4);
     background: #000000;
     user-select: none;
@@ -549,7 +549,7 @@
 }
 
 .store-status-pill.status-touch {
-    color: whitesmoke;
+    color: var(--white);
     border-color: rgba(245, 245, 245, 0.4);
     background: #000000;
     cursor: pointer;
@@ -564,7 +564,7 @@
 }
 
 .store-status-pill.status-touch svg {
-    fill: whitesmoke;
+    fill: var(--white);
     stroke: none;
 }
 
