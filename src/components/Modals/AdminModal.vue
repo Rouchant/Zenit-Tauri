@@ -500,22 +500,25 @@ const isHardwareLimitReached = computed(() => {
                     <div class="video-section">
                         <div class="video-slot-body no-padding" style="background: transparent; border: none;">
                             <div class="path-container" style="display: flex; align-items: flex-start; justify-content: flex-start;">
-                                <div style="flex: 1; display: flex; flex-direction: column; gap: 12px; border-right: 1px solid rgba(255,255,255,0.1); padding-right: 15px;">
+                                <div style="flex: 7; display: flex; flex-direction: column; gap: 12px; border-right: 1px solid rgba(255,255,255,0.1); padding-right: 20px;">
                                     <strong style="font-size: 0.85rem; color: var(--white);">Opcion 1: Internos / Bóveda</strong>
-                                    <div class="custom-select">
-                                        <select v-model="editableSpecs.customLandingVideoPath" @change="onVaultSelectionChange(editableSpecs, 'landing')">
-                                            <optgroup label="Videos del Sistema">
-                                                <option v-for="v in LANDING_INTERNAL_OPTIONS" :key="v.path" :value="v.path">{{ v.name }}</option>
-                                            </optgroup>
-                                            <optgroup label="Bóveda (Subidos)" v-if="savedVideos.length > 0">
-                                                <option v-for="v in savedVideos" :key="v.path" :value="v.path">{{ formatPath(v.path) }}</option>
-                                            </optgroup>
-                                        </select>
+                                    <div style="display: flex; gap: 10px; align-items: center;">
+                                        <div class="custom-select" style="flex: 1;">
+                                            <select v-model="editableSpecs.customLandingVideoPath" :class="{ 'is-placeholder': !editableSpecs.customLandingVideoPath }" @change="onVaultSelectionChange(editableSpecs, 'landing')">
+                                                <option value="" class="placeholder-option">Slot disponible</option>
+                                                <optgroup label="Videos del Sistema">
+                                                    <option v-for="v in LANDING_INTERNAL_OPTIONS" :key="v.path" :value="v.path">{{ v.name }}</option>
+                                                </optgroup>
+                                                <optgroup label="Bóveda (Subidos)" v-if="savedVideos.length > 0">
+                                                    <option v-for="v in savedVideos" :key="v.path" :value="v.path">{{ formatPath(v.path) }}</option>
+                                                </optgroup>
+                                            </select>
+                                        </div>
+                                        <div v-if="Object.values(INTERNAL_VIDEOS).includes(editableSpecs.customLandingVideoPath)" class="video-path-badge" style="width: 170px !important; flex-shrink: 0; box-sizing: border-box;">Asset interno</div>
+                                        <button v-else-if="editableSpecs.customLandingVideoPath && savedVideos.some(v => v.path === editableSpecs.customLandingVideoPath)" class="btn btn-danger select-file-btn danger-btn" style="padding: 0 15px !important; margin: 0; flex-shrink: 0; width: 170px !important; box-sizing: border-box;" @click="deleteSavedVideo(editableSpecs.customLandingVideoPath)">🗑️ Eliminar físicamente</button>
                                     </div>
-                                    <div v-if="Object.values(INTERNAL_VIDEOS).includes(editableSpecs.customLandingVideoPath)" class="video-path-badge" style="font-size: 0.85rem; margin:0; opacity: 0.6;">Asset interno del sistema</div>
-                                    <button v-else-if="editableSpecs.customLandingVideoPath" class="btn btn-danger select-file-btn danger-btn" style="align-self: flex-start; padding: 5px 15px !important;" @click="deleteSavedVideo(editableSpecs.customLandingVideoPath)">🗑️ Eliminar físicamente</button>
                                 </div>
-                                <div style="flex: 1; display: flex; flex-direction: column; gap: 12px; padding-left: 15px;">
+                                <div style="flex: 3; display: flex; flex-direction: column; gap: 12px; padding-left: 20px;">
                                     <strong style="font-size: 0.85rem; color: var(--white);">Opcion 2: Desde PC Local</strong>
                                     <button class="btn btn-secondary select-file-btn" style="align-self: flex-start;" @click="selectVideo('landing')">Subir Nuevo Video</button>
                                     <div v-if="uploadError.type === 'landing'" class="slot-error-msg" style="margin: 0; font-size: 0.7rem;">
@@ -525,9 +528,9 @@ const isHardwareLimitReached = computed(() => {
                             </div>
 
                             <!-- Metadata Overlay del Home (Ancho completo) -->
-                            <div v-if="editableSpecs.customLandingVideoPath" class="input-group no-margin mt-lg" style="background: rgba(0,0,0,0.25); padding: 15px; border-radius: 8px; border: 1px solid rgba(255,255,255,0.05);">
-                                <label style="color: var(--primary);">Video Activo en Visualización (Home)</label>
-                                <div style="font-size: 0.95rem; font-weight: 600; color: var(--white); margin-top: 5px; word-break: break-all;">
+                            <div v-if="editableSpecs.customLandingVideoPath" class="input-group no-margin" style="background: rgba(0,0,0,0.25); padding: 8px 12px; border-radius: 8px; border: 1px solid rgba(255,255,255,0.05); margin-top: 10px !important;">
+                                <label style="color: var(--primary); font-size: 0.78rem; margin-bottom: 2px; display: block;">Video Activo en Visualización (Home)</label>
+                                <div style="font-size: 0.88rem; font-weight: 600; color: var(--white); word-break: break-all;">
                                     {{ getVideoDisplayName(editableSpecs.customLandingVideoPath) }}
                                 </div>
                             </div>
@@ -553,26 +556,26 @@ const isHardwareLimitReached = computed(() => {
                                 
                                 <div class="path-container" style="display: flex; align-items: flex-start; justify-content: flex-start;">
                                     
-                                    <!-- Opcion 1: Bóveda -->
-                                    <div style="flex: 1; display: flex; flex-direction: column; gap: 12px; border-right: 1px solid rgba(255,255,255,0.1); padding-right: 15px;">
+                                    <div style="flex: 7; display: flex; flex-direction: column; gap: 12px; border-right: 1px solid rgba(255,255,255,0.1); padding-right: 20px;">
                                         <strong style="font-size: 0.85rem; color: var(--white);">Opcion 1: Internos / Bóveda</strong>
-                                        <div class="custom-select">
-                                            <select v-model="slot.path" @change="onVaultSelectionChange(slot, 'inactivity')">
-                                                <optgroup label="Videos del Sistema">
-                                                    <option v-for="v in INTERNAL_OPTIONS" :key="v.path" :value="v.path">{{ v.name }}</option>
-                                                </optgroup>
-                                                <optgroup label="Bóveda (Subidos)" v-if="savedVideos.length > 0">
-                                                    <option v-for="v in savedVideos" :key="v.path" :value="v.path">{{ formatPath(v.path) }}</option>
-                                                </optgroup>
-                                            </select>
+                                        <div style="display: flex; gap: 10px; align-items: center;">
+                                            <div class="custom-select" style="flex: 1;">
+                                                <select v-model="slot.path" :class="{ 'is-placeholder': !slot.path }" @change="onVaultSelectionChange(slot, 'inactivity')">
+                                                    <option value="" class="placeholder-option">Slot disponible</option>
+                                                    <optgroup label="Videos del Sistema">
+                                                        <option v-for="v in INTERNAL_OPTIONS" :key="v.path" :value="v.path">{{ v.name }}</option>
+                                                    </optgroup>
+                                                    <optgroup label="Bóveda (Subidos)" v-if="savedVideos.length > 0">
+                                                        <option v-for="v in savedVideos" :key="v.path" :value="v.path">{{ formatPath(v.path) }}</option>
+                                                    </optgroup>
+                                                </select>
+                                            </div>
+                                            <div v-if="Object.values(INTERNAL_VIDEOS).includes(slot.path)" class="video-path-badge" style="width: 170px !important; flex-shrink: 0; box-sizing: border-box;">Asset interno</div>
+                                            <button v-else-if="slot.path && savedVideos.some(v => v.path === slot.path)" class="btn btn-danger select-file-btn danger-btn" style="padding: 0 15px !important; margin: 0; flex-shrink: 0; width: 170px !important; box-sizing: border-box;" @click="deleteSavedVideo(slot.path)">🗑️ Eliminar físicamente</button>
                                         </div>
-                                        
-                                        <button v-if="slot.path && !Object.values(INTERNAL_VIDEOS).includes(slot.path) && savedVideos.some(v => v.path === slot.path)" class="btn btn-danger select-file-btn danger-btn" style="align-self: flex-start; padding: 5px 15px !important;" @click="deleteSavedVideo(slot.path)">🗑️ Eliminar físicamente</button>
-                                        <div v-if="Object.values(INTERNAL_VIDEOS).includes(slot.path)" class="video-path-badge" style="font-size: 0.85rem; margin:0; opacity: 0.6;">Asset interno del sistema</div>
                                     </div>
                                     
-                                    <!-- Opcion 2: PC Local -->
-                                    <div style="flex: 1; display: flex; flex-direction: column; gap: 12px; padding-left: 15px;">
+                                    <div style="flex: 3; display: flex; flex-direction: column; gap: 12px; padding-left: 20px;">
                                         <strong style="font-size: 0.85rem; color: var(--white);">Opcion 2: Desde PC Local</strong>
                                         <button class="btn btn-secondary select-file-btn" style="align-self: flex-start;" @click="selectVideo('inactivity', index)">Subir Video</button>
                                         <div v-if="uploadError.type === 'inactivity' && uploadError.index === index" class="slot-error-msg" style="margin: 0; font-size: 0.7rem;">
@@ -583,13 +586,15 @@ const isHardwareLimitReached = computed(() => {
                                 </div>
 
                                 <!-- Metadata Overlay del Slot -->
-                                <div v-if="slot.path" class="input-group no-margin mt-lg" style="background: rgba(0,0,0,0.25); padding: 15px; border-radius: 8px; border: 1px solid rgba(255,255,255,0.05);">
-                                    <label style="color: var(--primary);">Video Activo en Visualización</label>
-                                    <div style="display: flex; gap: 10px; align-items: center; justify-content: space-between; margin-top: 5px;">
-                                        <div style="font-size: 0.95rem; font-weight: 600; color: var(--white); word-break: break-all;">
-                                            {{ getVideoDisplayName(slot.path) }}
+                                <div v-if="slot.path" class="input-group no-margin" style="background: rgba(0,0,0,0.25); padding: 8px 12px; border-radius: 8px; border: 1px solid rgba(255,255,255,0.05); margin-top: 10px !important;">
+                                    <div style="display: flex; gap: 10px; align-items: center; justify-content: space-between;">
+                                        <div>
+                                            <label style="color: var(--primary); font-size: 0.78rem; margin-bottom: 2px; display: block;">Video Activo en Visualización</label>
+                                            <div style="font-size: 0.88rem; font-weight: 600; color: var(--white); word-break: break-all;">
+                                                {{ getVideoDisplayName(slot.path) }}
+                                            </div>
                                         </div>
-                                        <button class="btn btn-danger select-file-btn danger-btn" style="flex-shrink: 0;" title="Quitar de Slot" @click="removeVideo(index)">Limpiar Slot (X)</button>
+                                        <button class="btn btn-danger select-file-btn danger-btn" style="flex-shrink: 0; height: 30px !important; padding: 0 12px !important; font-size: 0.78rem !important; width: auto !important;" title="Quitar de Slot" @click="removeVideo(index)">Limpiar Slot (X)</button>
                                     </div>
                                 </div>
                                 
@@ -848,18 +853,30 @@ const isHardwareLimitReached = computed(() => {
   align-items: center;
 }
 .path-container .video-path-badge {
-    flex: 1;
+    flex: none !important;
+    width: 170px !important;
+    height: 38px !important;
     margin: 0;
-    padding: 12px 15px;
-    font-size: 0.9rem;
+    padding: 0 15px;
+    font-size: 0.85rem;
+    box-sizing: border-box;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
 }
 
 .danger-btn {
     background-color: transparent !important;
     border: 1px solid rgba(244, 67, 54, 0.5) !important;
     color: #f44336 !important;
-    width: auto !important;
-    padding: 0 20px !important;
+    width: 170px !important;
+    height: 38px !important;
+    padding: 0 15px !important;
+    box-sizing: border-box;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    flex: none !important;
 }
 .danger-btn:hover {
     background-color: rgba(244, 67, 54, 0.1) !important;
