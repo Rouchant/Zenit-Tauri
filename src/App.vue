@@ -344,28 +344,28 @@ const handleHotspotClick = (mode) => {
 // Solo se pausan al minimizar explícitamente (botón "Prueba esta PC") o al abrir modales.
 
 
-const initMpvGlobal = async () => {
-  if (store.isMpvReady) return;
+const initMpvGlobal = async (forceReinit = false) => {
+  if (store.isMpvReady && !forceReinit) return true;
   try {
     if (window.__TAURI_INTERNALS__) {
       await invoke('log_frontend_debug', { msg: '[App JS] Starting global init of libmpv...' });
       await init({
         initialOptions: {
           'vo': 'gpu',
-          'hwdec': 'auto-safe',     // Selección automática segura de decodificación por hardware
-          'fbo-format': 'rgba8',    // Evita colapsar bus de RAM compartida en equipos de gama baja
-          'scale': 'bicubic',       // Más nítido que bilinear para pantallas premium, pero ligero en i3
-          'dither': 'ordered',      // Suaviza degradados en pantallas premium sin impacto de GPU
-          'framedrop': 'vo',        // Salta frames si la GPU/CPU va lenta (evita cámara lenta)
-          'vd-lavc-fast': 'yes',    // Decodificación rápida en codecs H.264/HEVC
-          'cache': 'no',            // Desactiva la caché innecesaria de red
+          'hwdec': 'd3d11va-copy',   // Decodificación por hardware de alta compatibilidad para GPUs AMD Radeon / Windows 11
+          'fbo-format': 'rgba8',     // Evita colapsar bus de RAM compartida en equipos de gama baja
+          'scale': 'bicubic',        // Más nítido que bilinear para pantallas premium, pero ligero en i3
+          'dither': 'ordered',       // Suaviza degradados en pantallas premium sin impacto de GPU
+          'framedrop': 'vo',         // Salta frames si la GPU/CPU va lenta (evita cámara lenta)
+          'vd-lavc-fast': 'yes',     // Decodificación rápida en codecs H.264/HEVC
+          'cache': 'no',             // Desactiva la caché innecesaria de red
           'demuxer-max-bytes': '10MiB', // Límite de RAM bajo y seguro para el N300
           'keep-open': 'yes',
           'force-window': 'yes',
           'loop-file': 'inf',
           'panscan': '1.0',
-          'mute': 'yes',            // Silenciar todos los videos (kiosk mode)
-          'audio': 'no',            // Desactivar completamente el decodificador de audio (ahorra CPU)
+          'mute': 'yes',             // Silenciar todos los videos (kiosk mode)
+          'audio': 'no',             // Desactivar completamente el decodificador de audio (ahorra CPU)
           'input-default-bindings': 'no', // Desactivar atajos por defecto de mpv (evita Alt+F4, q, etc.)
           'input-vo-keyboard': 'no',       // Desactivar procesamiento de eventos de teclado en la ventana nativa de MPV
         },
@@ -377,13 +377,77 @@ const initMpvGlobal = async () => {
       store.isMpvReady = true;
       console.log('[App] Global libmpv initialized');
       await invoke('log_frontend_debug', { msg: '[App JS] Global init of libmpv succeeded!' });
+      return true;
     }
   } catch (e) {
     console.error('[App] Failed to initialize global libmpv:', e);
+    store.isMpvReady = false;
     try {
       const errStr = e instanceof Error ? e.stack || e.message : String(e);
       await invoke('log_frontend_debug', { msg: `[App JS] Global init of libmpv failed: ${errStr}` });
     } catch (ignore) {}
+    return false;
+  }
+};
+
+const reinitMpvGlobal = async () => {
+  console.warn('[App MPV] Attempting full re-initialization of libmpv...');
+  store.isMpvReady = false;
+  lastMpvBgPath = '';
+  if (unlistenMpvProps) {
+    try { unlistenMpvProps(); } catch (_) {}
+    unlistenMpvProps = null;
+  }
+  return await initMpvGlobal(true);
+};
+
+const handleBgVideoFailure = async (reason = 'unknown') => {
+  console.warn(`[App MPV] Background video failure detected (Reason: ${reason}, Retry: ${bgRetryCount.value + 1}/3).`);
+  bgRetryCount.value++;
+  isBgVideoLoading.value = false;
+  showStaticFallback.value = true;
+  lastMpvBgPath = ''; // Permitir reintento
+
+  if (unlistenMpvProps) {
+    try { unlistenMpvProps(); } catch (_) {}
+    unlistenMpvProps = null;
+  }
+  if (bgVideoTimeout) {
+    clearTimeout(bgVideoTimeout);
+    bgVideoTimeout = null;
+  }
+
+  if (bgRetryCount.value === 1) {
+    // Reintento 1: Re-inicializar instancia nativa de MPV en caliente por si se perdió el contexto gráfico
+    console.log('[App MPV Recovery] Step 1: Re-initializing MPV instance...');
+    const reinitOk = await reinitMpvGlobal();
+    if (reinitOk) {
+      setTimeout(() => playBgVideoNative(), 300);
+    } else {
+      handleBgVideoFailure('reinit_failed');
+    }
+  } else if (bgRetryCount.value === 2) {
+    // Reintento 2: Conmutar a decodificación por software CPU (aprovechando los 6-12 núcleos del Ryzen 5)
+    console.log('[App MPV Recovery] Step 2: Switching hwdec to software decoding (hwdec: no)...');
+    try {
+      if (store.isMpvReady) {
+        await setProperty('hwdec', 'no');
+      }
+    } catch (e) {
+      console.warn('[App MPV Recovery] Could not set hwdec to no:', e);
+    }
+    setTimeout(() => playBgVideoNative(), 300);
+  } else if (bgRetryCount.value === 3) {
+    // Reintento 3: Conmutar al video por defecto empaquetado (Win 11 / ASUS)
+    console.log('[App MPV Recovery] Step 3: Falling back to default bundled promo video...');
+    const defaultKey = store.isAsus ? '__ASUS_PROMO__' : '__GENERIC_PROMO__';
+    currentBgVideoSrc.value = defaultKey;
+    setTimeout(() => playBgVideoNative(), 300);
+  } else {
+    // Excedido límite de reintentos: Dejar la imagen estática HD de fallback activa suavemente
+    console.error('[App MPV Recovery] All recovery steps exhausted. Keeping static background active.');
+    isBgVideoFailed.value = true;
+    showStaticFallback.value = true;
   }
 };
 
@@ -399,7 +463,7 @@ const playBgVideoNative = async () => {
     bgVideoTimeout = null;
   }
   if (unlistenMpvProps) {
-    unlistenMpvProps();
+    try { unlistenMpvProps(); } catch (_) {}
     unlistenMpvProps = null;
   }
 
@@ -413,11 +477,13 @@ const playBgVideoNative = async () => {
         ['time-pos', 'double', 'none']
       ], ({ name, data }) => {
         if (name === 'time-pos' && typeof data === 'number' && data > 0) {
-          console.log('[App MPV] First frame detected via time-pos. Hiding fallback & cleaning listener.');
+          console.log('[App MPV] First frame detected via time-pos. Hiding fallback & resetting retry counter.');
           showStaticFallback.value = false;
           isBgVideoLoading.value = false;
+          bgRetryCount.value = 0; // Resetear contador al reproducir exitosamente
+          isBgVideoFailed.value = false;
           if (unlistenMpvProps) {
-            unlistenMpvProps();
+            try { unlistenMpvProps(); } catch (_) {}
             unlistenMpvProps = null;
           }
           if (bgVideoTimeout) {
@@ -434,39 +500,17 @@ const playBgVideoNative = async () => {
     await setProperty('panscan', 1.0);
     await setProperty('pause', false);
     
-    // Temporizador de seguridad de 1000ms por si falla la actualización del time-pos
+    // Watchdog ultrafast de 1.8 segundos: Si no hay fotogramas (time-pos > 0) en 1.8s, activar secuencia de autorrecuperación
     bgVideoTimeout = setTimeout(() => {
       if (isBgVideoLoading.value) {
-        console.warn('[App] Safety timeout for background video reached. Fading out fallback.');
-        if (!store.isVideoMode && !store.isModalOpen && shouldBePlaying.value) {
-          showStaticFallback.value = false;
-        }
-        isBgVideoLoading.value = false;
-        if (unlistenMpvProps) {
-          unlistenMpvProps();
-          unlistenMpvProps = null;
-        }
+        console.warn('[App MPV Watchdog] 1.8s timeout reached without time-pos progress.');
+        handleBgVideoFailure('watchdog_timeout');
       }
       bgVideoTimeout = null;
-    }, 1000);
+    }, 1800);
   } catch (e) {
     console.error('[App] Failed to play bg video on libmpv:', e);
-    lastMpvBgPath = ''; // Permitir reintento en caso de error
-    isBgVideoLoading.value = false;
-    if (unlistenMpvProps) {
-      unlistenMpvProps();
-      unlistenMpvProps = null;
-    }
-    if (bgVideoTimeout) {
-      clearTimeout(bgVideoTimeout);
-      bgVideoTimeout = null;
-    }
-    try {
-      if (window.__TAURI_INTERNALS__) {
-        const errStr = e instanceof Error ? e.stack || e.message : String(e);
-        await invoke('log_frontend_debug', { msg: `[App JS] Failed to play bg video on libmpv: ${errStr}` });
-      }
-    } catch (ignore) {}
+    handleBgVideoFailure('command_exception');
   }
 };
 

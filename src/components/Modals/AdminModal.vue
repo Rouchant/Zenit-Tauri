@@ -706,7 +706,7 @@ const isHardwareLimitReached = computed(() => {
                             <!-- Columna Derecha: Comentario Personalizado -->
                             <div style="flex: 1; display: flex; flex-direction: column; gap: 15px;">
                                 <div class="input-group">
-                                    <label for="custom-comment-input">COMENTARIO (Máx. 16 caracteres): </label>
+                                    <label for="custom-comment-input">COMENTARIO (Máx. 21 caracteres): </label>
                                     <div class="input-with-action">
                                         <input 
                                             id="custom-comment-input" 
@@ -715,7 +715,7 @@ const isHardwareLimitReached = computed(() => {
                                             v-model="editableSpecs.customComment" 
                                             placeholder="inserte comentario"
                                             autocomplete="off"
-                                            maxlength="16"
+                                            maxlength="21"
                                         >
                                     </div>
                                 </div>

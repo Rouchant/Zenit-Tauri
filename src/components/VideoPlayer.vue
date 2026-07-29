@@ -49,6 +49,48 @@ watch(() => store.currentSpecs?.customVideoPaths, async () => {
   nextTick(() => playVideo());
 }, { immediate: true, deep: true });
 
+let videoStartWatchdog = null;
+
+const clearWatchdogTimer = () => {
+  if (videoStartWatchdog) {
+    clearTimeout(videoStartWatchdog);
+    videoStartWatchdog = null;
+  }
+};
+
+const onVideoError = async (reason = 'unknown') => {
+  console.error(`[VideoPlayer] Video error detected (Reason: ${reason}, Retry ${retryCount.value + 1}/3)`);
+  playlistLoaded = false;
+  clearWatchdogTimer();
+
+  if (retryCount.value === 0) {
+    retryCount.value++;
+    console.warn('[VideoPlayer Recovery] Step 1: Re-trying playlist playback...');
+    nextTick(() => playVideo());
+  } else if (retryCount.value === 1) {
+    retryCount.value++;
+    console.warn('[VideoPlayer Recovery] Step 2: Switching MPV hwdec to software decoding (hwdec: no)...');
+    try {
+      if (store.isMpvReady) {
+        await setProperty('hwdec', 'no');
+      }
+    } catch (e) {
+      console.warn('[VideoPlayer Recovery] Failed setting hwdec to no:', e);
+    }
+    nextTick(() => playVideo());
+  } else if (retryCount.value === 2) {
+    retryCount.value++;
+    console.warn('[VideoPlayer Recovery] Step 3: Falling back to default bundled promo video...');
+    const defaultPath = store.isAsus ? '__ASUS_PROMO__' : '__GENERIC_PROMO__';
+    rawUrls.value = [await store.getVideoRawPath(defaultPath)];
+    nextTick(() => playVideo());
+  } else {
+    console.error('[VideoPlayer Recovery] All retries exhausted. Exiting video mode cleanly.');
+    store.isVideoMode = false;
+    retryCount.value = 0;
+  }
+};
+
 async function playVideo() {
   if (rawUrls.value.length === 0) return;
   
@@ -64,12 +106,20 @@ async function playVideo() {
   const firstPath = rawUrls.value[0] || '';
   if (!firstPath) {
     console.warn('[VideoPlayer] playVideo: first path is empty');
+    onVideoError('empty_path');
     return;
   }
   
   console.log('[VideoPlayer] Initializing gapless playlist playback starting with:', firstPath);
   startSafetyTimer(300);
+  clearWatchdogTimer();
   
+  // Watchdog de inicio de video (2.0 segundos sin avance en time-pos)
+  videoStartWatchdog = setTimeout(() => {
+    console.warn('[VideoPlayer Watchdog] 2.0s passed without time-pos progress.');
+    onVideoError('watchdog_timeout');
+  }, 2000);
+
   if (window.__TAURI_INTERNALS__) {
     if (store.isMpvReady) {
       try {
@@ -90,28 +140,13 @@ async function playVideo() {
         playlistLoaded = true;
       } catch (error) {
         console.error('[VideoPlayer] libmpv failed to load playlist:', error);
-        onVideoError();
+        onVideoError('loadfile_exception');
       }
     }
   }
 }
 
 const safetyTimeout = ref(null);
-
-const onVideoError = () => {
-  console.error('[VideoPlayer] Video error detected');
-  playlistLoaded = false;
-  
-  if (retryCount.value < 3) {
-    retryCount.value++;
-    console.warn(`[VideoPlayer] Attempting recovery (retry ${retryCount.value}/3)...`);
-    nextTick(() => playVideo());
-  } else {
-    console.error('[VideoPlayer] Max retries reached, exiting video mode.');
-    store.isVideoMode = false;
-    retryCount.value = 0;
-  }
-};
 
 const clearSafetyTimer = () => {
   if (safetyTimeout.value) {
@@ -139,13 +174,11 @@ const startSafetyTimer = (durationInSeconds) => {
 const onVideoEnded = () => {
   console.log('[VideoPlayer] Video ended:', currentIndex.value + 1, 'of', rawUrls.value.length);
   clearSafetyTimer();
+  clearWatchdogTimer();
   retryCount.value = 0;
   
   if (currentIndex.value >= rawUrls.value.length - 1) {
     console.log('[VideoPlayer] Last video reached, returning to specs view.');
-    // Limpiar listeners de forma proactiva antes de cambiar el estado de la UI
-    // Esto evita que los eventos de transición generados por MPV al cargar el video de fondo
-    // intenten resolverse en callbacks del reproductor de inactividad que están siendo destruidos.
     if (unlistenMpvProps) { unlistenMpvProps(); unlistenMpvProps = null; }
     if (unlistenMpvEvents) { unlistenMpvEvents(); unlistenMpvEvents = null; }
     
@@ -210,20 +243,23 @@ watch(() => store.isModalOpen, async (isOpen) => {
 
 onMounted(async () => {
   if (window.__TAURI_INTERNALS__) {
-    // 1. Escuchar propiedades (duración y pausa)
+    // 1. Escuchar propiedades (duración, pausa y progreso time-pos)
     unlistenMpvProps = await observeProperties([
       ['duration', 'double', 'none'],
       ['pause', 'flag'],
+      ['time-pos', 'double', 'none'],
     ], ({ name, data }) => {
       if (name === 'duration' && typeof data === 'number' && data > 0) {
         console.log('[VideoPlayer] MPV loaded video metadata, duration:', data);
         startSafetyTimer(data);
       } else if (name === 'pause') {
         isPaused.value = !!data;
+      } else if (name === 'time-pos' && typeof data === 'number' && data > 0) {
+        clearWatchdogTimer();
       }
     });
 
-    // 2. Escuchar evento nativo 'end-file' para pasar de video de forma robusta
+    // 2. Escuchar evento nativo 'end-file' para pasar de video o manejar fallas de decodificación
     unlistenMpvEvents = await listenEvents((mpvEvent) => {
       if (mpvEvent.event === 'end-file') {
         console.log('[VideoPlayer] MPV end-file event:', mpvEvent);
@@ -231,6 +267,9 @@ onMounted(async () => {
         if (isEof) {
           console.log('[VideoPlayer] MPV reached end of file naturally.');
           onVideoEnded();
+        } else if (mpvEvent.reason === 'error' || mpvEvent.reason === 'quit' || mpvEvent.reason === 'redirect') {
+          console.warn('[VideoPlayer] MPV end-file error reason detected:', mpvEvent.reason);
+          onVideoError(mpvEvent.reason);
         }
       }
     });
@@ -253,6 +292,7 @@ onUnmounted(async () => {
   if (unlistenMpvProps) { unlistenMpvProps(); unlistenMpvProps = null; }
   if (unlistenMpvEvents) { unlistenMpvEvents(); unlistenMpvEvents = null; }
   clearSafetyTimer();
+  clearWatchdogTimer();
   stopOverlayCycle();
 });
 
