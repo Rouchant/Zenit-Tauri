@@ -12,20 +12,21 @@
     font-size: 24px;
     font-weight: 600;
     cursor: pointer;
-    transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+    transition: transform 0.2s cubic-bezier(0.4, 0, 0.2, 1), box-shadow 0.2s cubic-bezier(0.4, 0, 0.2, 1), filter 0.2s cubic-bezier(0.4, 0, 0.2, 1);
     box-shadow: 0 0 0 3px rgba(255, 255, 255, 0.45), 
                 0 8px 0px rgba(0, 0, 0, 1);
     transform: translateZ(0);
-    will-change: transform;
 }
 
 .warranty-trigger-btn:hover {
+    will-change: transform;
     filter: brightness(1.15);
     box-shadow: 0 0 0 3px rgba(255, 255, 255, 0.8), 
                 0 10px 0px rgba(0, 0, 0, 1);
 }
 
 .warranty-trigger-btn:active {
+    will-change: transform;
     transform: translateY(6px) translateZ(0);
     box-shadow: 0 0 0 3px rgba(255, 255, 255, 0.8), 
                 0 2px 0px rgba(0, 0, 0, 1);
@@ -208,7 +209,7 @@
     background: transparent;
     border: none;
     cursor: pointer;
-    transition: all 0.2s ease;
+    transition: background-color 0.2s ease, transform 0.2s ease;
     padding: 5px;
     width: 48px;
     height: 48px;
@@ -226,15 +227,6 @@
 
 .warranty-close-btn:active {
     transform: scale(0.95);
-}
-
-@keyframes floatShield {
-    0%, 100% {
-        transform: translateY(0);
-    }
-    50% {
-        transform: translateY(-8px);
-    }
 }
 
 /* --- Warranty Transition --- */

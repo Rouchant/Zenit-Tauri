@@ -331,7 +331,7 @@
     font-size: 0.85rem;
     font-weight: 600;
     color: #888;
-    transition: all 0.2s ease;
+    transition: background-color 0.2s ease, color 0.2s ease;
 }
 
 .video-option-pill input:checked + .pill-label {
@@ -367,7 +367,7 @@
     font-weight: 600;
     color: var(--white);
     user-select: none;
-    transition: all 0.2s ease;
+    transition: color 0.2s ease;
 }
 
 /* Hide the browser's default checkbox */
@@ -390,7 +390,7 @@
     background-color: #202024;
     border: 1px solid #303034;
     border-radius: 6px;
-    transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+    transition: background-color 0.2s cubic-bezier(0.4, 0, 0.2, 1), border-color 0.2s cubic-bezier(0.4, 0, 0.2, 1);
 }
 
 /* On mouse-over, add a grey background color */

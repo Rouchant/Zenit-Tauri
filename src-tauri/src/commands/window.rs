@@ -176,10 +176,15 @@ async fn position_return_window(
         // Lógica de escalado físico constante (Neutraliza el DPI de Windows para el contenedor)
         let dpi_factor = scale_factor;
         let physical_width = monitor.size().width as f64;
+        let physical_height = monitor.size().height as f64;
 
-        // Calculamos el tamaño físico deseado (Base: 240px x 200px en una pantalla 1080p)
-        let target_physical_width = 240.0 * (physical_width / 1920.0);
-        let target_physical_height = 200.0 * (physical_width / 1920.0);
+        // Siempre usamos el lado mayor como referencia para que el tamaño del botón
+        // sea idéntico tanto en pantallas landscape como portrait (ej. Zenbook Duo vertical).
+        let longest_side = physical_width.max(physical_height);
+        let scale_base = (longest_side / 1920.0).max(1.0);
+
+        let target_physical_width = 240.0 * scale_base;
+        let target_physical_height = 200.0 * scale_base;
 
         // Dividimos por el dpi_factor para que Windows no lo agrande
         let width = target_physical_width / dpi_factor;

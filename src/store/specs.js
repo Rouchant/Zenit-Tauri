@@ -18,7 +18,9 @@ export const INTERNAL_VIDEOS = {
   TUF_DURABILITY: '__TUF_DURABILITY__',
   ASUS_WARRANTY: '__ASUS_WARRANTY__',
   ASUS_OLED: '__ASUS_OLED__',
-  ASUS_VIVOBOOK_WOW: '__ASUS_VIVOBOOK_WOW__'
+  ASUS_VIVOBOOK_WOW: '__ASUS_VIVOBOOK_WOW__',
+  ASUS_CERALUMINUM: '__ASUS_CERALUMINUM__',
+  ASUS_ZENBOOK_2026: '__ASUS_ZENBOOK_2026__'
 };
 
 export const INTERNAL_PATHS = {
@@ -32,7 +34,9 @@ export const INTERNAL_PATHS = {
   [INTERNAL_VIDEOS.TUF_DURABILITY]: 'videos/assets/asus/Quality_and_Durability_TUF_Gaming.mp4',
   [INTERNAL_VIDEOS.ASUS_WARRANTY]: 'videos/assets/asus/Asus_Garantia_Perfecta.mp4',
   [INTERNAL_VIDEOS.ASUS_OLED]: 'videos/assets/asus/asus-oled.mp4',
-  [INTERNAL_VIDEOS.ASUS_VIVOBOOK_WOW]: 'videos/assets/asus/Asus_vivobook_WOW_the_world.mp4'
+  [INTERNAL_VIDEOS.ASUS_VIVOBOOK_WOW]: 'videos/assets/asus/Asus_vivobook_WOW_the_world.mp4',
+  [INTERNAL_VIDEOS.ASUS_CERALUMINUM]: 'videos/assets/asus/Ceraluminum.mp4',
+  [INTERNAL_VIDEOS.ASUS_ZENBOOK_2026]: 'videos/assets/asus/Zenbook_2026.mp4'
 };
 
 export const formatPrice = (val) => {
@@ -242,6 +246,9 @@ export const useSpecsStore = defineStore('specs', () => {
           currentSpecs.value.storeBadge = 'none';
         }
       }
+      if (!Array.isArray(currentSpecs.value.selectedBadges)) {
+        currentSpecs.value.selectedBadges = currentSpecs.value.storeBadge === 'touch' ? ['touch'] : [];
+      }
       if (currentSpecs.value.onlyDelivery !== undefined) {
         delete currentSpecs.value.onlyDelivery;
       }
@@ -331,7 +338,9 @@ export const useSpecsStore = defineStore('specs', () => {
                   { name: '🏢 Genérico Win 11 (Home)', path: INTERNAL_VIDEOS.GENERIC_LANDING },
                   { name: '🎮 Xbox Game Pass (Gaming)', path: INTERNAL_VIDEOS.GAMING_XBOX },
                   { name: '📺 Asus OLED', path: INTERNAL_VIDEOS.ASUS_OLED },
-                  { name: '🌟 Asus Vivobook: WOW the World', path: INTERNAL_VIDEOS.ASUS_VIVOBOOK_WOW }
+                  { name: '🌟 Asus Vivobook: WOW the World', path: INTERNAL_VIDEOS.ASUS_VIVOBOOK_WOW },
+                  { name: '✨ Asus Ceraluminum', path: INTERNAL_VIDEOS.ASUS_CERALUMINUM },
+                  { name: '🚀 Asus Zenbook 2026', path: INTERNAL_VIDEOS.ASUS_ZENBOOK_2026 }
                 ];
                 const matched = allOptions.find(o => o.path === currentSpecs.value.customLandingVideoPath);
                 if (matched) {

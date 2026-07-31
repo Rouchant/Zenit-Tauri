@@ -3,6 +3,7 @@ import { ref, reactive, onMounted, computed } from 'vue';
 import { useSpecsStore, INTERNAL_VIDEOS } from '../../store/specs';
 import { tauriAPI, notify } from '../../api/tauriApi';
 import { getVersion } from '@tauri-apps/api/app';
+import { BADGES_CATALOG } from '../../utils/badges';
 
 const emit = defineEmits(['close']);
 const store = useSpecsStore();
@@ -27,24 +28,38 @@ onMounted(async () => {
 });
 
 const SYSTEM_VIDEOS_CATALOG = [
+    { name: '🏢 Genérico Win 11 (Home)', path: INTERNAL_VIDEOS.GENERIC_LANDING },
+    { name: '🪟 Genérico (Promo) Move to Win 11', path: INTERNAL_VIDEOS.GENERIC_PROMO },
+    { name: '💻 Windows: Home of Gaming', path: INTERNAL_VIDEOS.WINDOWS_GAMING },
+    { name: '🎮 Xbox Game Pass (Gaming)', path: INTERNAL_VIDEOS.GAMING_XBOX },
+    { name: '🗻 Asus Zenbook 2026', path: INTERNAL_VIDEOS.ASUS_ZENBOOK_2026 },
+    { name: '🪨 Asus Ceraluminum', path: INTERNAL_VIDEOS.ASUS_CERALUMINUM },
     { name: '📺 Asus OLED', path: INTERNAL_VIDEOS.ASUS_OLED },
     { name: '🌟 Asus Vivobook: WOW the World', path: INTERNAL_VIDEOS.ASUS_VIVOBOOK_WOW },
     { name: '🤖 Asus AI PC', path: INTERNAL_VIDEOS.ASUS_LANDING },
-    { name: '🏢 Genérico Win 11 (Home)', path: INTERNAL_VIDEOS.GENERIC_LANDING },
     { name: '🔥 Asus Durabilidad (Promo)', path: INTERNAL_VIDEOS.ASUS_PROMO },
-    { name: '🪟 Genérico (Promo) Move to Win 11', path: INTERNAL_VIDEOS.GENERIC_PROMO },
-    { name: '🎮 Xbox Game Pass (Gaming)', path: INTERNAL_VIDEOS.GAMING_XBOX },
-    { name: '💻 Windows: Home of Gaming', path: INTERNAL_VIDEOS.WINDOWS_GAMING },
     { name: '✨ ROG Calidad y Durabilidad', path: INTERNAL_VIDEOS.QUALITY_DURABILITY },
     { name: '🛡️ TUF Gaming: Durabilidad', path: INTERNAL_VIDEOS.TUF_DURABILITY },
     { name: '✅ Asus Garantía Perfecta', path: INTERNAL_VIDEOS.ASUS_WARRANTY }
 ];
 
-// Asegurar que haya 3 slots iniciales al abrir, o mapear los presentes
 const initCustomVideoPaths = () => {
-    let base = store.currentSpecs.customVideoPaths || [];
-    let slots = [...base];
-    while(slots.length < 3) {
+    const defaultPaths = [
+        { name: '', path: '' },
+        { name: '', path: '' },
+        { name: '', path: '' }
+    ];
+    const current = store.currentSpecs.customVideoPaths;
+    if (!current || !Array.isArray(current)) return defaultPaths;
+    
+    const slots = current.map((item, idx) => {
+        if (typeof item === 'string') {
+            return { name: `Video ${idx + 1}`, path: item };
+        }
+        return { name: item?.name || '', path: item?.path || '' };
+    });
+    
+    while (slots.length < 3) {
         slots.push({ name: '', path: '' });
     }
     return slots.slice(0, 3);
@@ -55,10 +70,24 @@ const editableSpecs = reactive({
     landingVideoType: 'default',
     showAsusWarrantyTicker: store.currentSpecs.showAsusWarrantyTicker !== undefined ? store.currentSpecs.showAsusWarrantyTicker : false,
     customComment: store.currentSpecs.customComment || '',
+    selectedBadges: Array.isArray(store.currentSpecs.selectedBadges) ? [...store.currentSpecs.selectedBadges] : (store.currentSpecs.storeBadge === 'touch' ? ['touch'] : []),
     ...store.currentSpecs,
     coresAndThreads: store.currentSpecs.coresAndThreads || (store.currentSpecs.cores ? `${store.currentSpecs.cores} Núcleos / ${store.currentSpecs.threads} Hilos` : ''),
     customVideoPaths: initCustomVideoPaths()
 });
+
+const toggleBadge = (badgeId) => {
+  if (!Array.isArray(editableSpecs.selectedBadges)) {
+    editableSpecs.selectedBadges = [];
+  }
+  const idx = editableSpecs.selectedBadges.indexOf(badgeId);
+  if (idx > -1) {
+    editableSpecs.selectedBadges.splice(idx, 1);
+  } else {
+    editableSpecs.selectedBadges.push(badgeId);
+  }
+  editableSpecs.storeBadge = editableSpecs.selectedBadges.includes('touch') ? 'touch' : 'none';
+};
 
 const isAsus = computed(() => {
     const b = (editableSpecs.brand || '').toLowerCase();
@@ -88,7 +117,9 @@ const INTERNAL_OPTIONS = computed(() => {
             INTERNAL_VIDEOS.ASUS_LANDING,
             INTERNAL_VIDEOS.QUALITY_DURABILITY,
             INTERNAL_VIDEOS.TUF_DURABILITY,
-            INTERNAL_VIDEOS.ASUS_WARRANTY
+            INTERNAL_VIDEOS.ASUS_WARRANTY,
+            INTERNAL_VIDEOS.ASUS_CERALUMINUM,
+            INTERNAL_VIDEOS.ASUS_ZENBOOK_2026
         ];
         if (asusVideos.includes(v.path)) {
             const b = (editableSpecs.brand || '').toLowerCase();
@@ -445,14 +476,32 @@ const isHardwareLimitReached = computed(() => {
                         </div>
                     </div>
 
-                    <!-- Características Destacadas (Destacables) -->
+                    <!-- Características Destacadas Multi-seleccionables ("Ticketeables") -->
                     <div style="margin-top: 25px; border-top: 1px solid rgba(255, 255, 255, 0.05); padding-top: 20px;">
-                        <label for="badge-select" style="margin-bottom: 12px; display: block; font-weight: 600; color: var(--white);">Características Destacadas (Destacables)</label>
-                        <div class="custom-select" style="max-width: 350px;">
-                            <select id="badge-select" name="storeBadge" v-model="editableSpecs.storeBadge">
-                                <option value="none">Ninguno (Normal)</option>
-                                <option value="touch">Pantalla Táctil</option>
-                            </select>
+                        <label style="margin-bottom: 6px; display: block; font-weight: 700; color: var(--primary); text-transform: uppercase; font-size: 0.85rem; letter-spacing: 0.5px;">
+                            Características Destacadas
+                        </label>
+                        <span style="font-size: 0.78rem; color: var(--text-muted, #888); margin-bottom: 15px; display: block;">
+                            Marca las características que apliquen a esta PC. Si seleccionas varias, rotarán automáticamente cada 5 segundos en la cabecera.
+                        </span>
+                        
+                        <div class="badges-grid-selection">
+                            <label 
+                                v-for="b in BADGES_CATALOG" 
+                                :key="b.id" 
+                                class="badge-checkbox-card"
+                                :class="{ active: (editableSpecs.selectedBadges || []).includes(b.id) }"
+                            >
+                                <input 
+                                    type="checkbox" 
+                                    :value="b.id"
+                                    :checked="(editableSpecs.selectedBadges || []).includes(b.id)"
+                                    @change="toggleBadge(b.id)"
+                                    style="display: none;"
+                                />
+                                <span class="badge-card-icon" v-html="b.svg"></span>
+                                <span class="badge-card-label">{{ b.label }}</span>
+                            </label>
                         </div>
                     </div>
 
@@ -796,10 +845,10 @@ const isHardwareLimitReached = computed(() => {
 }
 .tab-content {
   width: 100%;
-  animation: fadeIn 0.3s ease;
+  animation: fadeInSlide 0.3s ease;
 }
 
-@keyframes fadeIn {
+@keyframes fadeInSlide {
   from { opacity: 0; transform: translateY(5px); }
   to { opacity: 1; transform: translateY(0); }
 }
@@ -836,11 +885,6 @@ const isHardwareLimitReached = computed(() => {
     text-transform: none;
     letter-spacing: 0;
     animation: shake 0.4s ease;
-}
-@keyframes shake {
-    0%, 100% { transform: translateX(0); }
-    25% { transform: translateX(-4px); }
-    75% { transform: translateX(4px); }
 }
 
 .no-margin {
@@ -892,7 +936,7 @@ const isHardwareLimitReached = computed(() => {
     color: var(--white);
     font-size: 0.85rem;
     outline: none;
-    transition: all 0.2s ease;
+    transition: border-color 0.2s ease, background-color 0.2s ease;
     margin: 0;
 }
 
@@ -913,7 +957,7 @@ const isHardwareLimitReached = computed(() => {
     display: flex;
     align-items: center;
     gap: 10px;
-    transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+    transition: background-color 0.2s cubic-bezier(0.4, 0, 0.2, 1), border-color 0.2s cubic-bezier(0.4, 0, 0.2, 1), color 0.2s cubic-bezier(0.4, 0, 0.2, 1), transform 0.2s cubic-bezier(0.4, 0, 0.2, 1), box-shadow 0.2s cubic-bezier(0.4, 0, 0.2, 1);
     text-transform: uppercase;
     letter-spacing: 0.5px;
 }
@@ -935,7 +979,7 @@ const isHardwareLimitReached = computed(() => {
     font-size: 0.75rem;
     margin-top: 10px;
     font-weight: 700;
-    animation: fadeIn 0.3s ease;
+    animation: fadeInSlide 0.3s ease;
 }
 
 /* Radio style overrides for custom checkmark container */
@@ -962,7 +1006,7 @@ const isHardwareLimitReached = computed(() => {
     padding: 0 14px;
     height: 42px;
     position: relative;
-    transition: all 0.2s ease;
+    transition: border-color 0.2s ease, background-color 0.2s ease, box-shadow 0.2s ease;
 }
 
 .price-masked-field:focus-within {
@@ -1048,5 +1092,71 @@ const isHardwareLimitReached = computed(() => {
     vertical-align: text-bottom;
     animation: blinkCaret 0.9s step-start infinite;
     box-shadow: 0 0 6px var(--primary, #00f2ff);
+}
+
+/* Badges Selection Grid */
+.badges-grid-selection {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(180px, 1fr));
+    gap: 10px;
+    width: 100%;
+}
+
+.badge-checkbox-card {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    background: rgba(255, 255, 255, 0.02);
+    border: 1px solid rgba(255, 255, 255, 0.08);
+    border-radius: 12px;
+    padding: 10px 14px;
+    cursor: pointer;
+    transition: background-color 0.2s ease, border-color 0.2s ease, transform 0.2s ease;
+    user-select: none;
+}
+
+.badge-checkbox-card:hover {
+    background: rgba(255, 255, 255, 0.06);
+    border-color: rgba(var(--primary-rgb, 0, 242, 255), 0.4);
+    transform: translateY(-1px);
+}
+
+.badge-checkbox-card.active {
+    background: rgba(var(--primary-rgb, 0, 242, 255), 0.12);
+    border-color: var(--primary, #00f2ff);
+    box-shadow: none;
+}
+
+.badge-card-icon {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: 22px;
+    height: 22px;
+    color: var(--text-muted);
+    flex-shrink: 0;
+}
+
+.badge-checkbox-card.active .badge-card-icon {
+    color: var(--primary, #00f2ff);
+}
+
+:deep(.badge-card-icon svg) {
+    width: 100%;
+    height: 100%;
+    stroke: currentColor;
+    stroke-width: 2.2;
+}
+
+.badge-card-label {
+    font-size: 0.82rem;
+    font-weight: 600;
+    color: var(--white);
+    line-height: 1.2;
+}
+
+.badge-checkbox-card.active .badge-card-label {
+    color: var(--primary, #00f2ff);
+    font-weight: 700;
 }
 </style>

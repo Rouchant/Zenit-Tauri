@@ -355,7 +355,7 @@ const finishSetup = async () => {
   justify-content: space-between;
   min-height: 145px;
   text-align: center;
-  transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+  transition: background-color 0.3s cubic-bezier(0.4, 0, 0.2, 1), border-color 0.3s cubic-bezier(0.4, 0, 0.2, 1), transform 0.3s cubic-bezier(0.4, 0, 0.2, 1);
   user-select: none;
 }
 
@@ -475,7 +475,7 @@ const finishSetup = async () => {
   color: var(--white);
   font-size: 1rem;
   outline: none;
-  transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+  transition: background-color 0.3s cubic-bezier(0.4, 0, 0.2, 1), border-color 0.3s cubic-bezier(0.4, 0, 0.2, 1), box-shadow 0.3s cubic-bezier(0.4, 0, 0.2, 1);
   letter-spacing: 0.5px;
 }
 
@@ -553,9 +553,8 @@ const finishSetup = async () => {
 .corner-callout {
   position: fixed;
   z-index: 10005;
-  background: rgba(20, 24, 38, 0.95);
+  background: #141826;
   border: 1px solid rgba(255, 255, 255, 0.15);
-  backdrop-filter: blur(12px);
   border-radius: 14px;
   padding: 10px 14px;
   display: flex;
@@ -619,11 +618,6 @@ const finishSetup = async () => {
   color: var(--white);
 }
 
-@keyframes pulseFloating {
-  0% { transform: translateY(0); }
-  100% { transform: translateY(-4px); }
-}
-
 /* Footer & Botón final */
 .wizard-footer {
   width: 100%;
@@ -645,7 +639,7 @@ const finishSetup = async () => {
   letter-spacing: 2px;
   border-radius: 12px;
   cursor: pointer;
-  transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+  transition: transform 0.3s cubic-bezier(0.4, 0, 0.2, 1);
   box-shadow: none;
 }
 
@@ -656,12 +650,6 @@ const finishSetup = async () => {
 
 .btn-finish-setup:active {
   transform: scale(0.98);
-}
-
-@keyframes shake {
-  0%, 100% { transform: translateX(0); }
-  25% { transform: translateX(-4px); }
-  75% { transform: translateX(4px); }
 }
 
 /* Responsive para pantallas chicas */
