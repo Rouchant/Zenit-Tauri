@@ -123,6 +123,11 @@
     filter: drop-shadow(3px 3px 0px #000000);
 }
 
+.store-logo-placeholder img.store-falabella {
+    transform: scale(1.35);
+    transform-origin: left center;
+}
+
 .brand-badge {
     background: #000000;
     /* Solid black for performance and visibility */
@@ -136,12 +141,13 @@
 
 .brand-info-container {
     display: flex;
-    flex-direction: column;
-    align-items: flex-end;
-    gap: 4px;
+    flex-direction: row;
+    align-items: center;
+    gap: 15px;
 }
 
-.brand-model-row {
+.brand-model-row,
+.brand-pills-row {
     display: flex;
     align-items: center;
     gap: 15px;

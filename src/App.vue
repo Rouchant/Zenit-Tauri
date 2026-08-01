@@ -30,7 +30,7 @@
 
     <!-- Header siempre pegado arriba y al ancho de la ventana -->
     <Transition name="fade">
-      <Header v-show="!renderVideoView" />
+      <Header v-show="!renderVideoView" @toggle-warranty="showWarrantyOverlay = !showWarrantyOverlay" />
     </Transition>
 
     <!-- Video View (Inactivity) - Fuera de app-container para ocupar pantalla completa real -->
@@ -799,6 +799,11 @@ const updateVideoSources = () => {
   }
 };
 
+// Observar cambios en especificaciones para mantener sincronizada la escala y orientación
+watch(() => store.currentSpecs, () => {
+  nextTick(updateScale);
+}, { deep: true });
+
 // Observar solo los campos que realmente determinan la URL del video,
 // evitando el costoso deep-watch sobre todo currentSpecs.
 watch([
@@ -899,11 +904,19 @@ const createTouchRipple = (e) => {
 };
 
 const updateScale = () => {
-  // Escalar de forma uniforme (contain) eligiendo la menor proporción
-  // para evitar achatamiento en pantallas con relación de aspecto distinta de 16:9 (ej. 16:10 como 2880x1800)
-  const scale = Math.min(window.innerWidth / 1920, window.innerHeight / 1080);
+  const isPortrait = window.innerHeight > window.innerWidth;
+  const baseWidth = isPortrait ? 1080 : 1920;
+  const baseHeight = isPortrait ? 1920 : 1080;
+
+  const scale = Math.min(window.innerWidth / baseWidth, window.innerHeight / baseHeight);
   document.documentElement.style.setProperty('--scale-x', scale);
   document.documentElement.style.setProperty('--scale-y', scale);
+
+  if (isPortrait) {
+    document.documentElement.classList.add('is-portrait');
+  } else {
+    document.documentElement.classList.remove('is-portrait');
+  }
 };
 
 // App setup se inicializa en onMounted
