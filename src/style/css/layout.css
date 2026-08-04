@@ -48,8 +48,8 @@
     transform-origin: top left;
     padding: 11px 58px;
     display: flex;
-    justify-content: space-between;
-    align-items: center;
+    flex-direction: column;
+    gap: 6px;
     z-index: 100;
     box-sizing: border-box;
 }
@@ -202,17 +202,38 @@ html.is-portrait .app-container {
 
 html.is-portrait .header {
     display: flex !important;
-    flex-wrap: wrap !important;
+    flex-direction: column !important;
+    align-items: flex-start !important;
+    justify-content: flex-start !important;
+    padding: 24px 40px 10px 40px !important;
+    gap: 14px !important;
+    box-sizing: border-box !important;
+    width: 1080px !important;
+    left: 50% !important;
+    transform: translateX(-50%) scale(var(--scale-x, 1)) !important;
+    transform-origin: top center !important;
+}
+
+html.is-portrait .header-top-row {
+    display: flex !important;
     align-items: center !important;
     justify-content: space-between !important;
-    padding: 24px 40px 10px 40px !important;
-    row-gap: 14px !important;
-    box-sizing: border-box !important;
     width: 100% !important;
 }
 
-html.is-portrait .brand-info-container {
+html.is-portrait .header-right-block {
     display: contents !important;
+}
+
+html.is-portrait .header-right-block .brand-pills-row {
+    display: none !important;
+}
+
+html.is-portrait .header-bottom-row {
+    display: flex !important;
+    align-items: center !important;
+    justify-content: space-between !important;
+    width: 100% !important;
 }
 
 html.is-portrait .header-placeholder {
@@ -221,64 +242,87 @@ html.is-portrait .header-placeholder {
 
 /* Fila 1 Izquierda: Logos de marca y tienda */
 html.is-portrait .header-branding {
-    order: 1 !important;
     display: flex !important;
     align-items: center !important;
     gap: 20px !important;
+    flex-shrink: 0 !important;
 }
 
 html.is-portrait .brand-logo {
-    height: 48px !important;
-    max-height: 48px !important;
+    height: 46px !important;
+    max-height: 46px !important;
     width: auto !important;
 }
 
+html.is-portrait .logo-placeholder {
+    height: 46px !important;
+}
+
+/* Logos cuadrados/compactos (HP, Lenovo, etc.) necesitan un tamaño mayor para compensar visualmente */
+html.is-portrait .brand-logo.brand-hp,
+html.is-portrait .brand-logo.brand-lenovo,
+html.is-portrait .brand-logo.brand-acer,
+html.is-portrait .brand-logo.brand-dell,
+html.is-portrait .brand-logo.brand-samsung,
+html.is-portrait .brand-logo.brand-msi {
+    height: 51px !important;
+    max-height: 51px !important;
+}
+
 html.is-portrait .store-logo-placeholder img {
-    height: 65px !important;
-    max-height: 65px !important;
+    height: 52px !important;
+    max-height: 52px !important;
     width: auto !important;
 }
 
 html.is-portrait .store-logo-placeholder img.store-falabella {
-    height: 75px !important;
-    max-height: 75px !important;
-    transform: scale(1.3) !important;
+    height: 60px !important;
+    max-height: 60px !important;
+    transform: scale(1.2) !important;
     transform-origin: left center !important;
 }
 
-/* Fila 1 Derecha: Modelo alineado a la derecha */
-html.is-portrait .brand-model-row {
-    order: 2 !important;
+/* Fila 1 Derecha: Modelo y SKU justo debajo alineados a la derecha */
+html.is-portrait .brand-model-group {
+    position: relative !important;
     display: flex !important;
-    align-items: center !important;
-    justify-content: flex-end !important;
-    gap: 14px !important;
+    flex-direction: column !important;
+    align-items: flex-end !important;
     margin-left: auto !important;
-    flex-wrap: nowrap !important;
+    flex-shrink: 0 !important;
 }
 
 html.is-portrait .brand-badge {
-    font-size: 28px !important;
+    font-size: 26px !important;
     font-weight: 800 !important;
-    padding: 12px 28px !important;
+    padding: 10px 24px !important;
     border-radius: 50px !important;
-    line-height: 1.1 !important;
+    line-height: 1.15 !important;
+    text-align: right !important;
+    white-space: normal !important;
+    display: inline-block !important;
 }
 
 html.is-portrait .sku-badge {
-    font-size: 20px !important;
-    font-weight: 700 !important;
-    color: rgba(255, 255, 255, 0.9) !important;
-    background: rgba(0, 0, 0, 0.6) !important;
-    padding: 10px 22px !important;
-    border-radius: 50px !important;
-    border: 1px solid rgba(255, 255, 255, 0.15) !important;
-    margin-right: 0 !important;
+    position: absolute !important;
+    top: 100% !important;
+    right: 0 !important;
+    margin-top: 4px !important;
+    font-size: 16px !important;
+    font-weight: 600 !important;
+    color: rgba(255, 255, 255, 0.65) !important;
+    letter-spacing: 1px !important;
+    text-shadow: 0px 1px 2px rgba(0, 0, 0, 0.6) !important;
+    white-space: nowrap !important;
+    background: transparent !important;
+    border: none !important;
+    padding: 0 !important;
+    pointer-events: none !important;
+    z-index: 5 !important;
 }
 
 /* Fila 2 Izquierda: Debajo de los logos a la izquierda, Custom Comentario y Carrousel */
-html.is-portrait .brand-pills-row {
-    order: 3 !important;
+html.is-portrait .brand-pills-row-portrait {
     display: flex !important;
     align-items: center !important;
     justify-content: flex-start !important;
@@ -328,7 +372,7 @@ html.is-portrait .warranty-btn-shield {
 }
 
 html.is-portrait .badge-carousel-pill {
-    height: 42px !important;
+    height: 46px !important;
     min-width: 208px !important;
     max-width: 256px !important;
     font-size: 18px !important;
@@ -348,7 +392,7 @@ html.is-portrait .store-status-inactivity {
     font-weight: 700 !important;
     padding: 8px 18px !important;
     border-radius: 40px !important;
-    height: 42px !important;
+    height: 46px !important;
     box-sizing: border-box !important;
 }
 
@@ -398,7 +442,7 @@ html.is-portrait .specs-grid {
     grid-template-columns: repeat(2, 1fr) !important;
     gap: 14px !important;
     width: 100% !important;
-    margin: 0 !important;
+    margin: 24px 0 0 0 !important;
 }
 
 html.is-portrait .spec-card {
@@ -439,7 +483,7 @@ html.is-portrait .price-status-wrapper {
     width: 100% !important;
     display: flex !important;
     justify-content: center !important;
-    margin: 0 !important;
+    margin: 24px 0 0 0 !important;
 }
 
 html.is-portrait .price-tag-container {
@@ -495,67 +539,86 @@ html.is-portrait .retail-badge {
     flex-shrink: 0 !important;
 }
 
-/* Textos de Tarjeta de Garantía ASUS en Modo Vertical */
+/* Textos y dimensiones de Tarjeta de Garantía ASUS en Modo Vertical */
 html.is-portrait .landing-video-container .warranty-overlay-card {
-    padding: 24px 36px !important;
+    padding: 22px 30px !important;
     border-radius: 24px !important;
 }
 
+html.is-portrait .landing-video-container .warranty-info-left {
+    width: 76% !important;
+}
+
+html.is-portrait .landing-video-container .warranty-info-right {
+    width: 22% !important;
+}
+
+html.is-portrait .landing-video-container .warranty-large-shield {
+    max-height: 175px !important;
+    max-width: 100% !important;
+    object-fit: contain !important;
+}
+
 html.is-portrait .landing-video-container .warranty-main-title {
-    font-size: 52px !important;
+    font-size: 46px !important;
     line-height: 1.05 !important;
-    margin-bottom: 6px !important;
+    margin-bottom: 4px !important;
 }
 
 html.is-portrait .landing-video-container .warranty-subtitle {
-    font-size: 22px !important;
-    line-height: 1.35 !important;
+    font-size: 18px !important;
+    line-height: 1.3 !important;
+}
+
+html.is-portrait .landing-video-container .warranty-pillars {
+    gap: 14px !important;
+    margin: 10px 0 !important;
 }
 
 html.is-portrait .landing-video-container .warranty-pillar-icon {
-    height: 80px !important;
-    margin-bottom: 8px !important;
+    height: 72px !important;
+    margin-bottom: 6px !important;
 }
 
 html.is-portrait .landing-video-container .warranty-pillar-item {
-    padding: 16px 14px !important;
+    padding: 14px 10px !important;
     border-radius: 18px !important;
 }
 
 html.is-portrait .landing-video-container .warranty-pillar-text {
-    font-size: 18px !important;
+    font-size: 16px !important;
     font-weight: 700 !important;
-    line-height: 1.25 !important;
+    line-height: 1.2 !important;
 }
 
 html.is-portrait .landing-video-container .warranty-steps {
-    padding-top: 14px !important;
-    gap: 20px !important;
+    padding-top: 12px !important;
+    gap: 16px !important;
 }
 
 html.is-portrait .landing-video-container .warranty-step-num {
-    width: 44px !important;
-    height: 44px !important;
-    font-size: 20px !important;
+    width: 38px !important;
+    height: 38px !important;
+    font-size: 18px !important;
 }
 
 html.is-portrait .landing-video-container .warranty-step-title {
-    font-size: 16px !important;
+    font-size: 14px !important;
     font-weight: 800 !important;
 }
 
 html.is-portrait .landing-video-container .warranty-step-desc {
-    font-size: 16px !important;
+    font-size: 14px !important;
     font-weight: 600 !important;
     line-height: 1.25 !important;
 }
 
 html.is-portrait .landing-video-container .warranty-close-btn {
-    top: 16px !important;
-    right: 20px !important;
-    font-size: 46px !important;
-    width: 48px !important;
-    height: 48px !important;
+    top: 14px !important;
+    right: 18px !important;
+    font-size: 42px !important;
+    width: 44px !important;
+    height: 44px !important;
 }
 
 html.is-portrait .store-logo-inline {
@@ -573,7 +636,7 @@ html.is-portrait .store-logo-sub {
 html.is-portrait .view-pc-btn-wrapper {
     order: 4 !important;
     width: 66.66% !important;
-    margin: 0 auto !important;
+    margin: 32px auto 0 !important;
     display: flex !important;
     justify-content: center !important;
 }
@@ -611,107 +674,107 @@ html.is-portrait .video-overlay.pos-top-left {
 }
 
 html.is-portrait .inactivity-info-box {
-    min-width: 384px !important;
-    max-width: 576px !important;
-    padding: 18px 24px !important;
-    border-radius: 18px !important;
+    min-width: 307px !important;
+    max-width: 460px !important;
+    padding: 14px 19px !important;
+    border-radius: 14px !important;
 }
 
 html.is-portrait .inactivity-layout {
-    gap: 18px !important;
+    gap: 14px !important;
 }
 
 html.is-portrait .inactivity-info-box .brand-column {
-    width: 96px !important;
-    padding-right: 16px !important;
+    width: 77px !important;
+    padding-right: 13px !important;
     border-right: 2px solid rgba(255, 255, 255, 0.15) !important;
 }
 
 html.is-portrait .inactivity-info-box .brand-logo {
-    max-height: 44px !important;
+    max-height: 35px !important;
     width: 100% !important;
 }
 
 html.is-portrait .inactivity-info-box .model-name {
-    font-size: 19px !important;
+    font-size: 15px !important;
     line-height: 1.3 !important;
     letter-spacing: -0.5px !important;
 }
 
 html.is-portrait .inactivity-info-box .info-divider {
-    margin: 10px 0 !important;
+    margin: 8px 0 !important;
 }
 
 html.is-portrait .inactivity-info-box .prices-container {
-    gap: 10px !important;
-}
-
-html.is-portrait .inactivity-info-box .price-item {
-    gap: 10px !important;
-}
-
-html.is-portrait .inactivity-info-box .price-val-wrapper {
     gap: 8px !important;
 }
 
+html.is-portrait .inactivity-info-box .price-item {
+    gap: 8px !important;
+}
+
+html.is-portrait .inactivity-info-box .price-val-wrapper {
+    gap: 6px !important;
+}
+
 html.is-portrait .inactivity-info-box .retail-badge {
-    font-size: 11px !important;
-    padding: 4px 10px !important;
-    border-radius: 6px !important;
+    font-size: 9px !important;
+    padding: 3px 8px !important;
+    border-radius: 5px !important;
     letter-spacing: 0.5px !important;
 }
 
 html.is-portrait .inactivity-info-box .price-primary-val {
-    font-size: 25px !important;
+    font-size: 20px !important;
 }
 
 html.is-portrait .inactivity-info-box .price-secondary-val {
-    font-size: 22px !important;
+    font-size: 18px !important;
 }
 
 html.is-portrait .inactivity-info-box .prices-container.single-price-layout .price-primary-val,
 html.is-portrait .inactivity-info-box .prices-container.single-price-layout .price-secondary-val {
-    font-size: 30px !important;
+    font-size: 24px !important;
 }
 
 html.is-portrait .inactivity-info-box .prices-container.single-price-layout .retail-badge {
-    font-size: 12px !important;
-    padding: 5px 11px !important;
+    font-size: 10px !important;
+    padding: 4px 9px !important;
 }
 
 html.is-portrait .inactivity-info-box .store-logo-sub {
-    height: 18px !important;
-    max-width: 72px !important;
+    height: 14px !important;
+    max-width: 58px !important;
 }
 
 html.is-portrait .inactivity-info-box .prices-container.single-price-layout .store-logo-sub {
-    height: 21px !important;
+    height: 17px !important;
 }
 
 html.is-portrait .store-status-inactivity {
-    height: 42px !important;
-    min-height: 42px !important;
-    max-height: 42px !important;
-    font-size: 16px !important;
-    padding: 0 20px !important;
-    border-radius: 21px !important;
+    height: 37px !important;
+    min-height: 37px !important;
+    max-height: 37px !important;
+    font-size: 13px !important;
+    padding: 0 16px !important;
+    border-radius: 18px !important;
 }
 
 html.is-portrait .badge-carousel-pill.store-status-inactivity,
 html.is-portrait .store-status-inactivity.badge-carousel-pill {
     width: auto !important;
-    min-width: 260px !important;
-    max-width: 340px !important;
-    height: 42px !important;
-    min-height: 42px !important;
-    max-height: 42px !important;
-    padding: 0 20px !important;
-    border-radius: 21px !important;
-    font-size: 16px !important;
+    min-width: 208px !important;
+    max-width: 272px !important;
+    height: 37px !important;
+    min-height: 37px !important;
+    max-height: 37px !important;
+    padding: 0 16px !important;
+    border-radius: 18px !important;
+    font-size: 13px !important;
 }
 
 html.is-portrait .store-status-inactivity .badge-icon-svg {
-    width: 24px !important;
-    height: 24px !important;
+    width: 19px !important;
+    height: 19px !important;
 }
 

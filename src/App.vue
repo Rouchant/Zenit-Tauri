@@ -227,7 +227,7 @@ import { tauriAPI } from './api/tauriApi';
 import { listen } from '@tauri-apps/api/event';
 import { invoke } from '@tauri-apps/api/core';
 import { timers } from '@/utils/timers';
-import { init, command, setProperty, observeProperties } from 'tauri-plugin-libmpv-api';
+import { init, command, setProperty, listenEvents } from 'tauri-plugin-libmpv-api';
 
 // Components
 import Header from './components/Header.vue';
@@ -269,7 +269,7 @@ const showStaticFallback = ref(true);
 const renderVideoView = ref(false);
 let lastMpvBgPath = ''; // Guard: última ruta cargada en MPV para evitar loadfile redundantes
 const isBgVideoLoading = ref(false);
-let unlistenMpvProps = null;
+let isGlobalMpvListening = false;
 let bgVideoTimeout = null;
 
 watch(currentBgVideoSrc, () => {
@@ -283,9 +283,14 @@ watch(currentBgVideoSrc, () => {
 // Indica si el backend indica que los videos deberían estarse reproduciendo (ventana enfocada y no minimizada)
 const shouldBePlaying = ref(true);
 
-// Sincronizar estado global de modales
-watch([showPasswordModal, showAdminModal, showSpecsModal, showFirstStartModal], ([p, a, s, f]) => {
+// Sincronizar estado global de modales y re-evaluar orientación al cerrar cualquier modal
+watch([showPasswordModal, showAdminModal, showSpecsModal, showFirstStartModal], ([p, a, s, f], [op, oa, os, of_]) => {
   store.isModalOpen = p || a || s || f;
+  // Si algún modal pasó de abierto a cerrado, forzar re-evaluación de is-portrait de inmediato
+  const anyJustClosed = (!p && op) || (!a && oa) || (!s && os) || (!f && of_);
+  if (anyJustClosed) {
+    nextTick(() => updateScale());
+  }
 });
 
 // Throttled reset timer for mousemove (max 1 vez/segundo para evitar presión en equipos de gama baja)
@@ -376,6 +381,12 @@ const initMpvGlobal = async (forceReinit = false) => {
       });
       store.isMpvReady = true;
       console.log('[App] Global libmpv initialized');
+      if (window.__TAURI_INTERNALS__ && !isGlobalMpvListening) {
+        isGlobalMpvListening = true;
+        listenEvents((mpvEvent) => {
+          store.handleGlobalMpvEvent(mpvEvent);
+        });
+      }
       await invoke('log_frontend_debug', { msg: '[App JS] Global init of libmpv succeeded!' });
       return true;
     }
@@ -394,10 +405,6 @@ const reinitMpvGlobal = async () => {
   console.warn('[App MPV] Attempting full re-initialization of libmpv...');
   store.isMpvReady = false;
   lastMpvBgPath = '';
-  if (unlistenMpvProps) {
-    try { unlistenMpvProps(); } catch (_) {}
-    unlistenMpvProps = null;
-  }
   return await initMpvGlobal(true);
 };
 
@@ -408,10 +415,6 @@ const handleBgVideoFailure = async (reason = 'unknown') => {
   showStaticFallback.value = true;
   lastMpvBgPath = ''; // Permitir reintento
 
-  if (unlistenMpvProps) {
-    try { unlistenMpvProps(); } catch (_) {}
-    unlistenMpvProps = null;
-  }
   if (bgVideoTimeout) {
     clearTimeout(bgVideoTimeout);
     bgVideoTimeout = null;
@@ -451,6 +454,21 @@ const handleBgVideoFailure = async (reason = 'unknown') => {
   }
 };
 
+// Detección reactiva de fotograma 1 mediante la posición mpvTimePos global en el store
+watch(() => store.mpvTimePos, (pos) => {
+  if (pos > 0 && isBgVideoLoading.value && !store.isVideoMode) {
+    console.log('[App MPV] First frame detected via time-pos. Hiding fallback & resetting retry counter.');
+    showStaticFallback.value = false;
+    isBgVideoLoading.value = false;
+    bgRetryCount.value = 0; // Resetear contador al reproducir exitosamente
+    isBgVideoFailed.value = false;
+    if (bgVideoTimeout) {
+      clearTimeout(bgVideoTimeout);
+      bgVideoTimeout = null;
+    }
+  }
+});
+
 const playBgVideoNative = async () => {
   if (!store.isMpvReady || store.isVideoMode || store.isModalOpen || !shouldBePlaying.value) {
     return;
@@ -462,38 +480,12 @@ const playBgVideoNative = async () => {
     clearTimeout(bgVideoTimeout);
     bgVideoTimeout = null;
   }
-  if (unlistenMpvProps) {
-    try { unlistenMpvProps(); } catch (_) {}
-    unlistenMpvProps = null;
-  }
 
   lastMpvBgPath = rawBgPath;
   showStaticFallback.value = true;
   isBgVideoLoading.value = true;
   console.log('[App] Playing background video on libmpv:', rawBgPath);
   try {
-    if (window.__TAURI_INTERNALS__) {
-      unlistenMpvProps = await observeProperties([
-        ['time-pos', 'double', 'none']
-      ], ({ name, data }) => {
-        if (name === 'time-pos' && typeof data === 'number' && data > 0) {
-          console.log('[App MPV] First frame detected via time-pos. Hiding fallback & resetting retry counter.');
-          showStaticFallback.value = false;
-          isBgVideoLoading.value = false;
-          bgRetryCount.value = 0; // Resetear contador al reproducir exitosamente
-          isBgVideoFailed.value = false;
-          if (unlistenMpvProps) {
-            try { unlistenMpvProps(); } catch (_) {}
-            unlistenMpvProps = null;
-          }
-          if (bgVideoTimeout) {
-            clearTimeout(bgVideoTimeout);
-            bgVideoTimeout = null;
-          }
-        }
-      });
-    }
-
     await command('loadfile', [rawBgPath]);
     await setProperty('keep-open', 'yes');
     await setProperty('loop-file', 'inf');
@@ -515,7 +507,7 @@ const playBgVideoNative = async () => {
 };
 
 const pauseInfoVideos = async () => {
-  if (store.isMpvReady && !store.isVideoMode) {
+  if (store.isMpvReady) {
     await setProperty('pause', true).catch(() => {});
   }
   lastMpvBgPath = ''; // Resetear guard para que al reanudar se recargue
@@ -593,6 +585,9 @@ const resumeInfoVideos = (delayMs = 0) => {
 
 
 const handleLandingVideoError = () => {
+  if (store.isVideoMode || store.isModalOpen || !shouldBePlaying.value) {
+    return;
+  }
   if (!currentLandingVideoSrc.value || currentLandingVideoSrc.value === '') {
     return;
   }
@@ -648,13 +643,10 @@ const checkVideosPlayState = () => {
       console.warn('[Watchdog] promo-video estaba pausado pero debería reproducirse. Reanudando...');
       promoVideo.play().catch((e) => console.warn('[Watchdog] Failed to play promo-video:', e));
     }
-  } else {
-    if (!store.isModalOpen) {
-      if (landingVideo.value && landingVideo.value.paused) {
-        console.warn('[Watchdog] landingVideo estaba pausado pero debería reproducirse. Reanudando...');
-        landingVideo.value.play().catch((e) => console.warn('[Watchdog] Failed to play landingVideo:', e));
-      }
-
+  } else if (!store.isModalOpen && !store.isVideoMode) {
+    if (landingVideo.value && landingVideo.value.paused) {
+      console.warn('[Watchdog] landingVideo estaba pausado pero debería reproducirse. Reanudando...');
+      landingVideo.value.play().catch((e) => console.warn('[Watchdog] Failed to play landingVideo:', e));
     }
   }
 };
@@ -742,14 +734,6 @@ watch(() => store.isVideoMode, (isVideo) => {
     // Ocultar la imagen estática para que los videos de inactividad (MPV detrás del WebView) sean visibles
     showStaticFallback.value = false;
     isBgVideoLoading.value = false;
-    if (bgVideoTimeout) {
-      clearTimeout(bgVideoTimeout);
-      bgVideoTimeout = null;
-    }
-    if (unlistenMpvProps) {
-      unlistenMpvProps();
-      unlistenMpvProps = null;
-    }
     // Ocultar ventana de Garantía Perfecta al entrar en inactividad
     showWarrantyOverlay.value = false;
     // Acciones de Kiosko
@@ -918,6 +902,12 @@ const updateScale = () => {
     document.documentElement.classList.remove('is-portrait');
   }
 };
+
+watch(() => store.isModalOpen, (isOpen) => {
+  if (!isOpen) {
+    nextTick(() => updateScale());
+  }
+});
 
 // App setup se inicializa en onMounted
 

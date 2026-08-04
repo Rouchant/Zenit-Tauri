@@ -99,7 +99,7 @@ onUnmounted(() => {
   width: 275px !important;
   min-width: 275px !important;
   max-width: 275px !important;
-  height: 44px !important;
+  height: 48px !important;
   justify-content: center;
   text-align: center;
   white-space: nowrap;
@@ -124,14 +124,14 @@ onUnmounted(() => {
   width: 13vw !important;
   min-width: 13vw !important;
   max-width: 13vw !important;
-  height: 1.85vw !important;
-  min-height: 1.85vw !important;
-  max-height: 1.85vw !important;
+  height: 2.02vw !important;
+  min-height: 2.02vw !important;
+  max-height: 2.02vw !important;
   line-height: 1 !important;
   justify-content: center;
   overflow: hidden;
   padding: 0 0.9vw !important;
-  border-radius: 0.925vw !important;
+  border-radius: 1.01vw !important;
   font-size: 0.8vw !important;
   box-sizing: border-box !important;
   border: none !important;

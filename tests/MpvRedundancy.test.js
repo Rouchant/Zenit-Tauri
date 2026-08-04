@@ -68,15 +68,11 @@ describe('Pruebas Unitarias de Solidez y Redundancia MPV (VideoPlayer.vue)', () 
     await vi.advanceTimersByTimeAsync(100);
 
     // Intento 1 de falla (reintentar playlist)
-    if (listenEventsCallback) {
-      listenEventsCallback({ event: 'end-file', reason: 'error' });
-    }
+    store.handleGlobalMpvEvent({ event: 'end-file', reason: 'error' });
     await vi.advanceTimersByTimeAsync(100);
 
     // Intento 2 de falla (conmutar hwdec a 'no')
-    if (listenEventsCallback) {
-      listenEventsCallback({ event: 'end-file', reason: 'error' });
-    }
+    store.handleGlobalMpvEvent({ event: 'end-file', reason: 'error' });
     await vi.advanceTimersByTimeAsync(100);
 
     // Verificar que setProperty('hwdec', 'no') fue ejecutado
@@ -95,15 +91,15 @@ describe('Pruebas Unitarias de Solidez y Redundancia MPV (VideoPlayer.vue)', () 
     await vi.advanceTimersByTimeAsync(100);
 
     // Forzar fallo 1
-    if (listenEventsCallback) listenEventsCallback({ event: 'end-file', reason: 'error' });
+    store.handleGlobalMpvEvent({ event: 'end-file', reason: 'error' });
     await vi.advanceTimersByTimeAsync(100);
 
     // Forzar fallo 2
-    if (listenEventsCallback) listenEventsCallback({ event: 'end-file', reason: 'error' });
+    store.handleGlobalMpvEvent({ event: 'end-file', reason: 'error' });
     await vi.advanceTimersByTimeAsync(100);
 
     // Forzar fallo 3 -> debe cargar la ruta por defecto empaquetada
-    if (listenEventsCallback) listenEventsCallback({ event: 'end-file', reason: 'error' });
+    store.handleGlobalMpvEvent({ event: 'end-file', reason: 'error' });
     await vi.advanceTimersByTimeAsync(100);
 
     expect(mocks.commandMock).toHaveBeenCalledWith(
@@ -120,10 +116,8 @@ describe('Pruebas Unitarias de Solidez y Redundancia MPV (VideoPlayer.vue)', () 
     mount(VideoPlayer);
     await vi.advanceTimersByTimeAsync(50);
 
-    // Simular que observeProperties recibe time-pos > 0 (fotograma renderizado OK)
-    if (observedPropertiesCallback) {
-      observedPropertiesCallback({ name: 'time-pos', data: 0.5 });
-    }
+    // Simular que el listener global recibe time-pos > 0 (fotograma renderizado OK)
+    store.handleGlobalMpvEvent({ event: 'property-change', name: 'time-pos', data: 0.5 });
     await vi.advanceTimersByTimeAsync(100);
 
     // Avanzar 3 segundos (el watchdog de 2s habría salido de isVideoMode si no se hubiera cancelado)

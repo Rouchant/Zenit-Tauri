@@ -1,7 +1,7 @@
 {
   "$schema": "../node_modules/@tauri-apps/cli/config.schema.json",
   "productName": "Zenit",
-  "version": "2.0.3",
+  "version": "2.0.4",
   "identifier": "com.zenit.app",
   "build": {
     "frontendDist": "../dist_app",
@@ -24,7 +24,7 @@
         "skipTaskbar": false,
         "center": true,
         "focus": true,
-        "devtools": false,
+        "devtools": true,
         "transparent": true,
         "visible": false
       },

@@ -66,12 +66,14 @@ pub async fn close_splashscreen(app: AppHandle) -> Result<(), String> {
     // 1. Forzar que la ventana principal se ubique en la pantalla principal del sistema (ej. Zenbook Duo)
     if let Some(main_window) = app.get_webview_window("main") {
         let mut needs_reposition = true;
-        if let (Ok(Some(curr)), Ok(Some(prim))) = (main_window.current_monitor(), main_window.primary_monitor()) {
+        if let (Ok(Some(curr)), Ok(Some(prim))) =
+            (main_window.current_monitor(), main_window.primary_monitor())
+        {
             if curr.position() == prim.position() {
                 needs_reposition = false;
             }
         }
-        
+
         if needs_reposition {
             if let Ok(Some(primary_monitor)) = main_window.primary_monitor() {
                 let pos = primary_monitor.position();
@@ -281,7 +283,7 @@ async fn start_idle_monitor(app: AppHandle, state: tauri::State<'_, AppState>) {
     }
 
     let handle = tauri::async_runtime::spawn(async move {
-        const IDLE_LIMIT_MS: u32 = 180_000; // 20 segundos para pruebas
+        const IDLE_LIMIT_MS: u32 = 90_000; // 20 segundos para pruebas
         const POLL_INTERVAL: u64 = 2; // Cada 2 segundos
         const ACTIVITY_THRESHOLD: u32 = 3_000; // 3 segundos de actividad para detectar "retorno"
 

@@ -58,6 +58,46 @@ export const BADGES_CATALOG = [
     id: 'premium_audio',
     label: 'Audio Inmersivo',
     svg: `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polygon points="11 5 6 9 2 9 2 15 6 15 11 19 11 5"/><path d="M15.54 8.46a5 5 0 0 1 0 7.07"/><path d="M19.07 4.93a10 10 0 0 1 0 14.14"/></svg>`
+  },
+  {
+    id: 'stylus_support',
+    label: 'Lápiz Óptico Compatible',
+    svg: `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M17 3a2.828 2.828 0 1 1 4 4L7.5 20.5 2 22l1.5-5.5L17 3z"/><path d="m15 5 4 4"/></svg>`
+  },
+  {
+    id: 'backlit_kbd',
+    label: 'Teclado Retroiluminado',
+    svg: `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect width="20" height="12" x="2" y="4" rx="2"/><path d="M6 8h.01"/><path d="M10 8h.01"/><path d="M14 8h.01"/><path d="M18 8h.01"/><path d="M8 12h.01"/><path d="M12 12h.01"/><path d="M16 12h.01"/><path d="M7 16h10"/><path d="M12 20v2"/><path d="m8 19-1 2"/><path d="m16 19 1 2"/></svg>`
+  },
+  {
+    id: 'webcam_shutter',
+    label: 'Cobrecámara de Privacidad',
+    svg: `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M14.5 4h-5L7 7H4a2 2 0 0 0-2 2v9a2 2 0 0 0 2 2h16a2 2 0 0 0 2-2V9a2 2 0 0 0-2-2h-3l-2.5-3z"/><circle cx="12" cy="13" r="3"/><path d="M12 11v4"/></svg>`
+  },
+  {
+    id: 'thunderbolt',
+    label: 'Puerto Thunderbolt™',
+    svg: `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M13 2L3 14h9l-1 8 10-12h-9l1-8z"/></svg>`
+  },
+  {
+    id: 'fast_charging',
+    label: 'Carga Rápida',
+    svg: `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M7.75 16H5C3.89543 16 3 15.1046 3 14V10C3 8.89543 3.89543 8 5 8H5.75M15.25 16H16C17.1046 16 18 15.1046 18 14V10C18 8.89543 17.1046 8 16 8H13.25"/><path d="M21 11V13"/><path d="M10 8L8 12H13L11 16"/></svg>`
+  },
+  {
+    id: 'color_accuracy',
+    label: 'Precisión de Colores',
+    svg: `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="13.5" cy="6.5" r=".5" fill="currentColor"/><circle cx="17.5" cy="10.5" r=".5" fill="currentColor"/><circle cx="8.5" cy="7.5" r=".5" fill="currentColor"/><circle cx="6.5" cy="12.5" r=".5" fill="currentColor"/><path d="M12 2C6.5 2 2 6.5 2 12s4.5 10 10 10c.92 0 1.7-.72 1.7-1.65 0-.41-.16-.81-.46-1.12-.29-.3-.46-.7-.46-1.13 0-.92.77-1.7 1.7-1.7h2.5c2.8 0 5-2.2 5-5 0-5.5-4.5-10-10-10z"/></svg>`
+  },
+  {
+    id: 'ceraluminum',
+    label: 'Ceraluminum™',
+    svg: `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M6 3h12l4 6-10 12L2 9z"/><path d="M11 3 8 9l4 12 4-12-3-6"/><path d="M2 9h20"/></svg>`
+  },
+  {
+    id: 'hinge_180',
+    label: 'Bisagra de 180°',
+    svg: `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><line x1="2" y1="16" x2="22" y2="16"/><path d="M 5.5 16 A 6.5 6.5 0 0 1 18.5 16"/><circle cx="12" cy="16" r="1.2" fill="currentColor"/></svg>`
   }
 ];
 

@@ -1,18 +1,18 @@
-mod state;
-mod setup;
 mod commands;
 mod guardian;
+mod setup;
+mod state;
 
 use std::fs;
 use std::sync::Arc;
-use tokio::sync::Mutex;
-use tauri::{Manager, Emitter};
+use tauri::{Emitter, Manager};
+use tauri_plugin_global_shortcut::{Code, GlobalShortcutExt, Modifiers, Shortcut};
 use tauri_plugin_store::StoreExt;
-use tauri_plugin_global_shortcut::{GlobalShortcutExt, Shortcut, Modifiers, Code};
+use tokio::sync::Mutex;
 
-use crate::state::AppState;
-use crate::setup::run_system_setup;
 use crate::commands::{system, vault, window};
+use crate::setup::run_system_setup;
+use crate::state::AppState;
 /// Punto de entrada principal de la aplicación Tauri.
 /// Configura plugins, estado global, handlers de comandos y eventos de ventana.
 #[cfg_attr(mobile, tauri::mobile_entry_point)]
@@ -30,29 +30,36 @@ pub fn run() {
             tauri_plugin_log::Builder::default()
                 .targets([
                     tauri_plugin_log::Target::new(tauri_plugin_log::TargetKind::Stdout),
-                    tauri_plugin_log::Target::new(tauri_plugin_log::TargetKind::LogDir { file_name: Some("zenit".to_string()) }),
+                    tauri_plugin_log::Target::new(tauri_plugin_log::TargetKind::LogDir {
+                        file_name: Some("zenit".to_string()),
+                    }),
                     tauri_plugin_log::Target::new(tauri_plugin_log::TargetKind::Webview),
                 ])
                 .level(log::LevelFilter::Info)
                 .rotation_strategy(tauri_plugin_log::RotationStrategy::KeepOne)
                 .max_file_size(1_000_000) // 1MB
-                .build()
+                .build(),
         )
         // Inicialización de Plugins estándar de Tauri
         .plugin(tauri_plugin_dialog::init()) // Diálogos nativos
         .plugin(tauri_plugin_store::Builder::new().build()) // Persistencia de datos simple
         .plugin(tauri_plugin_notification::init()) // Notificaciones de sistema
         .plugin(tauri_plugin_prevent_default::init()) // Previene shortcuts de navegador (F5, etc.)
-        .plugin(tauri_plugin_global_shortcut::Builder::new()
-            .with_handler(|app, shortcut, _event| {
-                if shortcut.key == Code::KeyZ && shortcut.mods == (Modifiers::CONTROL | Modifiers::ALT | Modifiers::SHIFT) {
-                    app.exit(0);
-                }
-            })
-            .build()
+        .plugin(
+            tauri_plugin_global_shortcut::Builder::new()
+                .with_handler(|app, shortcut, _event| {
+                    if shortcut.key == Code::KeyZ
+                        && shortcut.mods == (Modifiers::CONTROL | Modifiers::ALT | Modifiers::SHIFT)
+                    {
+                        app.exit(0);
+                    }
+                })
+                .build(),
         )
-        .plugin(tauri_plugin_autostart::init(tauri_plugin_autostart::MacosLauncher::LaunchAgent, None)) // Inicio automático con el SO
-        
+        .plugin(tauri_plugin_autostart::init(
+            tauri_plugin_autostart::MacosLauncher::LaunchAgent,
+            None,
+        )) // Inicio automático con el SO
         // Manejo de Instancia Única: Si se intenta abrir otra vez, enfoca la ventana existente
         .plugin(tauri_plugin_single_instance::init(|app, _args, _cwd| {
             if let Some(win) = app.get_webview_window("main") {
@@ -62,7 +69,6 @@ pub fn run() {
             }
         }))
         .plugin(tauri_plugin_libmpv::init())
-
         // Configuración Inicial (Setup)
         .setup(|app| {
             // Configurar el directorio DLL para incluir el subdirectorio \lib\
@@ -71,14 +77,16 @@ pub fn run() {
             {
                 use std::os::windows::ffi::OsStrExt;
                 use tauri::Manager;
-                
+
                 let mut lib_dir = app.path().resource_dir().unwrap_or_default();
                 lib_dir.push("lib");
                 if lib_dir.exists() {
                     let mut path_utf16: Vec<u16> = lib_dir.as_os_str().encode_wide().collect();
                     path_utf16.push(0); // Null terminator
                     unsafe {
-                        windows_sys::Win32::System::LibraryLoader::SetDllDirectoryW(path_utf16.as_ptr());
+                        windows_sys::Win32::System::LibraryLoader::SetDllDirectoryW(
+                            path_utf16.as_ptr(),
+                        );
                     }
                 }
             }
@@ -86,11 +94,11 @@ pub fn run() {
             // 0. Bloqueo Nativo (Hard Block): Informa a Windows que la pantalla y el sistema DEBEN estar activos
             #[cfg(windows)]
             unsafe {
-                use windows_sys::Win32::System::Power::{SetThreadExecutionState, ES_CONTINUOUS, ES_DISPLAY_REQUIRED, ES_SYSTEM_REQUIRED};
+                use windows_sys::Win32::System::Power::{
+                    SetThreadExecutionState, ES_CONTINUOUS, ES_DISPLAY_REQUIRED, ES_SYSTEM_REQUIRED,
+                };
                 SetThreadExecutionState(ES_CONTINUOUS | ES_DISPLAY_REQUIRED | ES_SYSTEM_REQUIRED);
             }
-
-
 
             // 1. Gestionar el Estado Global de la aplicación
             app.manage(AppState {
@@ -103,14 +111,19 @@ pub fn run() {
             run_system_setup();
 
             // 2.5 Registrar atajo de cierre de emergencia
-            let shortcut = Shortcut::new(Some(Modifiers::CONTROL | Modifiers::ALT | Modifiers::SHIFT), Code::KeyZ);
+            let shortcut = Shortcut::new(
+                Some(Modifiers::CONTROL | Modifiers::ALT | Modifiers::SHIFT),
+                Code::KeyZ,
+            );
             let _ = app.handle().global_shortcut().register(shortcut);
-            
+
             // 3. Iniciar el "Guardián" de teclado (Bloqueo de shortcuts de sistema)
             guardian::start_keyboard_guardian();
 
             #[cfg(desktop)]
-            let _ = app.handle().plugin(tauri_plugin_window_state::Builder::default().build());
+            let _ = app
+                .handle()
+                .plugin(tauri_plugin_window_state::Builder::default().build());
 
             // 4. Asegurar directorios de datos y videos personalizados
             let user_data = app.path().app_data_dir().unwrap_or_default();
@@ -130,7 +143,9 @@ pub fn run() {
                             store.set("specs", value);
                             let _ = store.save();
                             let backup_path = user_data.join("config.json.bak");
-                            if backup_path.exists() { let _ = fs::remove_file(&backup_path); }
+                            if backup_path.exists() {
+                                let _ = fs::remove_file(&backup_path);
+                            }
                             let _ = fs::rename(&config_path, &backup_path);
                             log::info!("[Zenit] Migración config.json → store.json completada");
                         }
@@ -143,7 +158,6 @@ pub fn run() {
                 use tauri_plugin_autostart::ManagerExt;
                 let _ = app.autolaunch().enable();
             }
-
 
             // 7. Limpiar archivos huérfanos de videos borrados
             vault::cleanup_orphan_videos(app.handle());
@@ -163,7 +177,6 @@ pub fn run() {
 
             Ok(())
         })
-
         // Registro de Comandos (IPC) disponibles para el Frontend (Vue)
         .invoke_handler(tauri::generate_handler![
             system::get_system_specs,
@@ -183,7 +196,6 @@ pub fn run() {
             window::set_always_on_top,
             window::close_splashscreen,
         ])
-
         // Manejo de eventos de ventana
         .on_window_event(|window, event| {
             match event {
@@ -198,24 +210,33 @@ pub fn run() {
                     tauri::async_runtime::spawn(async move {
                         // Esperar un momento a que Windows estabilice el cambio de DPI
                         tokio::time::sleep(std::time::Duration::from_millis(300)).await;
-                        
+
                         if let Some(ret_win) = handle.get_webview_window("return") {
                             if let Ok(Some(monitor)) = ret_win.primary_monitor() {
                                 let scale_factor = monitor.scale_factor();
                                 let work_area = monitor.work_area();
-                                
+
                                 // 1. Recalcular tamaño físico proporcional a la resolución (Base 1920px)
                                 let monitor_width = monitor.size().width as f64;
-                                let physical_width = (240.0 * (monitor_width / 1920.0)).round() as u32;
-                                let physical_height = (200.0 * (monitor_width / 1920.0)).round() as u32;
-                                let _ = ret_win.set_size(tauri::PhysicalSize::new(physical_width, physical_height));
+                                let physical_width =
+                                    (240.0 * (monitor_width / 1920.0)).round() as u32;
+                                let physical_height =
+                                    (200.0 * (monitor_width / 1920.0)).round() as u32;
+                                let _ = ret_win.set_size(tauri::PhysicalSize::new(
+                                    physical_width,
+                                    physical_height,
+                                ));
 
                                 // 2. Recalcular posición (Centrado vertical relativo a la zona de trabajo visible)
-                                let x = work_area.position.x + work_area.size.width as i32 - physical_width as i32 - 20;
+                                let x = work_area.position.x + work_area.size.width as i32
+                                    - physical_width as i32
+                                    - 20;
                                 let y_offset = (30.0 * scale_factor).round() as i32;
-                                let y = work_area.position.y + (work_area.size.height as i32 - physical_height as i32) / 2 - y_offset;
+                                let y = work_area.position.y
+                                    + (work_area.size.height as i32 - physical_height as i32) / 2
+                                    - y_offset;
                                 let _ = ret_win.set_position(tauri::PhysicalPosition::new(x, y));
-                                
+
                                 // Forzar un refresco visual
                                 let _ = ret_win.request_user_attention(None);
                             }
@@ -233,18 +254,21 @@ pub fn run() {
                             // Salvaguarda absoluta y detección de restauración nativa (barra de tareas):
                             // Si la ventana de retorno estaba visible, significa que la app principal
                             // fue des-minimizada nativamente por el usuario.
-                            if let Some(ret_win) = window.app_handle().get_webview_window("return") {
+                            if let Some(ret_win) = window.app_handle().get_webview_window("return")
+                            {
                                 if ret_win.is_visible().unwrap_or(false) {
                                     let _ = ret_win.hide();
                                     let _ = ret_win.set_always_on_top(false);
                                     let _ = window.emit("play-info-videos", ());
-                                    
+
                                     // Detener el monitor de inactividad
                                     let handle = window.app_handle().clone();
                                     tauri::async_runtime::spawn(async move {
                                         let state = handle.state::<AppState>();
                                         let mut timer_guard = state.maximize_timer.lock().await;
-                                        if let Some(h) = timer_guard.take() { h.abort(); }
+                                        if let Some(h) = timer_guard.take() {
+                                            h.abort();
+                                        }
                                     });
                                 } else {
                                     let _ = ret_win.hide();

@@ -75,18 +75,48 @@ export const useSpecsStore = defineStore('specs', () => {
   const isModalOpen = ref(false);
   const isLoading = ref(true);
   const isBgThemed = ref(false);
+
+  // Estados reactivos globales para MPV (Patrón Listener Global Permanente)
+  const mpvTimePos = ref(0);
+  const mpvDuration = ref(0);
+  const mpvPaused = ref(false);
+  const lastMpvEvent = ref(null);
+
+  const handleGlobalMpvEvent = (mpvEvent) => {
+    if (!mpvEvent) return;
+    if (mpvEvent.event === 'property-change') {
+      if (mpvEvent.name === 'time-pos' && typeof mpvEvent.data === 'number') {
+        mpvTimePos.value = mpvEvent.data;
+      } else if (mpvEvent.name === 'duration' && typeof mpvEvent.data === 'number') {
+        mpvDuration.value = mpvEvent.data;
+      } else if (mpvEvent.name === 'pause') {
+        mpvPaused.value = !!mpvEvent.data;
+      }
+    } else if (mpvEvent.event === 'end-file') {
+      lastMpvEvent.value = { event: 'end-file', reason: mpvEvent.reason, ts: Date.now() };
+    }
+  };
   const theme = ref((() => {
     try {
       return (typeof localStorage !== 'undefined' && localStorage.getItem('zenit-theme')) || 'default';
     } catch { return 'default'; }
   })());
-  // Aplicar clase al body inmediatamente para evitar parpadeos
-  if (typeof document !== 'undefined') document.documentElement.className = `theme-${theme.value}`;
+  const applyThemeClass = (t) => {
+    if (typeof document === 'undefined') return;
+    const root = document.documentElement;
+    Array.from(root.classList)
+      .filter(c => c.startsWith('theme-'))
+      .forEach(c => root.classList.remove(c));
+    root.classList.add(`theme-${t}`);
+  };
+
+  // Aplicar clase al document inmediatamente preservando otras clases (ej. is-portrait)
+  applyThemeClass(theme.value);
   const baseResourceDir = ref('');
   const resolvedPaths = ref({});
   
   const CONFIG = {
-    INACTIVITY_LIMIT: 180000,
+    INACTIVITY_LIMIT: 90000,
     PASSWORD: 'demo',
     THEMES: ['falabella', 'paris', 'ripley', 'default']
   };
@@ -99,9 +129,7 @@ export const useSpecsStore = defineStore('specs', () => {
         localStorage.setItem('zenit-theme', theme.value);
       }
     } catch { /* SecurityError en contextos restringidos */ }
-    if (typeof document !== 'undefined') {
-      document.documentElement.className = `theme-${theme.value}`;
-    }
+    applyThemeClass(theme.value);
   };
 
   const saveCustom = async (specs) => {
@@ -459,6 +487,11 @@ export const useSpecsStore = defineStore('specs', () => {
     isLoading,
     isBgThemed,
     theme,
+    mpvTimePos,
+    mpvDuration,
+    mpvPaused,
+    lastMpvEvent,
+    handleGlobalMpvEvent,
     resolvedPaths,
     CONFIG,
     saveCustom,
