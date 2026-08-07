@@ -777,7 +777,7 @@ watch(() => store.isVideoMode, (isVideo) => {
 
 const updateVideoSources = () => {
   const themeSuffix = store.theme;
-  const baseKey = store.isAsus ? 'asus' : 'generic';
+  const baseKey = store.isAsus ? 'va' : 'generic';
   
   // Los videos de fondo se resuelven directamente desde la carpeta pública de assets de la aplicación.
   // Esto evita llamadas lentas al disco e IPC a través de Tauri (convertFileSrc) al cambiar de tema.

@@ -103,7 +103,7 @@
     "resources": {
       "resources/videos/background/*": "videos/background",
       "resources/videos/assets/generic/*": "videos/assets/generic",
-      "resources/videos/assets/asus/*": "videos/assets/asus",
+      "resources/videos/assets/brand_a/*": "videos/assets/brand_a",
       "Install-Kiosk.ps1": "Install-Kiosk.ps1",
       "lib/**/*": "lib"
     }

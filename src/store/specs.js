@@ -24,19 +24,19 @@ export const INTERNAL_VIDEOS = {
 };
 
 export const INTERNAL_PATHS = {
-  [INTERNAL_VIDEOS.ASUS_PROMO]: 'videos/assets/asus/promo-asus.mp4',
+  [INTERNAL_VIDEOS.ASUS_PROMO]: 'videos/assets/brand_a/v_a_p.mp4',
   [INTERNAL_VIDEOS.GENERIC_PROMO]: 'videos/assets/generic/promo-generic.mp4',
-  [INTERNAL_VIDEOS.ASUS_LANDING]: 'videos/assets/asus/landing-asus.mp4',
+  [INTERNAL_VIDEOS.ASUS_LANDING]: 'videos/assets/brand_a/v_a_l.mp4',
   [INTERNAL_VIDEOS.GENERIC_LANDING]: 'videos/assets/generic/landing-generic.mp4',
   [INTERNAL_VIDEOS.GAMING_XBOX]: 'videos/assets/generic/gaming_xbox_game_pass.mp4',
   [INTERNAL_VIDEOS.WINDOWS_GAMING]: 'videos/assets/generic/windows_the_home_of_gaming.mp4',
-  [INTERNAL_VIDEOS.QUALITY_DURABILITY]: 'videos/assets/asus/BUILT-TO-LAST-Quality-and-Durability.mp4',
-  [INTERNAL_VIDEOS.TUF_DURABILITY]: 'videos/assets/asus/Quality_and_Durability_TUF_Gaming.mp4',
-  [INTERNAL_VIDEOS.ASUS_WARRANTY]: 'videos/assets/asus/Asus_Garantia_Perfecta.mp4',
-  [INTERNAL_VIDEOS.ASUS_OLED]: 'videos/assets/asus/asus-oled.mp4',
-  [INTERNAL_VIDEOS.ASUS_VIVOBOOK_WOW]: 'videos/assets/asus/Asus_vivobook_WOW_the_world.mp4',
-  [INTERNAL_VIDEOS.ASUS_CERALUMINUM]: 'videos/assets/asus/Ceraluminum.mp4',
-  [INTERNAL_VIDEOS.ASUS_ZENBOOK_2026]: 'videos/assets/asus/Zenbook_2026.mp4'
+  [INTERNAL_VIDEOS.QUALITY_DURABILITY]: 'videos/assets/brand_a/v_a_qd.mp4',
+  [INTERNAL_VIDEOS.TUF_DURABILITY]: 'videos/assets/brand_a/v_a_tuf.mp4',
+  [INTERNAL_VIDEOS.ASUS_WARRANTY]: 'videos/assets/brand_a/v_a_gp.mp4',
+  [INTERNAL_VIDEOS.ASUS_OLED]: 'videos/assets/brand_a/v_a_oled.mp4',
+  [INTERNAL_VIDEOS.ASUS_VIVOBOOK_WOW]: 'videos/assets/brand_a/v_a_vw.mp4',
+  [INTERNAL_VIDEOS.ASUS_CERALUMINUM]: 'videos/assets/brand_a/v_a_cer.mp4',
+  [INTERNAL_VIDEOS.ASUS_ZENBOOK_2026]: 'videos/assets/brand_a/v_a_zb26.mp4'
 };
 
 export const formatPrice = (val) => {

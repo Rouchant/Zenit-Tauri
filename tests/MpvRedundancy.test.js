@@ -104,7 +104,7 @@ describe('Pruebas Unitarias de Solidez y Redundancia MPV (VideoPlayer.vue)', () 
 
     expect(mocks.commandMock).toHaveBeenCalledWith(
       'loadfile',
-      [expect.stringContaining('promo-asus.mp4'), 'replace']
+      [expect.stringContaining('v_a_p.mp4'), 'replace']
     );
   });
 
