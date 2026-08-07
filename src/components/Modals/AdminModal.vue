@@ -478,9 +478,9 @@ const isHardwareLimitReached = computed(() => {
 
                     <!-- Características Destacadas Multi-seleccionables ("Ticketeables") -->
                     <div style="margin-top: 25px; border-top: 1px solid rgba(255, 255, 255, 0.05); padding-top: 20px;">
-                        <label style="margin-bottom: 6px; display: block; font-weight: 700; color: var(--primary); text-transform: uppercase; font-size: 0.85rem; letter-spacing: 0.5px;">
+                        <span style="margin-bottom: 6px; display: block; font-weight: 700; color: var(--primary); text-transform: uppercase; font-size: 0.85rem; letter-spacing: 0.5px;">
                             Características Destacadas
-                        </label>
+                        </span>
                         <span style="font-size: 0.78rem; color: var(--text-muted, #888); margin-bottom: 15px; display: block;">
                             Marca las características que apliquen a esta PC. Si seleccionas varias, rotarán automáticamente cada 5 segundos en la cabecera.
                         </span>
@@ -529,7 +529,7 @@ const isHardwareLimitReached = computed(() => {
                             </div>
                         </div>
                         <div class="background-config" v-if="isAsus">
-                            <label>Configuración de Pantalla</label>
+                            <span style="display: block; margin-bottom: 8px; font-weight: 600; font-size: 0.85rem; color: var(--primary);">Configuración de Pantalla</span>
                             <div class="input-group checkbox-group fixed-bg-group" style="padding-top: 5px; display: flex; flex-direction: column; gap: 10px;">
                                 <label for="asus-ticker-checkbox" class="checkbox-container">
                                     <input id="asus-ticker-checkbox" name="showAsusWarrantyTicker" type="checkbox" v-model="editableSpecs.showAsusWarrantyTicker">
@@ -578,7 +578,7 @@ const isHardwareLimitReached = computed(() => {
 
                             <!-- Metadata Overlay del Home (Ancho completo) -->
                             <div v-if="editableSpecs.customLandingVideoPath" class="input-group no-margin" style="background: rgba(0,0,0,0.25); padding: 8px 12px; border-radius: 8px; border: 1px solid rgba(255,255,255,0.05); margin-top: 10px !important;">
-                                <label style="color: var(--primary); font-size: 0.78rem; margin-bottom: 2px; display: block;">Video Activo en Visualización (Home)</label>
+                                <span style="color: var(--primary); font-size: 0.78rem; margin-bottom: 2px; display: block;">Video Activo en Visualización (Home)</span>
                                 <div style="font-size: 0.88rem; font-weight: 600; color: var(--white); word-break: break-all;">
                                     {{ getVideoDisplayName(editableSpecs.customLandingVideoPath) }}
                                 </div>
@@ -638,7 +638,7 @@ const isHardwareLimitReached = computed(() => {
                                 <div v-if="slot.path" class="input-group no-margin" style="background: rgba(0,0,0,0.25); padding: 8px 12px; border-radius: 8px; border: 1px solid rgba(255,255,255,0.05); margin-top: 10px !important;">
                                     <div style="display: flex; gap: 10px; align-items: center; justify-content: space-between;">
                                         <div>
-                                            <label style="color: var(--primary); font-size: 0.78rem; margin-bottom: 2px; display: block;">Video Activo en Visualización</label>
+                                            <span style="color: var(--primary); font-size: 0.78rem; margin-bottom: 2px; display: block;">Video Activo en Visualización</span>
                                             <div style="font-size: 0.88rem; font-weight: 600; color: var(--white); word-break: break-all;">
                                                 {{ getVideoDisplayName(slot.path) }}
                                             </div>

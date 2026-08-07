@@ -17,11 +17,11 @@ use crate::state::AppState;
 /// Configura plugins, estado global, handlers de comandos y eventos de ventana.
 #[cfg_attr(mobile, tauri::mobile_entry_point)]
 pub fn run() {
-    // Habilitar aceleración por hardware en video y rasterización GPU en WebView2
+    // Habilitar aceleración por hardware en video y rasterización GPU optimizada en WebView2
     #[cfg(windows)]
     std::env::set_var(
         "WEBVIEW2_ADDITIONAL_BROWSER_ARGUMENTS",
-        "--enable-gpu-rasterization --enable-hardware-overlays --ignore-gpu-blocklist --disable-background-timer-throttling --disable-backgrounding-occluded-windows --disable-renderer-backgrounding"
+        "--enable-gpu-rasterization --disable-features=UseHardwareOverlay --ignore-gpu-blocklist --use-gl=angle --use-angle=d3d11 --enable-zero-copy --disable-background-timer-throttling --disable-backgrounding-occluded-windows --disable-renderer-backgrounding"
     );
 
     tauri::Builder::default()
@@ -162,7 +162,24 @@ pub fn run() {
             // 7. Limpiar archivos huérfanos de videos borrados
             vault::cleanup_orphan_videos(app.handle());
 
-            // 8. Forzar que la ventana principal se ubique en la pantalla principal del sistema antes de mostrarse
+            // 8. Registrar handle global para el guardián de energía
+            guardian::set_app_handle(app.handle().clone());
+
+            // 9. Bucle de vigilancia activa de energía: refresca SetThreadExecutionState cada 30 segundos
+            #[cfg(windows)]
+            tauri::async_runtime::spawn(async move {
+                use windows_sys::Win32::System::Power::{
+                    SetThreadExecutionState, ES_CONTINUOUS, ES_DISPLAY_REQUIRED, ES_SYSTEM_REQUIRED,
+                };
+                loop {
+                    tokio::time::sleep(std::time::Duration::from_secs(30)).await;
+                    unsafe {
+                        SetThreadExecutionState(ES_CONTINUOUS | ES_DISPLAY_REQUIRED | ES_SYSTEM_REQUIRED);
+                    }
+                }
+            });
+
+            // 10. Forzar que la ventana principal se ubique en la pantalla principal del sistema antes de mostrarse
             if let Some(main_window) = app.get_webview_window("main") {
                 if let Ok(hwnd) = main_window.hwnd() {
                     guardian::protect_main_window_proc(hwnd.0 as _);

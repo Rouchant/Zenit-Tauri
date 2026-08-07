@@ -6,6 +6,9 @@ export default defineConfig({
   plugins: [vue()],
   base: './',
   root: resolve(__dirname),
+  esbuild: {
+    drop: ['console', 'debugger'],
+  },
   build: {
     outDir: 'dist_app',
     emptyOutDir: true,

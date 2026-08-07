@@ -70,6 +70,10 @@
                 muted 
                 playsinline
                 preload="auto"
+                decoding="async"
+                disablePictureInPicture
+                disableRemotePlayback
+                controlsList="nodownload nofullscreen noremoteplayback"
                 :src="currentLandingVideoSrc"
                 ref="landingVideo"
                 v-show="shouldBePlaying"
@@ -79,6 +83,8 @@
                   transition: 'opacity 0.5s ease, visibility 0.5s'
                 }"
                 @error="handleLandingVideoError"
+                @stalled="handleLandingStalled"
+                @waiting="handleLandingStalled"
                 @playing="() => { isLandingReady = true; landingRetryCount = 0; }"
               >
               </video>
@@ -271,6 +277,7 @@ let lastMpvBgPath = ''; // Guard: última ruta cargada en MPV para evitar loadfi
 const isBgVideoLoading = ref(false);
 let isGlobalMpvListening = false;
 let bgVideoTimeout = null;
+let unlistenPowerResume = null;
 
 watch(currentBgVideoSrc, () => {
   isBgVideoFailed.value = false;
@@ -628,6 +635,14 @@ const handleLandingVideoError = () => {
         }
       }
     });
+  }
+};
+
+const handleLandingStalled = () => {
+  if (store.isVideoMode || store.isModalOpen || !shouldBePlaying.value) return;
+  if (landingVideo.value) {
+    console.warn('[Landing Video] Reanudando reproducción tras detección de congelamiento/espera (stalled/waiting)...');
+    landingVideo.value.play().catch(() => {});
   }
 };
 
@@ -991,28 +1006,25 @@ onMounted(async () => {
       // Reanudar el timer de JS ahora que la app está de vuelta
       resetTimer();
     });
+
+    // Cuando Windows despierta de suspensión (evento capturado por Rust): recargar la app limpiamente
+    unlistenPowerResume = await listen('app-system-power-resume', () => {
+      console.warn('[Power Resume Event] Despertar de suspensión detectado por Rust. Recargando aplicación para estado 100% fresco...');
+      window.location.reload();
+    });
   }
 
   // Guardián unificado (cada 10 segundos): verifica estado de videos + detecta retorno de suspensión.
-  // Antes eran dos setInterval separados al mismo periodo; unificarlos reduce timer overhead.
   let lastDriftTime = Date.now();
   watchdogInterval = setInterval(() => {
-    // 1. Detección de retorno de suspensión (time-drift)
+    // 1. Detección de retorno de suspensión (time-drift > 15s)
     const now = Date.now();
     const drift = now - lastDriftTime;
     
-    // Si la diferencia absoluta es mayor a 20 minutos (1200000ms), recargar app.
-    // Previene loops o bloqueos si el sistema estuvo inactivo/suspendido mucho tiempo.
-    if (Math.abs(drift) > 1200000) {
-      console.warn('[Watchdog] Cambio extremo en el reloj detectado (drift: ' + drift + 'ms). Recargando aplicación...');
+    if (drift > 15000) {
+      console.warn('[Watchdog] Wake-from-sleep detectado por salto de tiempo (drift: ' + drift + 'ms). Recargando aplicación...');
       window.location.reload();
       return;
-    }
-    
-    // Restaurar brillo si volvió de un sleep moderado (drift > 20s)
-    if (drift > 20000) {
-      console.log(`[Watchdog] Wake-from-sleep detected (drift: ${drift}ms). Restaurando brillo.`);
-      tauriAPI.setMaxBrightness();
     }
     lastDriftTime = now;
 
@@ -1032,6 +1044,7 @@ onUnmounted(() => {
   if (unlistenActivity) unlistenActivity();
   if (unlistenPlay) unlistenPlay();
   if (unlistenPause) unlistenPause();
+  if (unlistenPowerResume) unlistenPowerResume();
   if (unlistenMpvProps) {
     unlistenMpvProps();
     unlistenMpvProps = null;

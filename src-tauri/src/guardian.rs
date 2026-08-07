@@ -3,14 +3,30 @@ use windows_sys::Win32::UI::WindowsAndMessaging::*;
 use windows_sys::Win32::UI::Input::KeyboardAndMouse::*;
 use windows_sys::Win32::System::LibraryLoader::GetModuleHandleW;
 use windows_sys::Win32::System::Threading::{GetCurrentThread, GetCurrentThreadId, SetThreadPriority, THREAD_PRIORITY_HIGHEST};
+use windows_sys::Win32::System::Power::{SetThreadExecutionState, ES_CONTINUOUS, ES_DISPLAY_REQUIRED, ES_SYSTEM_REQUIRED};
 use std::sync::atomic::{AtomicU32, AtomicIsize, AtomicBool, Ordering};
+use std::sync::Mutex;
 use std::ptr;
 use log::{info, error, debug};
+use tauri::{AppHandle, Emitter};
 
 static HOOK_HANDLE: AtomicIsize = AtomicIsize::new(0);
 static GUARDIAN_THREAD_ID: AtomicU32 = AtomicU32::new(0);
 static WAS_BLOCKED: AtomicBool = AtomicBool::new(false);
 static OLD_MAIN_WNDPROC: AtomicIsize = AtomicIsize::new(0);
+static APP_HANDLE: Mutex<Option<AppHandle>> = Mutex::new(None);
+
+pub fn set_app_handle(handle: AppHandle) {
+    if let Ok(mut guard) = APP_HANDLE.lock() {
+        *guard = Some(handle);
+    }
+}
+
+const WM_POWERBROADCAST: u32 = 0x0218;
+const PBT_APMSUSPEND: u32 = 0x0004;
+const PBT_APMRESUMEAUTOMATIC: u32 = 0x0012;
+const PBT_APMRESUMESUSPEND: u32 = 0x0007;
+const SC_KEYMENU: u32 = 0xF100;
 
 pub fn protect_main_window_proc(hwnd_ptr: HWND) {
     if OLD_MAIN_WNDPROC.load(Ordering::SeqCst) != 0 {
@@ -19,7 +35,7 @@ pub fn protect_main_window_proc(hwnd_ptr: HWND) {
     unsafe {
         let old = SetWindowLongPtrW(hwnd_ptr, GWLP_WNDPROC, main_wndproc_subclass as *const () as isize);
         OLD_MAIN_WNDPROC.store(old, Ordering::SeqCst);
-        info!("[Guardian] Subclase de ventana WndProc instalada para proteger WM_CLOSE.");
+        info!("[Guardian] Subclase de ventana WndProc instalada para proteger WM_CLOSE, SC_KEYMENU y vigilar eventos de energía.");
     }
 }
 
@@ -31,6 +47,21 @@ unsafe extern "system" fn main_wndproc_subclass(
 ) -> LRESULT {
     let old_proc = OLD_MAIN_WNDPROC.load(Ordering::Relaxed);
 
+    if msg == WM_POWERBROADCAST {
+        let event_type = wparam as u32;
+        if event_type == PBT_APMSUSPEND {
+            info!("[Guardian Power] Sistema entrando en suspensión por energía (PBT_APMSUSPEND).");
+        } else if event_type == PBT_APMRESUMEAUTOMATIC || event_type == PBT_APMRESUMESUSPEND {
+            info!("[Guardian Power] Sistema despertando de suspensión. Re-activando estado de ejecución y emitiendo evento de restauración...");
+            SetThreadExecutionState(ES_CONTINUOUS | ES_DISPLAY_REQUIRED | ES_SYSTEM_REQUIRED);
+            if let Ok(guard) = APP_HANDLE.lock() {
+                if let Some(ref handle) = *guard {
+                    let _ = handle.emit("app-system-power-resume", ());
+                }
+            }
+        }
+    }
+
     if msg == WM_CLOSE {
         info!("[Guardian] Interceptado WM_CLOSE en WndProc nativo. Cancelando cierre para proteger libmpv.");
         return 0;
@@ -38,8 +69,8 @@ unsafe extern "system" fn main_wndproc_subclass(
 
     if msg == WM_SYSCOMMAND {
         let cmd = (wparam & 0xFFF0) as u32;
-        if cmd == SC_CLOSE {
-            info!("[Guardian] Interceptado SC_CLOSE en WndProc nativo. Cancelando cierre para proteger libmpv.");
+        if cmd == SC_CLOSE || cmd == SC_KEYMENU {
+            info!("[Guardian] Interceptado SC_KEYMENU / SC_CLOSE en WndProc nativo. Cancelando menú nativo de Windows para proteger libmpv.");
             return 0;
         }
     }
@@ -124,28 +155,36 @@ unsafe extern "system" fn low_level_keyboard_proc(n_code: i32, w_param: WPARAM, 
     let is_up = event == WM_KEYUP || event == WM_SYSKEYUP;
     let is_sys = event == WM_SYSKEYDOWN || event == WM_SYSKEYUP;
 
-    // 1. Rastreo de modificadores por evento (incluyendo VK_MENU, VK_CONTROL, VK_SHIFT)
+    // 1. Rastreo de modificadores por evento especificando lado izquierdo / derecho
     match key {
-        VK_LWIN | VK_RWIN => {
-            LWIN_DOWN.store(is_down, Ordering::SeqCst);
-        }
-        VK_LCONTROL | VK_RCONTROL | VK_CONTROL => {
+        VK_LWIN => LWIN_DOWN.store(is_down, Ordering::SeqCst),
+        VK_RWIN => RWIN_DOWN.store(is_down, Ordering::SeqCst),
+        VK_LCONTROL => LCTRL_DOWN.store(is_down, Ordering::SeqCst),
+        VK_RCONTROL => RCTRL_DOWN.store(is_down, Ordering::SeqCst),
+        VK_CONTROL => {
             LCTRL_DOWN.store(is_down, Ordering::SeqCst);
+            RCTRL_DOWN.store(is_down, Ordering::SeqCst);
         }
-        VK_LSHIFT | VK_RSHIFT | VK_SHIFT => {
+        VK_LSHIFT => LSHIFT_DOWN.store(is_down, Ordering::SeqCst),
+        VK_RSHIFT => RSHIFT_DOWN.store(is_down, Ordering::SeqCst),
+        VK_SHIFT => {
             LSHIFT_DOWN.store(is_down, Ordering::SeqCst);
+            RSHIFT_DOWN.store(is_down, Ordering::SeqCst);
         }
-        VK_LMENU | VK_RMENU | VK_MENU => {
+        VK_LMENU => LALT_DOWN.store(is_down, Ordering::SeqCst),
+        VK_RMENU => RALT_DOWN.store(is_down, Ordering::SeqCst),
+        VK_MENU => {
             LALT_DOWN.store(is_down, Ordering::SeqCst);
+            RALT_DOWN.store(is_down, Ordering::SeqCst);
         }
         _ => {}
     }
 
-    // Suprimir liberación de modificadores tras un atajo bloqueado (evita que Windows mande SC_KEYMENU a libmpv)
+    // Resetear el estado WAS_BLOCKED al soltar modificadores sin suprimir el KeyUp
+    // (evita que el SO retenga la tecla Alt/Ctrl pegada mientras WndProc intercepta SC_KEYMENU)
     if is_up && WAS_BLOCKED.load(Ordering::SeqCst) {
         if matches!(key, VK_LMENU | VK_RMENU | VK_MENU | VK_LWIN | VK_RWIN | VK_LCONTROL | VK_RCONTROL) {
             WAS_BLOCKED.store(false, Ordering::SeqCst);
-            return 1;
         }
     }
 
