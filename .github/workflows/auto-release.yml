@@ -10,10 +10,6 @@ on:
       - src-tauri/Cargo.toml
   workflow_dispatch:
 
-# Fuerza a GitHub a usar Node 24 para las acciones internas
-env:
-  FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: true
-
 permissions:
   contents: write
 
@@ -34,7 +30,7 @@ jobs:
       - name: Setup Node.js
         uses: actions/setup-node@v4
         with:
-          node-version: 24
+          node-version: 22
           cache: pnpm
 
       - name: Setup Rust
