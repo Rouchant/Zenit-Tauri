@@ -1074,7 +1074,7 @@ onMounted(async () => {
         }
         if (mem.is_critical) {
           const nowMem = Date.now();
-          if (nowMem - lastRamRestartTime > 600000) { // Cooldown de 10 minutos para evitar bucles de reinicio
+          if (nowMem - lastRamRestartTime > 1200000) { // Cooldown de 20 minutos para evitar bucles de reinicio
             lastRamRestartTime = nowMem;
             console.error(`[RAM Watchdog] Memoria RAM crítica detectada (${mem.available_mb}MB disponibles). Reiniciando aplicación para evitar congelamiento del sistema...`);
             tauriAPI.restartApp();
