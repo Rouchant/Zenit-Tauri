@@ -53,6 +53,11 @@ pub fn run() {
                     {
                         app.exit(0);
                     }
+                    if shortcut.key == Code::KeyR
+                        && shortcut.mods == (Modifiers::CONTROL | Modifiers::ALT | Modifiers::SHIFT)
+                    {
+                        commands::window::do_restart(app);
+                    }
                 })
                 .build(),
         )
@@ -201,6 +206,9 @@ pub fn run() {
             system::log_frontend_debug,
             system::set_max_brightness,
             system::infer_processor_info,
+            system::open_url,
+            system::get_memory_status,
+            system::trim_memory,
             vault::select_video,
             vault::save_custom_video,
             vault::list_custom_videos,
@@ -210,6 +218,7 @@ pub fn run() {
             window::minimize_app,
             window::restore_app,
             window::quit_app,
+            window::restart_app,
             window::set_always_on_top,
             window::close_splashscreen,
         ])

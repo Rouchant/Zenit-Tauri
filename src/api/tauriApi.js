@@ -34,6 +34,9 @@ export const tauriAPI = {
   renameCustomVideo: (path, newName) => safeInvoke('rename_custom_video', { path, newName }),
   checkFileExists: (filePath) => safeInvoke('check_file_exists', { filePath }),
   quitApp: () => safeInvoke('quit_app'),
+  restartApp: () => safeInvoke('restart_app'),
+  getMemoryStatus: () => safeInvoke('get_memory_status'),
+  trimMemory: () => safeInvoke('trim_memory'),
   setAlwaysOnTop: (onTop) => safeInvoke('set_always_on_top', { onTop }),
   setMaxBrightness: (() => {
     let lastCall = 0;
@@ -47,6 +50,12 @@ export const tauriAPI = {
     };
   })(),
   inferProcessorInfo: (name) => safeInvoke('infer_processor_info', { name }),
+  openUrl: async (url) => {
+    if (window.__TAURI_INTERNALS__) {
+      return safeInvoke('open_url', { url });
+    }
+    window.open(url, '_blank');
+  },
 };
 
 /**

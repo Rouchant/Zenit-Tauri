@@ -50,13 +50,54 @@ pub async fn minimize_app(
 pub async fn restore_app(app: AppHandle, state: tauri::State<'_, AppState>) -> Result<(), String> {
     stop_idle_monitor(&state).await;
     stop_restore_monitor(&state).await;
-    restore_app_logic(&app).await
+    restore_app_logic(&app, true).await
 }
 
 /// Cierra completamente la aplicación.
 #[tauri::command]
 pub fn quit_app(app: AppHandle) {
+    crate::guardian::ALLOW_CLOSE.store(true, Ordering::SeqCst);
+    crate::guardian::stop_keyboard_guardian();
     app.exit(0);
+}
+
+use std::sync::atomic::{AtomicBool, Ordering};
+
+static IS_RESTARTING: AtomicBool = AtomicBool::new(false);
+
+/// Reinicia limpiamente la aplicación (protegido contra invocaciones simultáneas/duplicadas).
+pub fn do_restart(app: &AppHandle) {
+    if IS_RESTARTING.swap(true, Ordering::SeqCst) {
+        log::warn!("[Zenit] Ignorando llamada duplicada a restart_app.");
+        return;
+    }
+    log::info!("[Zenit] Reiniciando la aplicación limpiamente...");
+    crate::guardian::ALLOW_CLOSE.store(true, Ordering::SeqCst);
+    crate::guardian::stop_keyboard_guardian();
+
+    #[cfg(windows)]
+    {
+        if let Ok(exe_path) = std::env::current_exe() {
+            use std::os::windows::process::CommandExt;
+            const CREATE_NO_WINDOW: u32 = 0x08000000;
+            let exe_str = exe_path.to_str().unwrap_or_default().replace("'", "''");
+            let ps_cmd = format!("Start-Sleep -Milliseconds 600; Start-Process '{}'", exe_str);
+            let _ = std::process::Command::new("powershell")
+                .args(["-NoProfile", "-WindowStyle", "Hidden", "-Command", &ps_cmd])
+                .creation_flags(CREATE_NO_WINDOW)
+                .spawn();
+            app.exit(0);
+            return;
+        }
+    }
+
+    app.restart();
+}
+
+/// Reinicia limpiamente la aplicación.
+#[tauri::command]
+pub fn restart_app(app: AppHandle) {
+    do_restart(&app);
 }
 
 /// Cierra la ventana de salpicadura (splashscreen) si está activa.
@@ -119,7 +160,7 @@ pub async fn set_always_on_top(
 
 /// Ejecuta la secuencia de restauración de la ventana principal:
 /// Unminimize -> Show -> Focus -> Force Foreground.
-pub async fn restore_app_logic(app: &AppHandle) -> Result<(), String> {
+pub async fn restore_app_logic(app: &AppHandle, emit_play_info: bool) -> Result<(), String> {
     let state = app.state::<AppState>();
     let main_window = app
         .get_webview_window("main")
@@ -137,11 +178,12 @@ pub async fn restore_app_logic(app: &AppHandle) -> Result<(), String> {
     let _ = return_window.hide();
     let _ = return_window.set_always_on_top(false);
 
-    // 2. Notificar al frontend para que comience a montar los videos de fondo
-    let _ = app.emit("play-info-videos", ());
-
-    // 3. Esperar 100ms para que Vue procese el DOM y cargue los reproductores de video en background
-    tokio::time::sleep(tokio::time::Duration::from_millis(100)).await;
+    if emit_play_info {
+        // 2. Notificar al frontend para que comience a montar los videos de fondo (al volver a Specs)
+        let _ = app.emit("play-info-videos", ());
+        // 3. Esperar 100ms para que Vue procese el DOM
+        tokio::time::sleep(tokio::time::Duration::from_millis(100)).await;
+    }
 
     // 4. Restaurar la ventana principal
     let res_unmin = main_window.unminimize();
@@ -305,7 +347,7 @@ async fn start_idle_monitor(app: AppHandle, state: tauri::State<'_, AppState>) {
                 // Pequeño margen para que el WebView procese el cambio de estado
                 tokio::time::sleep(tokio::time::Duration::from_millis(150)).await;
 
-                let _ = restore_app_logic(&app_clone).await;
+                let _ = restore_app_logic(&app_clone, false).await;
                 is_restored = true;
                 // Pequeña espera para evitar detectar la actividad propia de la restauración
                 tokio::time::sleep(tokio::time::Duration::from_secs(6)).await;

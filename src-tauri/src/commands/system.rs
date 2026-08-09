@@ -615,6 +615,137 @@ pub fn infer_processor_info(name: String) -> ProcessorInfo {
     ProcessorInfo { vendor, gen }
 }
 
+/// Abre una URL en el navegador predeterminado del sistema operativo.
+#[tauri::command]
+pub fn open_url(url: String) -> Result<(), String> {
+    #[cfg(windows)]
+    {
+        use std::os::windows::process::CommandExt;
+        Command::new("cmd")
+            .args(["/C", "start", "", &url])
+            .creation_flags(CREATE_NO_WINDOW)
+            .spawn()
+            .map_err(|e| e.to_string())?;
+    }
+    #[cfg(target_os = "macos")]
+    {
+        Command::new("open")
+            .arg(&url)
+            .spawn()
+            .map_err(|e| e.to_string())?;
+    }
+    #[cfg(target_os = "linux")]
+    {
+        Command::new("xdg-open")
+            .arg(&url)
+            .spawn()
+            .map_err(|e| e.to_string())?;
+    }
+    Ok(())
+}
+
+#[derive(Debug, Serialize, Deserialize, Clone)]
+pub struct MemoryStatus {
+    pub total_mb: u64,
+    pub used_mb: u64,
+    pub available_mb: u64,
+    pub used_percent: f32,
+    pub is_low_memory: bool,
+    pub is_critical: bool,
+}
+
+/// Obtiene el estado actual de la memoria RAM del sistema.
+#[tauri::command]
+pub fn get_memory_status() -> MemoryStatus {
+    // Sanitizar de forma proactiva procesos de audio descontrolados (> 600 MB)
+    sanitize_runaway_audio_processes();
+
+    let mut sys = System::new_with_specifics(
+        RefreshKind::new().with_memory(MemoryRefreshKind::everything())
+    );
+    sys.refresh_memory();
+
+    let total_bytes = sys.total_memory();
+    let used_bytes = sys.used_memory();
+    let available_bytes = sys.available_memory();
+
+    let total_mb = total_bytes / 1024 / 1024;
+    let used_mb = used_bytes / 1024 / 1024;
+    let available_mb = available_bytes / 1024 / 1024;
+
+    let used_percent = if total_bytes > 0 {
+        (used_bytes as f32 / total_bytes as f32) * 100.0
+    } else {
+        0.0
+    };
+
+    // Umbrales adaptativos según la capacidad total del equipo (8GB vs 16GB/32GB)
+    let (is_low_memory, is_critical) = if total_mb <= 9000 {
+        // En equipos de 8GB de RAM:
+        // - Alerta (trim): > 88% de uso o menos de 1000 MB libres.
+        // - Crítico (reinicio): > 94% de uso o menos de 500 MB libres.
+        (used_percent > 88.0 || available_mb < 1000, used_percent > 94.0 || available_mb < 500)
+    } else {
+        // En equipos de 16GB / 32GB de RAM:
+        // - Alerta (trim): > 85% de uso o menos de 2500 MB libres.
+        // - Crítico (reinicio): > 92% de uso o menos de 1200 MB libres.
+        (used_percent > 85.0 || available_mb < 2500, used_percent > 92.0 || available_mb < 1200)
+    };
+
+    MemoryStatus {
+        total_mb,
+        used_mb,
+        available_mb,
+        used_percent,
+        is_low_memory,
+        is_critical,
+    }
+}
+
+/// Fuerza la liberación inmediata del Working Set de la aplicación en Windows
+/// y liquida automáticamente procesos de audio en segundo plano que presenten fugas (> 1.5 GB / 1500 MB).
+#[tauri::command]
+pub fn trim_memory() {
+    #[cfg(windows)]
+    unsafe {
+        use windows_sys::Win32::System::Threading::{GetCurrentProcess, SetProcessWorkingSetSize};
+        let _ = SetProcessWorkingSetSize(GetCurrentProcess(), usize::MAX, usize::MAX);
+    }
+
+    sanitize_runaway_audio_processes();
+}
+
+fn sanitize_runaway_audio_processes() {
+    use sysinfo::ProcessRefreshKind;
+    let mut sys = System::new();
+    sys.refresh_processes_specifics(ProcessRefreshKind::new().with_memory());
+
+    for (pid, process) in sys.processes() {
+        let raw_name = process.name();
+        let clean_name = raw_name.to_lowercase().replace(" ", "").replace("_", "").replace("-", "");
+        let memory_mb = process.memory() / 1024 / 1024;
+
+        // Detectar si AudioSWServer / iGoSwServer ("IntelliGo Audio SW Server"), DTS, audiodg u otros servicios con fugas conocidas exceden 1500 MB de RAM
+        let is_target_audio_process = clean_name.contains("audioswserver")
+            || clean_name.contains("igoswserver")
+            || clean_name.contains("intelligo")
+            || clean_name.contains("dtsaudio")
+            || clean_name.contains("audiodg")
+            || clean_name.contains("fortemedia")
+            || clean_name.contains("nahimic");
+
+        if is_target_audio_process && memory_mb > 1500 {
+            log::warn!(
+                "[RAM Sanitizer] Proceso de audio con fuga masiva detectado: '{}' (PID {}) consumiendo {} MB. Eliminando proceso descontrolado...",
+                raw_name,
+                pid,
+                memory_mb
+            );
+            let _ = process.kill();
+        }
+    }
+}
+
 #[cfg(not(windows))]
 fn get_wmi_details() -> Result<WmiData, Box<dyn std::error::Error>> {
     Ok(default_wmi_fallback())

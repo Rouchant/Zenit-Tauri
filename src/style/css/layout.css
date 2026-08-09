@@ -37,6 +37,7 @@
     height: calc(100% + 4px);
     object-fit: cover;
     z-index: 0;
+    transition: opacity 0.35s cubic-bezier(0.4, 0, 0.2, 1);
 }
 
 .header {
@@ -429,7 +430,7 @@ html.is-portrait .landing-video-container {
     width: 100% !important;
     aspect-ratio: 16 / 9 !important;
     border-radius: 22px !important;
-    box-shadow: 0 16px 50px rgba(0, 0, 0, 0.45) !important;
+    box-shadow: none !important;
     margin: 0 !important;
 }
 

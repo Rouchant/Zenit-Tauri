@@ -127,6 +127,9 @@ export const useSpecsStore = defineStore('specs', () => {
     try {
       if (typeof localStorage !== 'undefined') {
         localStorage.setItem('zenit-theme', theme.value);
+        if (matchedBrand.value) {
+          localStorage.setItem('zenit-brand', matchedBrand.value);
+        }
       }
     } catch { /* SecurityError en contextos restringidos */ }
     applyThemeClass(theme.value);

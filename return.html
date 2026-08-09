@@ -194,11 +194,11 @@
             left: 50%;
             transform: translate(-50%, -50%) rotate(0deg);
             background: conic-gradient(
-                        #FFFFFF 0%,
+                        #F0F0F0 0%,
                         var(--primary) 10%,
                         var(--secondary) 50%,
                         var(--primary) 90%,
-                        #FFFFFF 100%);
+                        #F0F0F0 100%);
             animation: rotate-border-transform 4s linear infinite;
             pointer-events: none;
             z-index: 1;
@@ -270,7 +270,7 @@
             <path d="M20.054 15.987H3.946" />
         </svg>
         <div id="brand-logo-container" class="brand-logo-container">
-            <img id="brand-logo-img" src="" alt="Brand Logo" />
+            <img id="brand-logo-img" src="" alt="" />
         </div>
     </button>
 
@@ -281,23 +281,41 @@
         const btn = document.getElementById('restore-btn');
         const logoContainer = document.getElementById('brand-logo-container');
         const logoImg = document.getElementById('brand-logo-img');
+        const validBrands = ['asus', 'hp', 'lenovo', 'acer', 'samsung', 'intel', 'amd', 'nvidia', 'snapdragon'];
+
+        if (logoImg) {
+            logoImg.onerror = () => {
+                logoImg.className = '';
+                if (logoContainer) logoContainer.style.display = 'none';
+            };
+        }
+
+        // Reset state helper
+        const resetState = () => {
+            if (btn) btn.classList.remove('is-active');
+        };
 
         // Función global para actualizar el contexto sin recargar la página
         window.setReturnContext = (store, brand) => {
-            // Asegurar el estado inicial del botón al reabrirse la ventana
             resetState();
 
+            // Si no se reciben parámetros explícitos, usar localStorage como fallback
+            const effectiveStore = (store !== undefined && store !== null) ? store : (localStorage.getItem('zenit-theme') || 'none');
+            const effectiveBrand = (brand !== undefined && brand !== null) ? brand : (localStorage.getItem('zenit-brand') || '');
+
             // Actualizar tema
-            const theme = store === 'none' ? 'default' : store;
+            const theme = (!effectiveStore || effectiveStore === 'none') ? 'default' : effectiveStore;
             document.documentElement.className = 'theme-' + theme;
 
             // Actualizar logo
-            if (brand && brand !== 'none' && brand !== 'null' && brand !== '') {
-                logoImg.src = '/assets/logos/' + brand + '.svg';
-                logoImg.className = 'brand-' + brand;
+            const b = (effectiveBrand || '').toLowerCase().trim();
+            if (b && validBrands.includes(b) && logoImg && logoContainer) {
+                logoImg.src = '/assets/logos/' + b + '.svg';
+                logoImg.className = 'brand-' + b;
                 logoContainer.style.display = 'block';
-            } else {
-                logoImg.className = '';
+            } else if (logoContainer) {
+                if (logoImg) logoImg.src = '';
+                if (logoImg) logoImg.className = '';
                 logoContainer.style.display = 'none';
             }
         };
@@ -306,22 +324,22 @@
         listen('set-return-context', (event) => {
             if (event && event.payload) {
                 const { store, brand } = event.payload;
-                window.setReturnContext(store || 'none', brand || '');
+                window.setReturnContext(store, brand);
             }
         });
 
-        // Soporte fallback para parámetros URL si se recarga
+        // Escuchar cambios de almacenamiento en tiempo real desde la ventana principal
+        window.addEventListener('storage', (e) => {
+            if (e.key === 'zenit-theme' || e.key === 'zenit-brand') {
+                window.setReturnContext();
+            }
+        });
+
+        // Soporte fallback para parámetros URL o localStorage al cargar
         const urlParams = new URLSearchParams(window.location.search);
         const urlStore = urlParams.get('store');
         const urlBrand = urlParams.get('brand');
-        if (urlStore || urlBrand) {
-            window.setReturnContext(urlStore || 'none', urlBrand || '');
-        }
-
-        // Reset state helper
-        const resetState = () => {
-            btn.classList.remove('is-active');
-        };
+        window.setReturnContext(urlStore, urlBrand);
 
         // Reset state when window becomes hidden (e.g. app maximized)
         document.addEventListener('visibilitychange', () => {
@@ -331,17 +349,27 @@
         window.addEventListener('focus', resetState);
         window.addEventListener('blur', resetState);
 
-        // Al presionar el botón (pointerdown), se activa visualmente e inicia la restauración inmediatamente
-        // Se elimina el retardo de 100ms y el escalado/desvanecimiento CSS para evitar el bug del compositor GPU de WebView2 (fondo blanco)
-        btn.addEventListener('pointerdown', async () => {
-            try {
-                await invoke('restore_app');
-            } catch (err) {
-                console.error('Failed to restore app:', err);
+        window.addEventListener('keydown', async (e) => {
+            if (e.ctrlKey && e.shiftKey && e.altKey && (e.key === 'r' || e.key === 'R' || e.code === 'KeyR')) {
+                e.preventDefault();
+                try {
+                    await invoke('restart_app');
+                } catch (err) {
+                    console.error('Failed to restart app from return window:', err);
+                }
             }
         });
 
-        // Pixel Shift removed to avoid border alignment issues and visual glitches
+        // Al presionar el botón (pointerdown), se activa visualmente e inicia la restauración inmediatamente
+        if (btn) {
+            btn.addEventListener('pointerdown', async () => {
+                try {
+                    await invoke('restore_app');
+                } catch (err) {
+                    console.error('Failed to restore app:', err);
+                }
+            });
+        }
     </script>
 </body>
 

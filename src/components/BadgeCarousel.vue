@@ -115,7 +115,7 @@ onUnmounted(() => {
 
 /* Animación de entrada y micro-rebote activa ÚNICAMENTE en InfoView */
 .badge-carousel-pill.is-infoview {
-  animation: slideUp 0.6s ease-out 1, bouncePulse 7.37s infinite ease-in-out 0.6s;
+  animation: bouncePulse 7.37s infinite ease-in-out;
 }
 
 /* Ajuste proporcional fijo para el modo salvapantallas de inactividad (VideoView) - 100% Estático */

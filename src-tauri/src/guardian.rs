@@ -39,6 +39,8 @@ pub fn protect_main_window_proc(hwnd_ptr: HWND) {
     }
 }
 
+pub static ALLOW_CLOSE: AtomicBool = AtomicBool::new(false);
+
 unsafe extern "system" fn main_wndproc_subclass(
     hwnd: HWND,
     msg: u32,
@@ -46,6 +48,11 @@ unsafe extern "system" fn main_wndproc_subclass(
     lparam: LPARAM,
 ) -> LRESULT {
     let old_proc = OLD_MAIN_WNDPROC.load(Ordering::Relaxed);
+
+    if ALLOW_CLOSE.load(Ordering::Relaxed) {
+        let old_proc_fn: WNDPROC = std::mem::transmute(old_proc);
+        return CallWindowProcW(old_proc_fn, hwnd, msg, wparam, lparam);
+    }
 
     if msg == WM_POWERBROADCAST {
         let event_type = wparam as u32;
@@ -73,6 +80,11 @@ unsafe extern "system" fn main_wndproc_subclass(
             info!("[Guardian] Interceptado SC_KEYMENU / SC_CLOSE en WndProc nativo. Cancelando menú nativo de Windows para proteger libmpv.");
             return 0;
         }
+    }
+
+    if msg == WM_INITMENUPOPUP || msg == WM_CONTEXTMENU {
+        info!("[Guardian] Interceptado WM_INITMENUPOPUP / WM_CONTEXTMENU. Cancelando menú nativo.");
+        return 0;
     }
 
     let old_proc_fn: WNDPROC = std::mem::transmute(old_proc);
@@ -180,11 +192,14 @@ unsafe extern "system" fn low_level_keyboard_proc(n_code: i32, w_param: WPARAM, 
         _ => {}
     }
 
-    // Resetear el estado WAS_BLOCKED al soltar modificadores sin suprimir el KeyUp
-    // (evita que el SO retenga la tecla Alt/Ctrl pegada mientras WndProc intercepta SC_KEYMENU)
+    // Resetear el estado WAS_BLOCKED al soltar modificadores y suprimir Alt KeyUp si se bloqueó un atajo
+    // (evita que el SO active el menú de sistema SC_KEYMENU / menú contextual al soltar Alt tras Alt+F4)
     if is_up && WAS_BLOCKED.load(Ordering::SeqCst) {
         if matches!(key, VK_LMENU | VK_RMENU | VK_MENU | VK_LWIN | VK_RWIN | VK_LCONTROL | VK_RCONTROL) {
             WAS_BLOCKED.store(false, Ordering::SeqCst);
+            if matches!(key, VK_LMENU | VK_RMENU | VK_MENU) {
+                return 1;
+            }
         }
     }
 
@@ -193,6 +208,28 @@ unsafe extern "system" fn low_level_keyboard_proc(n_code: i32, w_param: WPARAM, 
         let ctrl = LCTRL_DOWN.load(Ordering::SeqCst) || RCTRL_DOWN.load(Ordering::SeqCst) || (GetAsyncKeyState(VK_LCONTROL as i32) < 0) || (GetAsyncKeyState(VK_RCONTROL as i32) < 0);
         let shift = LSHIFT_DOWN.load(Ordering::SeqCst) || RSHIFT_DOWN.load(Ordering::SeqCst) || (GetAsyncKeyState(VK_LSHIFT as i32) < 0) || (GetAsyncKeyState(VK_RSHIFT as i32) < 0);
         let alt = is_sys || LALT_DOWN.load(Ordering::SeqCst) || RALT_DOWN.load(Ordering::SeqCst) || (GetAsyncKeyState(VK_LMENU as i32) < 0) || (GetAsyncKeyState(VK_RMENU as i32) < 0) || ((kbd_struct.flags & LLKHF_ALTDOWN) != 0);
+
+        // 0. Atajos de Emergencia Nativa Nivel Kernel
+        if ctrl && alt && shift {
+            if key == VK_Z {
+                if is_down {
+                    info!("[Guardian Kernel] Atajo de emergencia Ctrl+Alt+Shift+Z presionado. Forzando cierre del proceso inmediatamente...");
+                    windows_sys::Win32::System::Threading::ExitProcess(0);
+                }
+                return 1;
+            }
+            if key == 0x52 { // Tecla 'R' (VK_R)
+                if is_down {
+                    info!("[Guardian Kernel] Atajo de reinicio Ctrl+Alt+Shift+R presionado. Reiniciando aplicación...");
+                    if let Ok(guard) = APP_HANDLE.lock() {
+                        if let Some(ref handle) = *guard {
+                            crate::commands::window::do_restart(handle);
+                        }
+                    }
+                }
+                return 1;
+            }
+        }
 
         // 1. Bypass para Admin (Copy, Paste, Cut, Task Manager)
         if ctrl && !win && !alt && (key == VK_C || key == VK_V || key == VK_X || (shift && key == VK_ESCAPE)) {

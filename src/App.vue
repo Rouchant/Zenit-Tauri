@@ -23,15 +23,13 @@
         style="will-change: opacity;"
         :style="{ 
           opacity: (!store.isMpvReady || isBgVideoFailed || showStaticFallback) ? 1 : 0.001,
-          transition: (!store.isMpvReady || isBgVideoFailed || showStaticFallback) ? 'none' : 'opacity 0.4s ease'
+          transition: 'none'
         }"
       />
     </div>
 
     <!-- Header siempre pegado arriba y al ancho de la ventana -->
-    <Transition name="fade">
-      <Header v-show="!renderVideoView" @toggle-warranty="showWarrantyOverlay = !showWarrantyOverlay" />
-    </Transition>
+    <Header v-show="!renderVideoView" @toggle-warranty="showWarrantyOverlay = !showWarrantyOverlay" />
 
     <!-- Video View (Inactivity) - Fuera de app-container para ocupar pantalla completa real -->
     <div id="video-view" v-if="renderVideoView" class="view active physical-fullscreen">
@@ -80,7 +78,7 @@
                 :style="{ 
                   opacity: isLandingReady && !showWarrantyOverlay ? 1 : 0,
                   visibility: showWarrantyOverlay ? 'hidden' : 'visible',
-                  transition: 'opacity 0.5s ease, visibility 0.5s'
+                  transition: 'none'
                 }"
                 @error="handleLandingVideoError"
                 @stalled="handleLandingStalled"
@@ -275,9 +273,12 @@ const showStaticFallback = ref(true);
 const renderVideoView = ref(false);
 let lastMpvBgPath = ''; // Guard: última ruta cargada en MPV para evitar loadfile redundantes
 const isBgVideoLoading = ref(false);
+let bgLoadToken = 0;
 let isGlobalMpvListening = false;
 let bgVideoTimeout = null;
 let unlistenPowerResume = null;
+let unlistenMpvProps = null;
+let isRestartingApp = false;
 
 watch(currentBgVideoSrc, () => {
   isBgVideoFailed.value = false;
@@ -416,9 +417,10 @@ const reinitMpvGlobal = async () => {
 };
 
 const handleBgVideoFailure = async (reason = 'unknown') => {
-  console.warn(`[App MPV] Background video failure detected (Reason: ${reason}, Retry: ${bgRetryCount.value + 1}/3).`);
+  console.warn(`[App MPV Recovery] Background video failure detected (Reason: ${reason}, Retry ${bgRetryCount.value + 1}/3)`);
   bgRetryCount.value++;
   isBgVideoLoading.value = false;
+  hasSeenTimePosReset = false;
   showStaticFallback.value = true;
   lastMpvBgPath = ''; // Permitir reintento
 
@@ -464,7 +466,7 @@ const handleBgVideoFailure = async (reason = 'unknown') => {
 // Detección reactiva de fotograma 1 mediante la posición mpvTimePos global en el store
 watch(() => store.mpvTimePos, (pos) => {
   if (pos > 0 && isBgVideoLoading.value && !store.isVideoMode) {
-    console.log('[App MPV] First frame detected via time-pos. Hiding fallback & resetting retry counter.');
+    console.log('[App MPV] Primer fotograma del background detectado (time-pos:', pos, '). Ocultando fallback.');
     showStaticFallback.value = false;
     isBgVideoLoading.value = false;
     bgRetryCount.value = 0; // Resetear contador al reproducir exitosamente
@@ -488,20 +490,30 @@ const playBgVideoNative = async () => {
     bgVideoTimeout = null;
   }
 
+  const currentToken = ++bgLoadToken;
   lastMpvBgPath = rawBgPath;
   showStaticFallback.value = true;
-  isBgVideoLoading.value = true;
+  isBgVideoLoading.value = false; // NO escuchar time-pos hasta que el reemplazo de archivo haya finalizado en MPV
+
   console.log('[App] Playing background video on libmpv:', rawBgPath);
   try {
-    await command('loadfile', [rawBgPath]);
+    await setProperty('pause', true).catch(() => {});
+    await command('loadfile', [rawBgPath, 'replace']);
     await setProperty('keep-open', 'yes');
     await setProperty('loop-file', 'inf');
     await setProperty('panscan', 1.0);
     await setProperty('pause', false);
+
+    // Si durante el proceso asíncrono cambió el token o entramos en modo video, abortar
+    if (currentToken !== bgLoadToken || store.isVideoMode || store.isModalOpen) return;
+
+    // AHORA que MPV cargó el nuevo archivo background.mp4 y lo despausó, activamos isBgVideoLoading
+    // para escuchar ÚNICAMENTE los fotogramas del nuevo video.
+    isBgVideoLoading.value = true;
     
-    // Watchdog ultrafast de 1.8 segundos: Si no hay fotogramas (time-pos > 0) en 1.8s, activar secuencia de autorrecuperación
+    // Watchdog de 1.8 segundos por si el nuevo video se cuelga
     bgVideoTimeout = setTimeout(() => {
-      if (isBgVideoLoading.value) {
+      if (isBgVideoLoading.value && currentToken === bgLoadToken) {
         console.warn('[App MPV Watchdog] 1.8s timeout reached without time-pos progress.');
         handleBgVideoFailure('watchdog_timeout');
       }
@@ -518,6 +530,7 @@ const pauseInfoVideos = async () => {
     await setProperty('pause', true).catch(() => {});
   }
   lastMpvBgPath = ''; // Resetear guard para que al reanudar se recargue
+  isLandingReady.value = false;
   
   if (landingVideo.value) {
     landingVideo.value.pause();
@@ -564,10 +577,12 @@ const resumeInfoVideos = (delayMs = 0) => {
 
       videoEl.play()
         .then(() => {
+          isLandingReady.value = true;
           console.log(`[Videos] ${name} reproduciéndose con éxito en intento ${attempt}.`);
         })
         .catch((e) => {
           console.warn(`[Videos] Intento ${attempt} de reproducción falló para ${name}:`, e);
+          isLandingReady.value = true; // Garantizar visibilidad como fallback
           if (attempt < 15 && shouldPlay()) {
             setTimeout(() => {
               playVideo(videoRef, name, attempt + 1);
@@ -577,6 +592,7 @@ const resumeInfoVideos = (delayMs = 0) => {
     };
 
     if (store.isMpvReady) {
+      lastMpvBgPath = ''; // Forzar que MPV recargue background.mp4
       playBgVideoNative();
     }
     playVideo(landingVideo, "landingVideo");
@@ -641,6 +657,9 @@ const handleLandingVideoError = () => {
 const handleLandingStalled = () => {
   if (store.isVideoMode || store.isModalOpen || !shouldBePlaying.value) return;
   if (landingVideo.value) {
+    // Si el video no está pausado, la señal de espera es simplemente el reinicio normal del bucle (loop)
+    if (!landingVideo.value.paused) return;
+
     console.warn('[Landing Video] Reanudando reproducción tras detección de congelamiento/espera (stalled/waiting)...');
     landingVideo.value.play().catch(() => {});
   }
@@ -762,16 +781,17 @@ watch(() => store.isVideoMode, (isVideo) => {
       });
     }
   } else {
-    // Salir de modo video de forma instantánea (corte limpio)
+    // Salir de modo video:
+    lastMpvBgPath = ''; // Limpiar la ruta guardada para obligar a MPV a recargar background.mp4
     showStaticFallback.value = true;
     renderVideoView.value = false;
-    nextTick(() => {
-      if (!store.isModalOpen) {
-        shouldBePlaying.value = true;
-        resumeInfoVideos();
-        resetTimer();
-      }
-    });
+    isBgVideoLoading.value = false;
+
+    if (!store.isModalOpen) {
+      shouldBePlaying.value = true;
+      resumeInfoVideos();
+      resetTimer();
+    }
   }
 });
 
@@ -839,6 +859,17 @@ watch(currentLandingVideoSrc, (newSrc) => {
 
 const resetTimer = (event) => {
   if (event && event.key === 'Escape') return;
+  if (event && event.ctrlKey && event.shiftKey && event.altKey && (event.key === 'r' || event.key === 'R' || event.code === 'KeyR')) {
+    event.preventDefault();
+    if (isRestartingApp) return;
+    isRestartingApp = true;
+    if (window.__TAURI_INTERNALS__) {
+      tauriAPI.restartApp();
+    } else {
+      window.location.reload();
+    }
+    return;
+  }
   if (isInternalFocusHack.value) return;
   if (showFirstStartModal.value) return;
 
@@ -970,6 +1001,7 @@ onMounted(async () => {
         nextTick(() => {
           if (!store.isModalOpen && !store.isVideoMode) {
             resumeInfoVideos(100);
+            resetTimer();
           }
         });
       });
@@ -1014,8 +1046,9 @@ onMounted(async () => {
     });
   }
 
-  // Guardián unificado (cada 10 segundos): verifica estado de videos + detecta retorno de suspensión.
+  // Guardián unificado (cada 10 segundos): verifica estado de videos + detecta retorno de suspensión + monitoreo de RAM.
   let lastDriftTime = Date.now();
+  let lastRamRestartTime = 0;
   watchdogInterval = setInterval(() => {
     // 1. Detección de retorno de suspensión (time-drift > 15s)
     const now = Date.now();
@@ -1030,6 +1063,25 @@ onMounted(async () => {
 
     // 2. Verificar estado de reproducción de videos
     checkVideosPlayState();
+
+    // 3. Monitoreo y Guardia de Memoria RAM (cada 10s con cooldown de 10 minutos para el reinicio)
+    if (window.__TAURI_INTERNALS__) {
+      tauriAPI.getMemoryStatus().then((mem) => {
+        if (!mem) return;
+        if (mem.is_low_memory) {
+          console.warn(`[RAM Watchdog] Alerta de memoria baja: ${mem.available_mb}MB disponibles (${mem.used_percent.toFixed(1)}% en uso). Ejecutando limpieza Working Set...`);
+          tauriAPI.trimMemory();
+        }
+        if (mem.is_critical) {
+          const nowMem = Date.now();
+          if (nowMem - lastRamRestartTime > 600000) { // Cooldown de 10 minutos para evitar bucles de reinicio
+            lastRamRestartTime = nowMem;
+            console.error(`[RAM Watchdog] Memoria RAM crítica detectada (${mem.available_mb}MB disponibles). Reiniciando aplicación para evitar congelamiento del sistema...`);
+            tauriAPI.restartApp();
+          }
+        }
+      }).catch((e) => console.warn('[RAM Watchdog] Error al consultar memoria:', e));
+    }
   }, 10000);
 });
 

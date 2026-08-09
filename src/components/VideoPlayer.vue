@@ -223,6 +223,14 @@ const stopOverlayCycle = () => {
   isDimmed.value = false;
 };
 
+const startInitialOverlayTimer = () => {
+  stopOverlayCycle();
+  // Esperar 2 segundos tras entrar en modo inactividad antes de mostrar el cartel inactivity-info-box
+  timers.overlay = setTimeout(() => {
+    runOverlayCycle();
+  }, 2000);
+};
+
 watch(() => store.isModalOpen, async (isOpen) => {
   if (isOpen) {
     if (window.__TAURI_INTERNALS__ && store.isMpvReady) {
@@ -235,7 +243,7 @@ watch(() => store.isModalOpen, async (isOpen) => {
       await setProperty('pause', false).catch(() => {});
     }
     boxPosition.value = 'top-right';
-    runOverlayCycle();
+    startInitialOverlayTimer();
   }
 });
 
@@ -275,7 +283,7 @@ watch(() => store.lastMpvEvent, (mpvEvent) => {
 });
 
 onMounted(() => {
-  runOverlayCycle();
+  startInitialOverlayTimer();
 });
 
 onUnmounted(async () => {

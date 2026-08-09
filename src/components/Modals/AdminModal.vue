@@ -375,6 +375,18 @@ const isHardwareLimitReached = computed(() => {
     const fields = ['model', 'processor', 'gen', 'coresAndThreads', 'ram', 'ramType', 'storage', 'gpu', 'display', 'os'];
     return fields.some(f => editableSpecs[f] && editableSpecs[f].length >= 80);
 });
+
+const isOpeningUrl = ref(false);
+
+const openUpdatesUrl = async () => {
+    if (isOpeningUrl.value) return;
+    isOpeningUrl.value = true;
+    notify('🌐 Abierto en el Navegador', 'Se abrió la página de actualizaciones en tu navegador. Minimiza esta app para ver la ventana.');
+    await tauriAPI.openUrl('https://github.com/Rouchant/Zenit-Tauri/releases');
+    setTimeout(() => {
+        isOpeningUrl.value = false;
+    }, 6000);
+};
 </script>
 
 <template>
@@ -382,7 +394,23 @@ const isHardwareLimitReached = computed(() => {
     <div class="modal-content admin-modal-content">
         <div class="modal-header-main" style="margin-bottom: 20px;">
             <div class="header-title-row">
-                <h2>Personalizar Zenit <span style="font-size: 0.8rem; opacity: 0.5; font-weight: normal; margin-left: 10px;">v{{ appVersion }} <span style="color: var(--primary);">desarrollado por Juan Marchant</span></span></h2>
+                <h2>
+                    Personalizar Zenit 
+                    <span style="font-size: 0.8rem; opacity: 0.5; font-weight: normal; margin-left: 10px;">
+                        v{{ appVersion }} <span style="color: var(--primary);">desarrollado por Juan Marchant</span>
+                    </span>
+                    <a 
+                        href="https://github.com/Rouchant/Zenit-Tauri/releases" 
+                        @click.prevent="openUpdatesUrl" 
+                        class="update-link-btn"
+                        :class="{ 'is-opening': isOpeningUrl }"
+                        title="Revisar actualizaciones en GitHub"
+                    >
+                        <svg v-if="!isOpeningUrl" xmlns="http://www.w3.org/2000/svg" width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="update-icon"><path d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6"></path><polyline points="15 3 21 3 21 9"></polyline><line x1="10" y1="14" x2="21" y2="3"></line></svg>
+                        <svg v-else xmlns="http://www.w3.org/2000/svg" width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="update-icon spin-icon"><path d="M21 12a9 9 0 1 1-6.219-8.56"></path></svg>
+                        <span>{{ isOpeningUrl ? 'Abierto en el navegador — Minimiza la app para ver la ventana' : 'Click aquí para buscar actualizaciones' }}</span>
+                    </a>
+                </h2>
             </div>
             
             <div class="tabs-menu" style="margin-top: 20px;">
@@ -1158,5 +1186,49 @@ const isHardwareLimitReached = computed(() => {
 .badge-checkbox-card.active .badge-card-label {
     color: var(--primary, #00f2ff);
     font-weight: 700;
+}
+
+.update-link-btn {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    margin-left: 14px;
+    font-size: 0.78rem;
+    font-weight: 500;
+    color: var(--primary, #00f2ff);
+    text-decoration: none;
+    background: rgba(255, 255, 255, 0.05);
+    border: 1px solid rgba(255, 255, 255, 0.15);
+    padding: 4px 12px;
+    border-radius: 20px;
+    vertical-align: middle;
+    transition: all 0.2s ease;
+    cursor: pointer;
+}
+
+.update-link-btn:hover {
+    background: rgba(var(--primary-rgb, 0, 242, 255), 0.15);
+    border-color: var(--primary, #00f2ff);
+    color: #F0F0F0;
+    box-shadow: 0 0 12px rgba(var(--primary-rgb, 0, 242, 255), 0.25);
+}
+
+.update-icon {
+    flex-shrink: 0;
+}
+
+.update-link-btn.is-opening {
+    background: rgba(var(--primary-rgb, 0, 242, 255), 0.25);
+    border-color: var(--primary, #00f2ff);
+    color: #F0F0F0;
+}
+
+@keyframes spin {
+    from { transform: rotate(0deg); }
+    to { transform: rotate(360deg); }
+}
+
+.spin-icon {
+    animation: spin 1s linear infinite;
 }
 </style>
