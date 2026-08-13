@@ -121,23 +121,33 @@ async function playVideo() {
 
   if (window.__TAURI_INTERNALS__) {
     if (store.isMpvReady) {
+      const currentSessionToken = store.nextMpvSession();
       try {
         await setProperty('keep-open', 'no');
         await setProperty('loop-file', 'no');
         await setProperty('panscan', 1.0); // Forzar a recortar/escalar y rellenar pantalla al 100% (elimina barras negras)
         
+        if (store.mpvSessionToken !== currentSessionToken) return;
+
         // Reemplazar la lista actual por la primera
         await command('loadfile', [firstPath, 'replace']);
         
         // Agregar el resto de los videos al playlist de MPV para transición fluida y sin pantalla negra
         for (let i = 1; i < rawUrls.value.length; i++) {
+          if (store.mpvSessionToken !== currentSessionToken) {
+            console.log('[VideoPlayer] Sesión de video anulada antes de append:', i);
+            return;
+          }
           console.log('[VideoPlayer] Appending to MPV playlist:', rawUrls.value[i]);
           await command('loadfile', [rawUrls.value[i], 'append']);
         }
         
+        if (store.mpvSessionToken !== currentSessionToken) return;
         await setProperty('pause', false);
         setTimeout(() => {
-          playlistLoaded = true;
+          if (store.mpvSessionToken === currentSessionToken) {
+            playlistLoaded = true;
+          }
         }, 400);
       } catch (error) {
         console.error('[VideoPlayer] libmpv failed to load playlist:', error);
@@ -287,6 +297,7 @@ onMounted(() => {
 });
 
 onUnmounted(async () => {
+  store.nextMpvSession(); // Invalidar inmediatamente cualquier promesa de playlist en vuelo
   try {
     // Solo pausar MPV si aún estamos en modo video (ej. un modal forzó el desmontaje).
     // Si isVideoMode ya es false (salida normal), App.vue ya está recargando el bg video

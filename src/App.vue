@@ -240,11 +240,11 @@ import SpecsGrid from './components/SpecsGrid.vue';
 // Direct imports for instant modal transition
 import AdminModal from './components/Modals/AdminModal.vue';
 import PasswordModal from './components/Modals/PasswordModal.vue';
+import FirstStartModal from './components/Modals/FirstStartModal.vue';
 
 // Lazy loaded components (Inactivity Video & Heavy Modals)
 const VideoPlayer = defineAsyncComponent(() => import('./components/VideoPlayer.vue'));
 const SpecsModal = defineAsyncComponent(() => import('./components/Modals/SpecsModal.vue'));
-const FirstStartModal = defineAsyncComponent(() => import('./components/Modals/FirstStartModal.vue'));
 
 const store = useSpecsStore();
 if (typeof window !== 'undefined') {
@@ -491,6 +491,7 @@ const playBgVideoNative = async () => {
   }
 
   const currentToken = ++bgLoadToken;
+  const mpvSessionToken = store.nextMpvSession();
   lastMpvBgPath = rawBgPath;
   showStaticFallback.value = true;
   isBgVideoLoading.value = false; // NO escuchar time-pos hasta que el reemplazo de archivo haya finalizado en MPV
@@ -498,14 +499,18 @@ const playBgVideoNative = async () => {
   console.log('[App] Playing background video on libmpv:', rawBgPath);
   try {
     await setProperty('pause', true).catch(() => {});
+    if (store.mpvSessionToken !== mpvSessionToken || store.isVideoMode) return;
     await command('loadfile', [rawBgPath, 'replace']);
-    await setProperty('keep-open', 'yes');
-    await setProperty('loop-file', 'inf');
-    await setProperty('panscan', 1.0);
-    await setProperty('pause', false);
+    if (store.mpvSessionToken !== mpvSessionToken || store.isVideoMode) return;
+    await Promise.all([
+      setProperty('keep-open', 'yes'),
+      setProperty('loop-file', 'inf'),
+      setProperty('panscan', 1.0),
+      setProperty('pause', false)
+    ]);
 
     // Si durante el proceso asíncrono cambió el token o entramos en modo video, abortar
-    if (currentToken !== bgLoadToken || store.isVideoMode || store.isModalOpen) return;
+    if (currentToken !== bgLoadToken || store.mpvSessionToken !== mpvSessionToken || store.isVideoMode || store.isModalOpen) return;
 
     // AHORA que MPV cargó el nuevo archivo background.mp4 y lo despausó, activamos isBgVideoLoading
     // para escuchar ÚNICAMENTE los fotogramas del nuevo video.
@@ -526,6 +531,10 @@ const playBgVideoNative = async () => {
 };
 
 const pauseInfoVideos = async () => {
+  if (bgVideoTimeout) {
+    clearTimeout(bgVideoTimeout);
+    bgVideoTimeout = null;
+  }
   if (store.isMpvReady) {
     await setProperty('pause', true).catch(() => {});
   }
@@ -782,6 +791,10 @@ watch(() => store.isVideoMode, (isVideo) => {
     }
   } else {
     // Salir de modo video:
+    if (bgVideoTimeout) {
+      clearTimeout(bgVideoTimeout);
+      bgVideoTimeout = null;
+    }
     lastMpvBgPath = ''; // Limpiar la ruta guardada para obligar a MPV a recargar background.mp4
     showStaticFallback.value = true;
     renderVideoView.value = false;
@@ -1064,7 +1077,7 @@ onMounted(async () => {
     // 2. Verificar estado de reproducción de videos
     checkVideosPlayState();
 
-    // 3. Monitoreo y Guardia de Memoria RAM (cada 10s con cooldown de 10 minutos para el reinicio)
+    // 3. Monitoreo y Guardia de Memoria RAM (cada 10s)
     if (window.__TAURI_INTERNALS__) {
       tauriAPI.getMemoryStatus().then((mem) => {
         if (!mem) return;

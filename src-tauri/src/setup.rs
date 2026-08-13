@@ -69,11 +69,19 @@ fn disable_problematic_audio_services() {
     #[cfg(windows)]
     {
         for service in ["iGoSwServer", "IntelliGoAudioService", "IntelliGo"] {
+            // 1. Anular las acciones de autorecuperación del Servicio en Windows SCM (evita que Windows lo resucite)
+            let _ = Command::new("sc")
+                .args(["failure", service, "reset=", "0", "actions=", ""])
+                .stdout(Stdio::null()).stderr(Stdio::null())
+                .creation_flags(NO_WINDOW)
+                .status();
+            // 2. Deshabilitar el inicio del servicio
             let _ = Command::new("sc")
                 .args(["config", service, "start=", "disabled"])
                 .stdout(Stdio::null()).stderr(Stdio::null())
                 .creation_flags(NO_WINDOW)
                 .status();
+            // 3. Detener el servicio activo
             let _ = Command::new("sc")
                 .args(["stop", service])
                 .stdout(Stdio::null()).stderr(Stdio::null())

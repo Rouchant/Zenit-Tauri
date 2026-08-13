@@ -325,11 +325,10 @@ async fn start_idle_monitor(app: AppHandle, state: tauri::State<'_, AppState>) {
     }
 
     let handle = tauri::async_runtime::spawn(async move {
-        const IDLE_LIMIT_MS: u32 = 90_000; // 20 segundos para pruebas
+        const IDLE_LIMIT_MS: u64 = 90_000;
         const POLL_INTERVAL: u64 = 2; // Cada 2 segundos
-        const ACTIVITY_THRESHOLD: u32 = 3_000; // 3 segundos de actividad para detectar "retorno"
+        const ACTIVITY_THRESHOLD: u64 = 3_000; // 3 segundos de actividad para detectar "retorno"
 
-        let start_tick = unsafe { windows_sys::Win32::System::SystemInformation::GetTickCount() };
         let mut is_restored = false;
 
         // Pequeño margen de seguridad para evitar falsos positivos por latencia en VMs
@@ -337,9 +336,9 @@ async fn start_idle_monitor(app: AppHandle, state: tauri::State<'_, AppState>) {
 
         loop {
             tokio::time::sleep(tokio::time::Duration::from_secs(POLL_INTERVAL)).await;
-            let idle_time = get_system_idle_time(start_tick);
+            let idle_time = get_system_idle_time();
 
-            // Si el PC está inactivo por más de 3 min, restaurar Zenit (Modo Kiosk Activo)
+            // Si el PC está inactivo por el tiempo límite, restaurar Zenit (Modo Kiosk Activo)
             if !is_restored && idle_time >= IDLE_LIMIT_MS {
                 // Notificar al frontend ANTES de restaurar para que cambie a modo video mientras está oculto
                 let _ = app_clone.emit("trigger-inactivity-video", ());
@@ -350,7 +349,7 @@ async fn start_idle_monitor(app: AppHandle, state: tauri::State<'_, AppState>) {
                 let _ = restore_app_logic(&app_clone, false).await;
                 is_restored = true;
                 // Pequeña espera para evitar detectar la actividad propia de la restauración
-                tokio::time::sleep(tokio::time::Duration::from_secs(6)).await;
+                tokio::time::sleep(tokio::time::Duration::from_secs(3)).await;
             }
 
             // Si ya se restauró pero detectamos actividad real del cliente, salir del loop
@@ -452,24 +451,24 @@ async fn start_restore_monitor(app: AppHandle, state: tauri::State<'_, AppState>
 }
 
 /// Calcula el tiempo en milisegundos desde la última interacción del usuario con el SO.
-fn get_system_idle_time(start_tick: u32) -> u32 {
-    let current = unsafe { windows_sys::Win32::System::SystemInformation::GetTickCount() };
+/// Utiliza GetTickCount64 de Win32 API para prevenir el desbordamiento (rollover) de 49.7 días.
+fn get_system_idle_time() -> u64 {
+    let current_64 = unsafe { windows_sys::Win32::System::SystemInformation::GetTickCount64() };
     let mut lii = LASTINPUTINFO {
         cbSize: std::mem::size_of::<LASTINPUTINFO>() as u32,
         dwTime: 0,
     };
 
-    let last_input = unsafe {
+    let last_input_32 = unsafe {
         if GetLastInputInfo(&mut lii) != 0 {
             lii.dwTime
         } else {
-            current
+            current_64 as u32
         }
     };
 
-    if last_input < start_tick {
-        current.wrapping_sub(start_tick)
-    } else {
-        current.wrapping_sub(last_input)
-    }
+    // La resta envuelta en 32 bits (current_32.wrapping_sub(last_input_32)) es matemáticamente
+    // exacta para cualquier intervalo de inactividad de hasta 49.7 días continuos.
+    let current_32 = current_64 as u32;
+    current_32.wrapping_sub(last_input_32) as u64
 }

@@ -734,9 +734,9 @@ fn sanitize_runaway_audio_processes() {
             || clean_name.contains("fortemedia")
             || clean_name.contains("nahimic");
 
-        if is_target_audio_process && memory_mb > 1500 {
+        if is_target_audio_process && memory_mb > 800 {
             log::warn!(
-                "[RAM Sanitizer] Proceso de audio con fuga masiva detectado: '{}' (PID {}) consumiendo {} MB. Eliminando proceso descontrolado...",
+                "[RAM Sanitizer] Proceso de audio con fuga detectado: '{}' (PID {}) consumiendo {} MB. Eliminando proceso...",
                 raw_name,
                 pid,
                 memory_mb

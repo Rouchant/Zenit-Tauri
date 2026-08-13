@@ -81,6 +81,12 @@ export const useSpecsStore = defineStore('specs', () => {
   const mpvDuration = ref(0);
   const mpvPaused = ref(false);
   const lastMpvEvent = ref(null);
+  const mpvSessionToken = ref(0);
+
+  const nextMpvSession = () => {
+    mpvSessionToken.value++;
+    return mpvSessionToken.value;
+  };
 
   const handleGlobalMpvEvent = (mpvEvent) => {
     if (!mpvEvent) return;
@@ -494,6 +500,8 @@ export const useSpecsStore = defineStore('specs', () => {
     mpvDuration,
     mpvPaused,
     lastMpvEvent,
+    mpvSessionToken,
+    nextMpvSession,
     handleGlobalMpvEvent,
     resolvedPaths,
     CONFIG,
