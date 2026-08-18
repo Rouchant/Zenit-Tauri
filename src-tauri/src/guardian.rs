@@ -2,7 +2,7 @@ use windows_sys::Win32::Foundation::*;
 use windows_sys::Win32::UI::WindowsAndMessaging::*;
 use windows_sys::Win32::UI::Input::KeyboardAndMouse::*;
 use windows_sys::Win32::System::LibraryLoader::GetModuleHandleW;
-use windows_sys::Win32::System::Threading::{GetCurrentThread, GetCurrentThreadId, SetThreadPriority, THREAD_PRIORITY_HIGHEST};
+use windows_sys::Win32::System::Threading::{GetCurrentProcess, GetCurrentThread, GetCurrentThreadId, SetThreadPriority, TerminateProcess, THREAD_PRIORITY_HIGHEST};
 use windows_sys::Win32::System::Power::{SetThreadExecutionState, ES_CONTINUOUS, ES_DISPLAY_REQUIRED, ES_SYSTEM_REQUIRED};
 use std::sync::atomic::{AtomicU32, AtomicIsize, AtomicBool, Ordering};
 use std::sync::Mutex;
@@ -101,6 +101,15 @@ static RSHIFT_DOWN: AtomicBool = AtomicBool::new(false);
 static LALT_DOWN: AtomicBool = AtomicBool::new(false);
 static RALT_DOWN: AtomicBool = AtomicBool::new(false);
 
+// RegisterHotKey IDs
+const HOTKEY_ID_Z: i32 = 1001;
+const HOTKEY_ID_R: i32 = 1002;
+const MOD_ALT: u32 = 0x0001;
+const MOD_CONTROL: u32 = 0x0002;
+const MOD_SHIFT: u32 = 0x0004;
+const MOD_NOREPEAT: u32 = 0x4000;
+const WM_HOTKEY: u32 = 0x0312;
+
 pub fn start_keyboard_guardian() {
     // Si el hook ya está activo, evitar doble registro
     if HOOK_HANDLE.load(Ordering::SeqCst) != 0 {
@@ -124,15 +133,61 @@ pub fn start_keyboard_guardian() {
 
             if hook != 0 {
                 HOOK_HANDLE.store(hook, Ordering::SeqCst);
-                debug!("[Guardian] Hook de teclado registrado exitosamente con prioridad alta.");
-                let mut msg: MSG = std::mem::zeroed();
-                while GetMessageW(&mut msg, 0, 0, 0) != 0 {
-                    TranslateMessage(&msg);
-                    DispatchMessageW(&msg);
-                }
+                info!("[Guardian] Hook de teclado WH_KEYBOARD_LL registrado exitosamente con prioridad alta.");
             } else {
                 error!("[Guardian] Error {}: fallo al registrar hook de teclado.", GetLastError());
             }
+
+            // Registrar HotKeys de Emergencia Nivel Kernel (Inmunidad contra desenganche por timeout)
+            let mod_flags = MOD_CONTROL | MOD_ALT | MOD_SHIFT | MOD_NOREPEAT;
+            UnregisterHotKey(0, HOTKEY_ID_Z);
+            UnregisterHotKey(0, HOTKEY_ID_R);
+
+            if RegisterHotKey(0, HOTKEY_ID_Z, mod_flags, VK_Z as u32) != 0 {
+                info!("[Guardian Kernel] RegisterHotKey para Ctrl+Alt+Shift+Z registrado exitosamente.");
+            } else {
+                let err = GetLastError();
+                if err == 1409 {
+                    debug!("[Guardian Kernel] RegisterHotKey Z ya registrado.");
+                } else {
+                    error!("[Guardian Kernel] Error al registrar RegisterHotKey Z: {}", err);
+                }
+            }
+
+            if RegisterHotKey(0, HOTKEY_ID_R, mod_flags, 0x52) != 0 { // 0x52 = VK_R
+                info!("[Guardian Kernel] RegisterHotKey para Ctrl+Alt+Shift+R registrado exitosamente.");
+            } else {
+                let err = GetLastError();
+                if err == 1409 {
+                    debug!("[Guardian Kernel] RegisterHotKey R ya registrado.");
+                } else {
+                    error!("[Guardian Kernel] Error al registrar RegisterHotKey R: {}", err);
+                }
+            }
+
+            let mut msg: MSG = std::mem::zeroed();
+            while GetMessageW(&mut msg, 0, 0, 0) != 0 {
+                if msg.message == WM_HOTKEY {
+                    let hotkey_id = msg.wParam as i32;
+                    if hotkey_id == HOTKEY_ID_Z {
+                        info!("[Guardian Kernel HotKey] Atajo de emergencia Ctrl+Alt+Shift+Z recibido vía Kernel WM_HOTKEY. Terminando proceso inmediatamente...");
+                        TerminateProcess(GetCurrentProcess(), 0);
+                    } else if hotkey_id == HOTKEY_ID_R {
+                        info!("[Guardian Kernel HotKey] Atajo de reinicio Ctrl+Alt+Shift+R recibido vía Kernel WM_HOTKEY. Reiniciando aplicación...");
+                        if let Ok(guard) = APP_HANDLE.lock() {
+                            if let Some(ref handle) = *guard {
+                                crate::commands::window::do_restart(handle);
+                            }
+                        }
+                    }
+                }
+                TranslateMessage(&msg);
+                DispatchMessageW(&msg);
+            }
+
+            // Limpieza al salir del loop
+            UnregisterHotKey(0, HOTKEY_ID_Z);
+            UnregisterHotKey(0, HOTKEY_ID_R);
         }
     });
 }
@@ -142,12 +197,14 @@ pub fn stop_keyboard_guardian() {
     if hook != 0 {
         unsafe { 
             UnhookWindowsHookEx(hook);
+            UnregisterHotKey(0, HOTKEY_ID_Z);
+            UnregisterHotKey(0, HOTKEY_ID_R);
             // Enviar WM_QUIT al hilo del guardian para que salga del loop de GetMessageW limpiamente
             let tid = GUARDIAN_THREAD_ID.swap(0, Ordering::SeqCst);
             if tid != 0 {
                 PostThreadMessageW(tid, WM_QUIT, 0, 0);
             }
-            info!("[Guardian] Hook de teclado desinstalado.");
+            info!("[Guardian] Hook de teclado y RegisterHotKeys desinstalados.");
         }
     }
 }
@@ -193,7 +250,6 @@ unsafe extern "system" fn low_level_keyboard_proc(n_code: i32, w_param: WPARAM, 
     }
 
     // Resetear el estado WAS_BLOCKED al soltar modificadores y suprimir Alt KeyUp si se bloqueó un atajo
-    // (evita que el SO active el menú de sistema SC_KEYMENU / menú contextual al soltar Alt tras Alt+F4)
     if is_up && WAS_BLOCKED.load(Ordering::SeqCst) {
         if matches!(key, VK_LMENU | VK_RMENU | VK_MENU | VK_LWIN | VK_RWIN | VK_LCONTROL | VK_RCONTROL) {
             WAS_BLOCKED.store(false, Ordering::SeqCst);
@@ -209,12 +265,12 @@ unsafe extern "system" fn low_level_keyboard_proc(n_code: i32, w_param: WPARAM, 
         let shift = LSHIFT_DOWN.load(Ordering::SeqCst) || RSHIFT_DOWN.load(Ordering::SeqCst) || (GetAsyncKeyState(VK_LSHIFT as i32) < 0) || (GetAsyncKeyState(VK_RSHIFT as i32) < 0);
         let alt = is_sys || LALT_DOWN.load(Ordering::SeqCst) || RALT_DOWN.load(Ordering::SeqCst) || (GetAsyncKeyState(VK_LMENU as i32) < 0) || (GetAsyncKeyState(VK_RMENU as i32) < 0) || ((kbd_struct.flags & LLKHF_ALTDOWN) != 0);
 
-        // 0. Atajos de Emergencia Nativa Nivel Kernel
+        // 0. Atajos de Emergencia Nativa Nivel Kernel (Backup directo por si WM_HOTKEY se retrasa)
         if ctrl && alt && shift {
             if key == VK_Z {
                 if is_down {
-                    info!("[Guardian Kernel] Atajo de emergencia Ctrl+Alt+Shift+Z presionado. Forzando cierre del proceso inmediatamente...");
-                    windows_sys::Win32::System::Threading::ExitProcess(0);
+                    info!("[Guardian Kernel] Atajo de emergencia Ctrl+Alt+Shift+Z presionado. Terminando proceso inmediatamente...");
+                    TerminateProcess(GetCurrentProcess(), 0);
                 }
                 return 1;
             }
@@ -231,8 +287,13 @@ unsafe extern "system" fn low_level_keyboard_proc(n_code: i32, w_param: WPARAM, 
             }
         }
 
-        // 1. Bypass para Admin (Copy, Paste, Cut, Task Manager)
-        if ctrl && !win && !alt && (key == VK_C || key == VK_V || key == VK_X || (shift && key == VK_ESCAPE)) {
+        // 1. Bypass para Admin y Task Manager (Ctrl+Shift+Esc, Copy, Paste, Cut)
+        if ctrl && shift && key == VK_ESCAPE {
+            // Permitir abrir Administrador de Tareas en emergencias
+            return CallNextHookEx(current_hook, n_code, w_param, l_param);
+        }
+
+        if ctrl && !win && !alt && (key == VK_C || key == VK_V || key == VK_X) {
             return CallNextHookEx(current_hook, n_code, w_param, l_param);
         }
 
@@ -241,7 +302,7 @@ unsafe extern "system" fn low_level_keyboard_proc(n_code: i32, w_param: WPARAM, 
         let should_block = (alt && matches!(key, VK_ESCAPE | VK_F4 | VK_SPACE))
             || (win && key != VK_LWIN && key != VK_RWIN && matches!(key, VK_L | VK_I | VK_X))
             || (ctrl && ((key == VK_ESCAPE && !shift) || (win && matches!(key, VK_F4))))
-            || (key == VK_APPS || (shift && key == VK_ESCAPE))
+            || (key == VK_APPS)
             || is_dev_shortcut;
 
         if should_block {
@@ -255,3 +316,4 @@ unsafe extern "system" fn low_level_keyboard_proc(n_code: i32, w_param: WPARAM, 
 
     CallNextHookEx(current_hook, n_code, w_param, l_param)
 }
+

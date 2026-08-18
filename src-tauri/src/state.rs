@@ -4,10 +4,19 @@ use tauri::async_runtime::JoinHandle;
 use std::path::PathBuf;
 use tauri::{AppHandle, Manager};
 
+#[derive(Debug, Clone, Copy, PartialEq, Eq, serde::Serialize, serde::Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub enum AppMode {
+    InfoView,
+    InactivityVideo,
+    ModalOpen,
+}
+
 pub struct AppState {
     pub maximize_timer: Arc<Mutex<Option<JoinHandle<()>>>>,
     pub restore_timer: Arc<Mutex<Option<JoinHandle<()>>>>,
     pub enforce_always_on_top: Arc<Mutex<bool>>,
+    pub current_mode: Arc<Mutex<AppMode>>,
 }
 
 /// Devuelve la ruta del directorio userData de la app

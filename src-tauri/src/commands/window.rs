@@ -1,5 +1,6 @@
 use crate::state::AppState;
 use std::sync::Arc;
+use std::sync::atomic::Ordering;
 use tauri::{AppHandle, Emitter, LogicalPosition, LogicalSize, Manager};
 use windows_sys::Win32::Foundation::*;
 use windows_sys::Win32::UI::Input::KeyboardAndMouse::*;
@@ -29,12 +30,13 @@ pub async fn minimize_app(
         *guard = false;
     }
 
-    // 1. Minimizar la ventana principal y notificar al frontend
+    // 1. Posicionar, mostrar y enfocar la ventana flotante de retorno PRIMERO (mientras main sigue arriba)
+    // Esto garantiza que el foco pase directamente de main a return sin caer en el escritorio o apps de fondo.
+    position_return_window(&main_window, &return_window, store, brand).await?;
+
+    // 2. Minimizar la ventana principal y notificar al frontend
     main_window.minimize().map_err(|e| e.to_string())?;
     let _ = app.emit("pause-info-videos", ());
-
-    // 2. Posicionar y configurar la ventana flotante de retorno
-    position_return_window(&main_window, &return_window, store, brand).await?;
 
     // 3. Iniciar el monitor de inactividad en segundo plano (vía Win32 API)
     start_idle_monitor(app.clone(), state.clone()).await;
@@ -61,33 +63,27 @@ pub fn quit_app(app: AppHandle) {
     app.exit(0);
 }
 
-use std::sync::atomic::{AtomicBool, Ordering};
 
-static IS_RESTARTING: AtomicBool = AtomicBool::new(false);
 
 /// Reinicia limpiamente la aplicación (protegido contra invocaciones simultáneas/duplicadas).
 pub fn do_restart(app: &AppHandle) {
-    if IS_RESTARTING.swap(true, Ordering::SeqCst) {
-        log::warn!("[Zenit] Ignorando llamada duplicada a restart_app.");
-        return;
-    }
-    log::info!("[Zenit] Reiniciando la aplicación limpiamente...");
+    log::info!("[Zenit] Reiniciando la aplicación de forma limpia...");
     crate::guardian::ALLOW_CLOSE.store(true, Ordering::SeqCst);
-    crate::guardian::stop_keyboard_guardian();
 
     #[cfg(windows)]
     {
         if let Ok(exe_path) = std::env::current_exe() {
             use std::os::windows::process::CommandExt;
             const CREATE_NO_WINDOW: u32 = 0x08000000;
-            let exe_str = exe_path.to_str().unwrap_or_default().replace("'", "''");
-            let ps_cmd = format!("Start-Sleep -Milliseconds 600; Start-Process '{}'", exe_str);
+            let exe_str = exe_path.to_str().unwrap_or_default();
+            let ps_cmd = format!("Start-Sleep -Milliseconds 400; Start-Process -FilePath \"{}\"", exe_str);
             let _ = std::process::Command::new("powershell")
                 .args(["-NoProfile", "-WindowStyle", "Hidden", "-Command", &ps_cmd])
                 .creation_flags(CREATE_NO_WINDOW)
                 .spawn();
-            app.exit(0);
-            return;
+            unsafe {
+                windows_sys::Win32::System::Threading::ExitProcess(0);
+            }
         }
     }
 
@@ -174,34 +170,64 @@ pub async fn restore_app_logic(app: &AppHandle, emit_play_info: bool) -> Result<
         *guard = true;
     }
 
-    // 1. Ocultar la ventana flotante de retorno de inmediato para evitar el bug del compositor GPU de WebView2 (parpadeos/fondos blancos)
+    // 1. Restaurar y traer la ventana principal al primer plano PRIMERO
+    // Esto evita que Windows transfiera el foco al escritorio o apps de abajo durante la transición.
+    let res_unmin = main_window.unminimize();
+    let res_show = main_window.show();
+
+    // En configuración multi-monitor (ej. ZenBook Duo o pantalla secundaria), NO enviar la tecla ESC
+    // ni forzar el foco agresivamente para evitar sacar de pantalla completa reproductores de video (YouTube/VLC) en el segundo monitor.
+    if get_monitor_count() <= 1 {
+        unsafe {
+            keybd_event(0x1B, 0, 0, 0); // Presionar ESC (VK_ESCAPE = 0x1B)
+            keybd_event(0x1B, 0, 0x0002, 0); // Soltar ESC
+        }
+
+        if let Ok(hwnd) = main_window.hwnd() {
+            force_foreground_window(hwnd.0 as HWND);
+        }
+        let _ = main_window.set_focus();
+    }
+
+    // 2. Ocultar la ventana flotante de retorno AHORA que main ya está visible
     let _ = return_window.hide();
     let _ = return_window.set_always_on_top(false);
 
     if emit_play_info {
-        // 2. Notificar al frontend para que comience a montar los videos de fondo (al volver a Specs)
+        // 3. Notificar al frontend para que comience a montar los videos de fondo
         let _ = app.emit("play-info-videos", ());
-        // 3. Esperar 100ms para que Vue procese el DOM
-        tokio::time::sleep(tokio::time::Duration::from_millis(100)).await;
     }
-
-    // 4. Restaurar la ventana principal
-    let res_unmin = main_window.unminimize();
-    let res_show = main_window.show();
-
-    // TRUCO ULTRA AGRESIVO: Simular la tecla ESCAPE
-    // Esto cierra el Menú Inicio o cualquier menú contextual que esté robando el foco.
-    unsafe {
-        keybd_event(0x1B, 0, 0, 0); // Presionar ESC (VK_ESCAPE = 0x1B)
-        keybd_event(0x1B, 0, 0x0002, 0); // Soltar ESC
-    }
-
-    let _ = main_window.set_focus();
 
     res_unmin.map_err(|e| e.to_string())?;
     res_show.map_err(|e| e.to_string())?;
 
     Ok(())
+}
+
+#[link(name = "user32")]
+unsafe extern "system" {
+    fn AttachThreadInput(idAttach: u32, idAttachTo: u32, fAttach: i32) -> i32;
+}
+
+/// Fuerza que una ventana pase al primer plano en Windows sin ser bloqueada por la restricción de robo de foco.
+/// Utiliza AttachThreadInput para vincular temporalmente los hilos de entrada y evitar delegar foco al Menú Inicio.
+pub fn force_foreground_window(hwnd: HWND) {
+    unsafe {
+        let foreground_hwnd = GetForegroundWindow();
+        let current_thread_id = windows_sys::Win32::System::Threading::GetCurrentThreadId();
+        if foreground_hwnd != 0 {
+            let foreground_thread_id = GetWindowThreadProcessId(foreground_hwnd, std::ptr::null_mut());
+            if foreground_thread_id != 0 && foreground_thread_id != current_thread_id {
+                AttachThreadInput(current_thread_id, foreground_thread_id, 1);
+                SetForegroundWindow(hwnd);
+                BringWindowToTop(hwnd);
+                AttachThreadInput(current_thread_id, foreground_thread_id, 0);
+                return;
+            }
+        }
+        SetForegroundWindow(hwnd);
+        BringWindowToTop(hwnd);
+    }
 }
 
 /// Configura la posición de la ventana de retorno en el lateral derecho (centrado verticalmente) del monitor principal.
@@ -264,7 +290,10 @@ async fn position_return_window(
 
     ret.show().map_err(|e| e.to_string())?;
     ret.set_always_on_top(true).map_err(|e| e.to_string())?;
-    let _ = ret.set_focus(); // Forzar foco activo en la ventana de retorno para evitar que Windows lo delegue al botón de Inicio
+    if let Ok(hwnd) = ret.hwnd() {
+        force_foreground_window(hwnd.0 as HWND);
+    }
+    let _ = ret.set_focus(); // Forzar foco activo en la ventana de retorno
     if let Ok(hwnd) = ret.hwnd() {
         unsafe {
             SetWindowPos(
@@ -274,7 +303,7 @@ async fn position_return_window(
                 0,
                 0,
                 0,
-                SWP_NOMOVE | SWP_NOSIZE | SWP_SHOWWINDOW, // Eliminado SWP_NOACTIVATE para activar la ventana nativamente
+                SWP_NOMOVE | SWP_NOSIZE | SWP_SHOWWINDOW,
             );
         }
     }
@@ -452,7 +481,7 @@ async fn start_restore_monitor(app: AppHandle, state: tauri::State<'_, AppState>
 
 /// Calcula el tiempo en milisegundos desde la última interacción del usuario con el SO.
 /// Utiliza GetTickCount64 de Win32 API para prevenir el desbordamiento (rollover) de 49.7 días.
-fn get_system_idle_time() -> u64 {
+pub fn get_system_idle_time() -> u64 {
     let current_64 = unsafe { windows_sys::Win32::System::SystemInformation::GetTickCount64() };
     let mut lii = LASTINPUTINFO {
         cbSize: std::mem::size_of::<LASTINPUTINFO>() as u32,
@@ -471,4 +500,18 @@ fn get_system_idle_time() -> u64 {
     // exacta para cualquier intervalo de inactividad de hasta 49.7 días continuos.
     let current_32 = current_64 as u32;
     current_32.wrapping_sub(last_input_32) as u64
+}
+
+#[cfg(windows)]
+pub fn get_monitor_count() -> i32 {
+    unsafe {
+        windows_sys::Win32::UI::WindowsAndMessaging::GetSystemMetrics(
+            windows_sys::Win32::UI::WindowsAndMessaging::SM_CMONITORS,
+        )
+    }
+}
+
+#[cfg(not(windows))]
+pub fn get_monitor_count() -> i32 {
+    1
 }

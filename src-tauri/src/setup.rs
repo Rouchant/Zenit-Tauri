@@ -56,47 +56,9 @@ pub fn run_system_setup() {
         let _ = Command::new("powercfg").args(["/hibernate", "off"])
             .stdout(Stdio::null()).stderr(Stdio::null())
             .creation_flags(NO_WINDOW).status();
-
-        // Deshabilitar y detener servicios de audio secundarios con fugas masivas conocidas (iGoSwServer / IntelliGo)
-        disable_problematic_audio_services();
     });
 
     disable_power_throttling();
-}
-
-/// Deshabilita y detiene los servicios nativos de audio en Windows conocidos por fugas masivas de memoria RAM (iGoSwServer / IntelliGo).
-fn disable_problematic_audio_services() {
-    #[cfg(windows)]
-    {
-        for service in ["iGoSwServer", "IntelliGoAudioService", "IntelliGo"] {
-            // 1. Anular las acciones de autorecuperación del Servicio en Windows SCM (evita que Windows lo resucite)
-            let _ = Command::new("sc")
-                .args(["failure", service, "reset=", "0", "actions=", ""])
-                .stdout(Stdio::null()).stderr(Stdio::null())
-                .creation_flags(NO_WINDOW)
-                .status();
-            // 2. Deshabilitar el inicio del servicio
-            let _ = Command::new("sc")
-                .args(["config", service, "start=", "disabled"])
-                .stdout(Stdio::null()).stderr(Stdio::null())
-                .creation_flags(NO_WINDOW)
-                .status();
-            // 3. Detener el servicio activo
-            let _ = Command::new("sc")
-                .args(["stop", service])
-                .stdout(Stdio::null()).stderr(Stdio::null())
-                .creation_flags(NO_WINDOW)
-                .status();
-        }
-
-        for process_exe in ["iGoSwServer.exe", "iGoAudioService.exe"] {
-            let _ = Command::new("taskkill")
-                .args(["/F", "/IM", process_exe])
-                .stdout(Stdio::null()).stderr(Stdio::null())
-                .creation_flags(NO_WINDOW)
-                .status();
-        }
-    }
 }
 
 /// Desactiva el Power Throttling / EcoQoS (Modo Eficiencia) de Windows 11 para evitar que las ventanas en segundo plano entren en suspensión.

@@ -654,12 +654,57 @@ pub struct MemoryStatus {
     pub is_critical: bool,
 }
 
+use std::sync::atomic::{AtomicU64, Ordering};
+use std::time::{SystemTime, UNIX_EPOCH};
+
+static LAST_FRONTEND_HEARTBEAT: AtomicU64 = AtomicU64::new(0);
+
+/// Recibe latidos periódicos del frontend (JS) para verificar la salud del hilo de la UI.
+#[tauri::command]
+pub fn frontend_heartbeat() {
+    let now = SystemTime::now().duration_since(UNIX_EPOCH).unwrap_or_default().as_secs();
+    LAST_FRONTEND_HEARTBEAT.store(now, Ordering::SeqCst);
+}
+
+pub fn get_last_heartbeat() -> u64 {
+    LAST_FRONTEND_HEARTBEAT.load(Ordering::SeqCst)
+}
+
+use crate::state::{AppMode, AppState};
+use tauri::Emitter;
+
+#[tauri::command]
+pub async fn set_app_mode(
+    state: tauri::State<'_, AppState>,
+    app_handle: tauri::AppHandle,
+    mode: AppMode,
+) -> Result<(), String> {
+    let mut guard = state.current_mode.lock().await;
+    if *guard != mode {
+        *guard = mode;
+        log::info!("[Rust Master Engine] AppMode cambiado a: {:?}", mode);
+        let _ = app_handle.emit("app-mode-changed", mode);
+    }
+    Ok(())
+}
+
+#[tauri::command]
+pub async fn notify_user_activity(
+    state: tauri::State<'_, AppState>,
+    app_handle: tauri::AppHandle,
+) -> Result<(), String> {
+    let mut guard = state.current_mode.lock().await;
+    if *guard == AppMode::InactivityVideo {
+        *guard = AppMode::InfoView;
+        log::info!("[Rust Master Engine] Actividad de usuario detectada. Retornando a InfoView.");
+        let _ = app_handle.emit("app-mode-changed", AppMode::InfoView);
+    }
+    Ok(())
+}
+
 /// Obtiene el estado actual de la memoria RAM del sistema.
 #[tauri::command]
 pub fn get_memory_status() -> MemoryStatus {
-    // Sanitizar de forma proactiva procesos de audio descontrolados (> 600 MB)
-    sanitize_runaway_audio_processes();
-
     let mut sys = System::new_with_specifics(
         RefreshKind::new().with_memory(MemoryRefreshKind::everything())
     );
@@ -702,49 +747,8 @@ pub fn get_memory_status() -> MemoryStatus {
     }
 }
 
-/// Fuerza la liberación inmediata del Working Set de la aplicación en Windows
-/// y liquida automáticamente procesos de audio en segundo plano que presenten fugas (> 1.5 GB / 1500 MB).
 #[tauri::command]
-pub fn trim_memory() {
-    #[cfg(windows)]
-    unsafe {
-        use windows_sys::Win32::System::Threading::{GetCurrentProcess, SetProcessWorkingSetSize};
-        let _ = SetProcessWorkingSetSize(GetCurrentProcess(), usize::MAX, usize::MAX);
-    }
-
-    sanitize_runaway_audio_processes();
-}
-
-fn sanitize_runaway_audio_processes() {
-    use sysinfo::ProcessRefreshKind;
-    let mut sys = System::new();
-    sys.refresh_processes_specifics(ProcessRefreshKind::new().with_memory());
-
-    for (pid, process) in sys.processes() {
-        let raw_name = process.name();
-        let clean_name = raw_name.to_lowercase().replace(" ", "").replace("_", "").replace("-", "");
-        let memory_mb = process.memory() / 1024 / 1024;
-
-        // Detectar si AudioSWServer / iGoSwServer ("IntelliGo Audio SW Server"), DTS, audiodg u otros servicios con fugas conocidas exceden 1500 MB de RAM
-        let is_target_audio_process = clean_name.contains("audioswserver")
-            || clean_name.contains("igoswserver")
-            || clean_name.contains("intelligo")
-            || clean_name.contains("dtsaudio")
-            || clean_name.contains("audiodg")
-            || clean_name.contains("fortemedia")
-            || clean_name.contains("nahimic");
-
-        if is_target_audio_process && memory_mb > 800 {
-            log::warn!(
-                "[RAM Sanitizer] Proceso de audio con fuga detectado: '{}' (PID {}) consumiendo {} MB. Eliminando proceso...",
-                raw_name,
-                pid,
-                memory_mb
-            );
-            let _ = process.kill();
-        }
-    }
-}
+pub fn trim_memory() {}
 
 #[cfg(not(windows))]
 fn get_wmi_details() -> Result<WmiData, Box<dyn std::error::Error>> {

@@ -90,6 +90,13 @@ const onVideoError = async (reason = 'unknown') => {
   }
 };
 
+const withTimeout = (promise, ms = 1500) => {
+  return Promise.race([
+    promise,
+    new Promise((_, reject) => setTimeout(() => reject(new Error('IPC timeout')), ms))
+  ]);
+};
+
 async function playVideo() {
   if (rawUrls.value.length === 0) return;
   
@@ -123,14 +130,14 @@ async function playVideo() {
     if (store.isMpvReady) {
       const currentSessionToken = store.nextMpvSession();
       try {
-        await setProperty('keep-open', 'no');
-        await setProperty('loop-file', 'no');
-        await setProperty('panscan', 1.0); // Forzar a recortar/escalar y rellenar pantalla al 100% (elimina barras negras)
+        await withTimeout(setProperty('keep-open', 'no')).catch(() => {});
+        await withTimeout(setProperty('loop-file', 'no')).catch(() => {});
+        await withTimeout(setProperty('panscan', 1.0)).catch(() => {});
         
         if (store.mpvSessionToken !== currentSessionToken) return;
 
         // Reemplazar la lista actual por la primera
-        await command('loadfile', [firstPath, 'replace']);
+        await withTimeout(command('loadfile', [firstPath, 'replace']));
         
         // Agregar el resto de los videos al playlist de MPV para transición fluida y sin pantalla negra
         for (let i = 1; i < rawUrls.value.length; i++) {
@@ -139,11 +146,11 @@ async function playVideo() {
             return;
           }
           console.log('[VideoPlayer] Appending to MPV playlist:', rawUrls.value[i]);
-          await command('loadfile', [rawUrls.value[i], 'append']);
+          await withTimeout(command('loadfile', [rawUrls.value[i], 'append'])).catch(() => {});
         }
         
         if (store.mpvSessionToken !== currentSessionToken) return;
-        await setProperty('pause', false);
+        await withTimeout(setProperty('pause', false));
         setTimeout(() => {
           if (store.mpvSessionToken === currentSessionToken) {
             playlistLoaded = true;

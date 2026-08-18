@@ -6,7 +6,7 @@ mod state;
 use std::fs;
 use std::sync::Arc;
 use tauri::{Emitter, Manager};
-use tauri_plugin_global_shortcut::{Code, GlobalShortcutExt, Modifiers, Shortcut};
+use tauri_plugin_global_shortcut::{Code, Modifiers};
 use tauri_plugin_store::StoreExt;
 use tokio::sync::Mutex;
 
@@ -18,10 +18,11 @@ use crate::state::AppState;
 #[cfg_attr(mobile, tauri::mobile_entry_point)]
 pub fn run() {
     // Habilitar aceleración por hardware en video y rasterización GPU optimizada en WebView2
+    // Habilitar aceleración por hardware en video y rasterización GPU optimizada en WebView2
     #[cfg(windows)]
     std::env::set_var(
         "WEBVIEW2_ADDITIONAL_BROWSER_ARGUMENTS",
-        "--enable-gpu-rasterization --disable-features=UseHardwareOverlay --ignore-gpu-blocklist --use-gl=angle --use-angle=d3d11 --enable-zero-copy --disable-background-timer-throttling --disable-backgrounding-occluded-windows --disable-renderer-backgrounding"
+        "--enable-gpu-rasterization --disable-features=UseHardwareOverlay --ignore-gpu-blocklist --disable-background-timer-throttling --disable-backgrounding-occluded-windows --disable-renderer-backgrounding"
     );
 
     tauri::Builder::default()
@@ -110,17 +111,13 @@ pub fn run() {
                 maximize_timer: Arc::new(Mutex::new(None)), // Timer para auto-restaurar tras inactividad
                 restore_timer: Arc::new(Mutex::new(None)),  // Timer para vigilar la restauración
                 enforce_always_on_top: Arc::new(Mutex::new(true)), // Flag para vigilancia de foco
+                current_mode: Arc::new(Mutex::new(crate::state::AppMode::InfoView)),
             });
 
             // 2. Ejecutar configuración del sistema (Energía, Registro, etc.)
             run_system_setup();
 
-            // 2.5 Registrar atajo de cierre de emergencia
-            let shortcut = Shortcut::new(
-                Some(Modifiers::CONTROL | Modifiers::ALT | Modifiers::SHIFT),
-                Code::KeyZ,
-            );
-            let _ = app.handle().global_shortcut().register(shortcut);
+
 
             // 3. Iniciar el "Guardián" de teclado (Bloqueo de shortcuts de sistema)
             guardian::start_keyboard_guardian();
@@ -197,6 +194,95 @@ pub fn run() {
                 }
             }
 
+            // 11. Watchdog de Responsividad de Frontend (Heartbeat JS)
+            let app_handle_hb = app.handle().clone();
+            tauri::async_runtime::spawn(async move {
+                tokio::time::sleep(tokio::time::Duration::from_secs(20)).await;
+                loop {
+                    tokio::time::sleep(tokio::time::Duration::from_secs(10)).await;
+                    let last_hb = system::get_last_heartbeat();
+                    if last_hb > 0 {
+                        let now = std::time::SystemTime::now()
+                            .duration_since(std::time::UNIX_EPOCH)
+                            .unwrap_or_default()
+                            .as_secs();
+                        if now > last_hb && (now - last_hb) > 25 {
+                            log::error!(
+                                "[Heartbeat Watchdog] Frontend no ha enviado latidos en {}s (UI congelada). Recargando ventana...",
+                                now - last_hb
+                            );
+                            if let Some(main_win) = app_handle_hb.get_webview_window("main") {
+                                let _ = main_win.eval("window.location.reload()");
+                            }
+                        }
+                    }
+                }
+            });
+
+            // 12. Motor Principal de Estado e Inactividad (Rust Master Engine)
+            let app_handle_state = app.handle().clone();
+            tauri::async_runtime::spawn(async move {
+                const IDLE_LIMIT_MS: u64 = 90_000;
+                const ACTIVITY_THRESHOLD_MS: u64 = 3_000;
+                let mut last_mode_change = std::time::Instant::now();
+                let mut info_view_start = std::time::Instant::now();
+                let mut prev_mode = crate::state::AppMode::InfoView;
+
+                tokio::time::sleep(tokio::time::Duration::from_secs(5)).await;
+                loop {
+                    tokio::time::sleep(tokio::time::Duration::from_secs(1)).await;
+                    let idle_time = window::get_system_idle_time();
+                    let state = app_handle_state.state::<AppState>();
+                    let mut guard = state.current_mode.lock().await;
+
+                    // Si el modo cambió desde el exterior (ej. Vue finalizó playlist y llamó a set_app_mode)
+                    if prev_mode != *guard {
+                        if *guard == crate::state::AppMode::InfoView {
+                            info_view_start = std::time::Instant::now();
+                            log::info!("[Rust Master Engine] Estado cambiado exteriormente a InfoView. Reiniciado contador de 90s.");
+                        }
+                        last_mode_change = std::time::Instant::now();
+                        prev_mode = *guard;
+                    }
+
+                    match *guard {
+                        crate::state::AppMode::InfoView => {
+                            let info_view_duration_ms = info_view_start.elapsed().as_millis() as u64;
+                            if idle_time >= IDLE_LIMIT_MS && info_view_duration_ms >= IDLE_LIMIT_MS {
+                                *guard = crate::state::AppMode::InactivityVideo;
+                                prev_mode = crate::state::AppMode::InactivityVideo;
+                                last_mode_change = std::time::Instant::now();
+                                log::info!("[Rust Master Engine] 90s de InfoView e inactividad OS cumplidos. Transicionando a InactivityVideo");
+                                let _ = app_handle_state.emit("app-mode-changed", crate::state::AppMode::InactivityVideo);
+                            }
+                        }
+                        crate::state::AppMode::InactivityVideo => {
+                            // Margen de gracia de 4 segundos tras la transición para ignorar eventos sintéticos residuales
+                            if last_mode_change.elapsed().as_secs() >= 4 {
+                                if idle_time < ACTIVITY_THRESHOLD_MS {
+                                    *guard = crate::state::AppMode::InfoView;
+                                    prev_mode = crate::state::AppMode::InfoView;
+                                    last_mode_change = std::time::Instant::now();
+                                    info_view_start = std::time::Instant::now();
+                                    log::info!("[Rust Master Engine] Actividad OS detectada (<3s). Transicionando a InfoView");
+                                    let _ = app_handle_state.emit("app-mode-changed", crate::state::AppMode::InfoView);
+                                }
+                            }
+                        }
+                        crate::state::AppMode::ModalOpen => {
+                            if idle_time >= IDLE_LIMIT_MS {
+                                *guard = crate::state::AppMode::InactivityVideo;
+                                prev_mode = crate::state::AppMode::InactivityVideo;
+                                last_mode_change = std::time::Instant::now();
+                                log::info!("[Rust Master Engine] 90s de inactividad detectados con modal abierto. Cerrando modales y transicionando a InactivityVideo");
+                                let _ = app_handle_state.emit("close-all-modals", ());
+                                let _ = app_handle_state.emit("app-mode-changed", crate::state::AppMode::InactivityVideo);
+                            }
+                        }
+                    }
+                }
+            });
+
             Ok(())
         })
         // Registro de Comandos (IPC) disponibles para el Frontend (Vue)
@@ -209,6 +295,9 @@ pub fn run() {
             system::open_url,
             system::get_memory_status,
             system::trim_memory,
+            system::frontend_heartbeat,
+            system::set_app_mode,
+            system::notify_user_activity,
             vault::select_video,
             vault::save_custom_video,
             vault::list_custom_videos,
@@ -330,7 +419,20 @@ pub fn run() {
                                     // Usar GetSystemMetrics (SM_CMONITORS) de forma no bloqueante
                                     // para evitar deadlocks/congelamientos del hilo principal en cambios de pantalla.
                                     if get_monitor_count() <= 1 {
-                                        let _ = window_clone.set_focus();
+                                        // Retardo de 50ms para permitir que el SO complete la transición de foco
+                                        // y evitar colisiones de navegación por teclado en el Menú Inicio / Shell
+                                        tokio::time::sleep(tokio::time::Duration::from_millis(50)).await;
+
+                                        if !window_clone.is_minimized().unwrap_or(false)
+                                            && window_clone.is_visible().unwrap_or(true)
+                                        {
+                                            if let Ok(hwnd) = window_clone.hwnd() {
+                                                window::force_foreground_window(
+                                                    hwnd.0 as windows_sys::Win32::Foundation::HWND,
+                                                );
+                                            }
+                                            let _ = window_clone.set_focus();
+                                        }
                                     }
                                 }
                                 // Los videos NO se pausan al perder el foco.

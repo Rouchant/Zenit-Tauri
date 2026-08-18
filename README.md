@@ -2,7 +2,7 @@
 
 ![Zenit Logo](public/assets/logo.png)
 
-![Version](https://img.shields.io/badge/version-1.9.9-blue.svg)
+![Version](https://img.shields.io/badge/version-2.0.9-blue.svg)
 ![Tauri](https://img.shields.io/badge/framework-Tauri%20v2-FFC131.svg)
 ![Rust](https://img.shields.io/badge/backend-Rust-orange.svg)
 ![Vue 3](https://img.shields.io/badge/frontend-Vue%203-42b883.svg)
@@ -21,14 +21,29 @@ Zenit es una solución de nivel empresarial para **Showcase Terminals**, diseña
 ## 🎯 Requerimientos Funcionales
 
 1. **Detección Automática de Hardware**: Identificar de forma autónoma y nativa los componentes críticos del equipo (Procesador, RAM, Almacenamiento, Tarjeta Gráfica y Resolución) y aplicar formatos comerciales.
-2. **Kiosco Ininterrumpido (Watchdog)**: Funcionar en modo de pantalla completa perpetua ("Always on Top"), previniendo la suspensión del sistema operativo, forzando el brillo al máximo e interceptando atajos de teclado no autorizados.
+2. **Kiosco Ininterrumpido (Rust Master Engine & Watchdogs)**: Funcionar en modo de pantalla completa perpetua ("Always on Top"), previniendo la suspensión del sistema operativo, forzando el brillo al máximo e interceptando atajos de teclado no autorizados.
 3. **Reproductor de Video Inteligente**: Alternar de la vista de especificaciones a un bucle de videos promocionales tras un periodo de inactividad, con una selección dinámica basada en el hardware detectado (ej. promoción de gaming si detecta una gráfica RTX).
 4. **Gestión de Bóveda Multimedia (Vault)**: Permitir al administrador local cargar, seleccionar, renombrar y eliminar de forma segura hasta 5 videos promocionales personalizados.
 5. **Configuración y Seguridad de Retail**: Proveer un panel oculto de administración (accesible mediante clics en *hotspots* de la pantalla) protegido por una contraseña configurable, para modificar precios, especificaciones manuales y los temas visuales del retail correspondiente (Falabella, Paris, Ripley, etc.).
 
 ---
 
-## ✨ Características Principales (v1.9.9)
+## ✨ Características Principales (v2.0.9)
+
+### 🦀 Arquitectura Rust Master Engine (Controlador Maestro) + Vue Presentación
+
+En la versión **v2.0.9**, la lógica de control del estado global de la aplicación se centraliza en Rust:
+
+- **Monitoreo de Inactividad Nativo a Nivel de Kernel (Win32 `GetLastInputInfo`)**: Rust es el único reloj maestro que rastrea la inactividad del SO. Cero temporizadores duplicados en JavaScript y cero lag.
+- **Ciclo Recurrente de Inactividad (`InfoView 90s` ➔ `Inactivity Videos` ➔ `InfoView 90s`...)**: Al finalizar el último video de la playlist, la app regresa a `InfoView` (especificaciones) y permanece 90 segundos continuos en pantalla antes de iniciar una nueva ronda promocional.
+- **Auto-Cierre de Modales por Inactividad**: Si un usuario o vendedor abre un modal (Especificaciones, Ajustes, Clave) y abandona el equipo por 90s, Rust emite `close-all-modals` y activa los videos promocionales para que el kiosko nunca se quede estancado en un diálogo.
+- **Margen de Gracia (4 Segundos)**: Rust absorbe eventos sintéticos o residuales del SO al cambiar de modo, garantizando que los videos entren y se asienten sin interrumpirse.
+
+### 🛡️ Atajos de Emergencia Nivel Kernel (Inmunes a Bloqueos de Foco)
+
+- **`Ctrl + Alt + Shift + Z` (Cierre Forzado 0ms)**: Invoca `TerminateProcess(GetCurrentProcess(), 0)` a nivel de Kernel de Windows para un cierre inmediato en 0ms incluso si la pantalla o WebView2 se congelan.
+- **`Ctrl + Alt + Shift + R` (Reinicio Limpio)**: Ejecuta un relanzamiento nativo del ejecutable en Windows vía PowerShell sin bloqueos de memoria ni colas atascadas.
+- **`Ctrl + Shift + Esc` (Administrador de Tareas)**: Desbloqueado explícitamente para permitir a los administradores técnicos acceder al Administrador de Tareas en emergencias.
 
 ### 🖥️ Detección de Hardware Nativa (100% Rust & CIM/WMI)
 
@@ -50,6 +65,7 @@ Zenit utiliza un motor de telemetría modularizado en Rust para una velocidad y 
 Para garantizar un rendimiento óptimo en laptops de exhibición de cualquier gama, Zenit delega la reproducción multimedia a un motor de video nativo:
 
 - **Integración con libmpv (`tauri-plugin-libmpv-api`)**: En lugar de utilizar elementos `<video>` de HTML/Chromium que consumen alta CPU/GPU, Zenit inicializa y controla una instancia nativa de `libmpv` que corre por debajo del WebView transparente de Tauri.
+- **Protección IPC con Timeouts (`withTimeout`)**: Todas las llamadas a `libmpv` (`setProperty`, `command`) desde el frontend están protegidas con timeouts `Promise.race` de 1.5s para prevenir interbloqueos en el hilo de JavaScript si la orden nativa tarda en responder.
 - **Decodificación por Hardware al 100%**: Configurado con `vo: gpu`, `hwdec: auto-safe`, `framedrop: vo` y `vd-lavc-fast: yes` para descargar la decodificación de video directamente a la GPU integrada o dedicada del equipo.
 - **Sincronización Dinámica sin Destellos**: Transición inteligente entre los videos promocionales y la vista de especificaciones. Utilizando un observador dinámico sobre la propiedad `time-pos` de MPV, la imagen estática de fallback del frontend se desvanece únicamente cuando el primer frame del video de fondo ya se está dibujando, eliminando parpadeos negros o fotogramas residuales (*ghost frames*).
 - **Desactivación Completa de Audio**: Configurado con `mute: yes` y `audio: no` para apagar el decodificador de audio nativo de MPV en entornos de exhibición (Retail), liberando ciclos adicionales de CPU/GPU.

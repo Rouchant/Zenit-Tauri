@@ -430,14 +430,9 @@ const handleBgVideoFailure = async (reason = 'unknown') => {
   }
 
   if (bgRetryCount.value === 1) {
-    // Reintento 1: Re-inicializar instancia nativa de MPV en caliente por si se perdió el contexto gráfico
-    console.log('[App MPV Recovery] Step 1: Re-initializing MPV instance...');
-    const reinitOk = await reinitMpvGlobal();
-    if (reinitOk) {
-      setTimeout(() => playBgVideoNative(), 300);
-    } else {
-      handleBgVideoFailure('reinit_failed');
-    }
+    // Reintento 1: Volver a cargar la ruta del video suavemente sin destruir la instancia MPV
+    console.log('[App MPV Recovery] Step 1: Soft reloading background video...');
+    setTimeout(() => playBgVideoNative(), 300);
   } else if (bgRetryCount.value === 2) {
     // Reintento 2: Conmutar a decodificación por software CPU (aprovechando los 6-12 núcleos del Ryzen 5)
     console.log('[App MPV Recovery] Step 2: Switching hwdec to software decoding (hwdec: no)...');
@@ -742,6 +737,7 @@ watch(() => store.isModalOpen, (isOpen) => {
     showWarrantyOverlay.value = false;
     // Desactivar AlwaysOnTop para permitir diálogos del sistema (selectores de archivos, etc)
     if (showAdminModal.value) tauriAPI.setAlwaysOnTop(false);
+    tauriAPI.setAppMode('modalOpen');
   } else {
     // Si cerramos modal y no estamos en modo video, restaurar
     if (!store.isVideoMode) {
@@ -753,6 +749,7 @@ watch(() => store.isModalOpen, (isOpen) => {
       });
     }
     tauriAPI.setAlwaysOnTop(true);
+    tauriAPI.setAppMode(store.isVideoMode ? 'inactivityVideo' : 'infoView');
   }
 });
 
@@ -886,18 +883,12 @@ const resetTimer = (event) => {
   if (isInternalFocusHack.value) return;
   if (showFirstStartModal.value) return;
 
-  clearTimeout(inactivityTimer.value);
-  inactivityTimer.value = null;
+  // Notificar a Rust que hubo actividad de usuario para que el temporizador nativo Win32 de OS se mantenga informado
+  tauriAPI.notifyUserActivity();
 
-  if (store.isVideoMode) store.isVideoMode = false;
-
-  inactivityTimer.value = setTimeout(() => {
-    if (store.isModalOpen) {
-      console.log('Inactivity detected while modal open, closing all modals.');
-      closeAllModals();
-    }
-    store.isVideoMode = true;
-  }, store.CONFIG.INACTIVITY_LIMIT);
+  if (store.isVideoMode) {
+    store.isVideoMode = false;
+  }
 };
 
 const openPassword = (mode) => {
@@ -921,6 +912,7 @@ let unlistenInactivity = null;
 let unlistenActivity = null;
 let unlistenPlay = null;
 let unlistenPause = null;
+let unlistenCloseModals = null;
 let watchdogInterval = null;
 
 const createTouchRipple = (e) => {
@@ -1033,6 +1025,12 @@ onMounted(async () => {
       pauseInfoVideos();
     });
 
+    // Cuando Rust detecta 90s de inactividad con modal abierto: cerrar todos los modales
+    unlistenCloseModals = await listen('close-all-modals', () => {
+      console.log('[Tauri Event] close-all-modals recibido de Rust. Cerrando todos los modales por inactividad.');
+      closeAllModals();
+    });
+
     // Cuando Rust detecta 3 min de inactividad: activar modo video
     unlistenInactivity = await listen('trigger-inactivity-video', () => {
       console.log('Restored via global inactivity, forcing video mode');
@@ -1063,6 +1061,9 @@ onMounted(async () => {
   let lastDriftTime = Date.now();
   let lastRamRestartTime = 0;
   watchdogInterval = setInterval(() => {
+    // 0. Enviar latido de responsabilidad al backend Rust
+    tauriAPI.sendHeartbeat();
+
     // 1. Detección de retorno de suspensión (time-drift > 15s)
     const now = Date.now();
     const drift = now - lastDriftTime;
@@ -1109,6 +1110,7 @@ onUnmounted(() => {
   if (unlistenActivity) unlistenActivity();
   if (unlistenPlay) unlistenPlay();
   if (unlistenPause) unlistenPause();
+  if (unlistenCloseModals) unlistenCloseModals();
   if (unlistenPowerResume) unlistenPowerResume();
   if (unlistenMpvProps) {
     unlistenMpvProps();

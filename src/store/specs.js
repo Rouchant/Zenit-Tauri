@@ -76,7 +76,20 @@ export const useSpecsStore = defineStore('specs', () => {
   const isLoading = ref(true);
   const isBgThemed = ref(false);
 
-  // Estados reactivos globales para MPV (Patrón Listener Global Permanente)
+  // Escuchar cambios de estado maestro desde Rust
+  if (typeof window !== 'undefined' && window.__TAURI_INTERNALS__) {
+    import('@tauri-apps/api/event').then(({ listen }) => {
+      listen('app-mode-changed', (event) => {
+        const mode = event.payload;
+        console.log('[Rust Master Engine Event] app-mode-changed:', mode);
+        if (mode === 'inactivityVideo' || mode === 'InactivityVideo') {
+          isVideoMode.value = true;
+        } else if (mode === 'infoView' || mode === 'InfoView') {
+          isVideoMode.value = false;
+        }
+      });
+    });
+  }
   const mpvTimePos = ref(0);
   const mpvDuration = ref(0);
   const mpvPaused = ref(false);
