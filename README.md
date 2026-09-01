@@ -2,7 +2,7 @@
 
 ![Zenit Logo](public/assets/logo.png)
 
-![Version](https://img.shields.io/badge/version-2.0.9-blue.svg)
+![Version](https://img.shields.io/badge/version-2.0.10-blue.svg)
 ![Tauri](https://img.shields.io/badge/framework-Tauri%20v2-FFC131.svg)
 ![Rust](https://img.shields.io/badge/backend-Rust-orange.svg)
 ![Vue 3](https://img.shields.io/badge/frontend-Vue%203-42b883.svg)
@@ -28,11 +28,11 @@ Zenit es una solución de nivel empresarial para **Showcase Terminals**, diseña
 
 ---
 
-## ✨ Características Principales (v2.0.9)
+## ✨ Características Principales (v2.0.10)
 
 ### 🦀 Arquitectura Rust Master Engine (Controlador Maestro) + Vue Presentación
 
-En la versión **v2.0.9**, la lógica de control del estado global de la aplicación se centraliza en Rust:
+En la versión **v2.0.10**, la lógica de control del estado global de la aplicación se centraliza en Rust:
 
 - **Monitoreo de Inactividad Nativo a Nivel de Kernel (Win32 `GetLastInputInfo`)**: Rust es el único reloj maestro que rastrea la inactividad del SO. Cero temporizadores duplicados en JavaScript y cero lag.
 - **Ciclo Recurrente de Inactividad (`InfoView 90s` ➔ `Inactivity Videos` ➔ `InfoView 90s`...)**: Al finalizar el último video de la playlist, la app regresa a `InfoView` (especificaciones) y permanece 90 segundos continuos en pantalla antes de iniciar una nueva ronda promocional.

@@ -266,6 +266,14 @@ pub fn run() {
                                     info_view_start = std::time::Instant::now();
                                     log::info!("[Rust Master Engine] Actividad OS detectada (<3s). Transicionando a InfoView");
                                     let _ = app_handle_state.emit("app-mode-changed", crate::state::AppMode::InfoView);
+                                } else if last_mode_change.elapsed().as_secs() >= 300 {
+                                    // Guardián Auto-Sanable (Self-Healing Watchdog): Límite máximo de 300s (5 min) en modo video
+                                    *guard = crate::state::AppMode::InfoView;
+                                    prev_mode = crate::state::AppMode::InfoView;
+                                    last_mode_change = std::time::Instant::now();
+                                    info_view_start = std::time::Instant::now();
+                                    log::warn!("[Rust Master Engine Watchdog] InactivityVideo superó el límite máximo de 300s. Ejecutando Auto-Sanación a InfoView...");
+                                    let _ = app_handle_state.emit("app-mode-changed", crate::state::AppMode::InfoView);
                                 }
                             }
                         }
@@ -297,7 +305,9 @@ pub fn run() {
             system::trim_memory,
             system::frontend_heartbeat,
             system::set_app_mode,
+            system::get_app_mode,
             system::notify_user_activity,
+            system::notify_playlist_finished,
             vault::select_video,
             vault::save_custom_video,
             vault::list_custom_videos,

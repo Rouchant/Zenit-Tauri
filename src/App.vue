@@ -768,6 +768,7 @@ const onFirstStartCompleted = () => {
 
 // 2. Gestión de Modo Video (Screensaver)
 watch(() => store.isVideoMode, (isVideo) => {
+  tauriAPI.setAppMode(isVideo ? 'inactivityVideo' : 'infoView');
   if (isVideo) {
     renderVideoView.value = true;
     pauseInfoVideos();
@@ -990,11 +991,20 @@ onMounted(async () => {
     resetTimer();
   }
 
+  let videoModeStartTime = null;
+  let lastDriftTime = Date.now();
+  let lastRamRestartTime = 0;
+
+  const handleTouch = (e) => {
+    createTouchRipple(e);
+    resetTimer(e);
+  };
+
   window.addEventListener('mousemove', throttledResetTimer);
   window.addEventListener('keydown', resetTimer);
   window.addEventListener('mousedown', resetTimer);
-  
-  window.addEventListener('touchstart', createTouchRipple, { passive: true });
+  window.addEventListener('pointerdown', resetTimer);
+  window.addEventListener('touchstart', handleTouch, { passive: true });
 
   if (window.__TAURI_INTERNALS__) {
     // Cuando Rust le dice al frontend que reproduzca los videos
@@ -1058,8 +1068,6 @@ onMounted(async () => {
   }
 
   // Guardián unificado (cada 10 segundos): verifica estado de videos + detecta retorno de suspensión + monitoreo de RAM.
-  let lastDriftTime = Date.now();
-  let lastRamRestartTime = 0;
   watchdogInterval = setInterval(() => {
     // 0. Enviar latido de responsabilidad al backend Rust
     tauriAPI.sendHeartbeat();
@@ -1078,7 +1086,19 @@ onMounted(async () => {
     // 2. Verificar estado de reproducción de videos
     checkVideosPlayState();
 
-    // 3. Monitoreo y Guardia de Memoria RAM (cada 10s)
+    // 3. Verificación de seguridad de modo inactividad (si lleva > 300s en isVideoMode, notificar fin de playlist a Rust)
+    if (store.isVideoMode) {
+      if (!videoModeStartTime) videoModeStartTime = Date.now();
+      if (Date.now() - videoModeStartTime > 300000) {
+        console.warn('[Watchdog] isVideoMode activo por más de 300s. Notificando fin de playlist a Rust...');
+        videoModeStartTime = null;
+        tauriAPI.notifyPlaylistFinished();
+      }
+    } else {
+      videoModeStartTime = null;
+    }
+
+    // 4. Monitoreo y Guardia de Memoria RAM (cada 10s)
     if (window.__TAURI_INTERNALS__) {
       tauriAPI.getMemoryStatus().then((mem) => {
         if (!mem) return;
@@ -1104,7 +1124,8 @@ onUnmounted(() => {
   window.removeEventListener('mousemove', throttledResetTimer);
   window.removeEventListener('keydown', resetTimer);
   window.removeEventListener('mousedown', resetTimer);
-  window.removeEventListener('touchstart', createTouchRipple);
+  window.removeEventListener('pointerdown', resetTimer);
+  window.removeEventListener('touchstart', handleTouch);
   
   if (unlistenInactivity) unlistenInactivity();
   if (unlistenActivity) unlistenActivity();

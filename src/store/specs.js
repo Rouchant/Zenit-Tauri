@@ -77,7 +77,7 @@ export const useSpecsStore = defineStore('specs', () => {
   const isBgThemed = ref(false);
 
   // Escuchar cambios de estado maestro desde Rust
-  if (typeof window !== 'undefined' && window.__TAURI_INTERNALS__) {
+  if (typeof window !== 'undefined' && window.__TAURI_INTERNALS__ && window.__TAURI_INTERNALS__.transformCallback) {
     import('@tauri-apps/api/event').then(({ listen }) => {
       listen('app-mode-changed', (event) => {
         const mode = event.payload;
@@ -183,7 +183,7 @@ export const useSpecsStore = defineStore('specs', () => {
         specs.gen = 'Desconocida';
       } else if (n.includes('snapdragon') || n.includes('qualcomm')) {
         specs.vendor = 'Snapdragon';
-        specs.gen = n.includes('x elite') || n.includes('x plus') ? 'Snapdragon X' : 'Qualcomm ARM';
+        specs.gen = (n.includes('snapdragon x') || n.includes('x elite') || n.includes('x plus') || n.includes('x1') || n.includes('x2') || n.includes('x3')) ? 'Snapdragon X' : 'Qualcomm ARM';
       } else {
         specs.vendor = 'Generic';
         specs.gen = 'Desconocida';

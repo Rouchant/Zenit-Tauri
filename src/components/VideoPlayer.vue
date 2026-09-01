@@ -1,6 +1,7 @@
 <script setup>
 import { computed, onMounted, onUnmounted, ref, watch, nextTick } from 'vue';
 import { useSpecsStore, INTERNAL_PATHS } from '../store/specs';
+import { tauriAPI } from '../api/tauriApi';
 import { timers } from '../utils/timers';
 import { init, command, setProperty } from 'tauri-plugin-libmpv-api';
 import BadgeCarousel from './BadgeCarousel.vue';
@@ -87,6 +88,7 @@ const onVideoError = async (reason = 'unknown') => {
     console.error('[VideoPlayer Recovery] All retries exhausted. Exiting video mode cleanly.');
     store.isVideoMode = false;
     retryCount.value = 0;
+    tauriAPI.notifyPlaylistFinished();
   }
 };
 
@@ -185,6 +187,7 @@ const startSafetyTimer = (durationInSeconds) => {
   safetyTimeout.value = setTimeout(() => {
     console.warn('[VideoPlayer] Safety timeout reached, forcing exit.');
     store.isVideoMode = false;
+    tauriAPI.notifyPlaylistFinished();
   }, timeoutMs);
   timers.safety = safetyTimeout.value;
 };
@@ -198,6 +201,7 @@ const onVideoEnded = () => {
   if (currentIndex.value >= rawUrls.value.length - 1) {
     console.log('[VideoPlayer] Last video reached, returning to specs view.');
     store.isVideoMode = false;
+    tauriAPI.notifyPlaylistFinished();
   } else {
     currentIndex.value++;
   }
@@ -516,7 +520,7 @@ defineExpose({ videoRef: mockVideoEl });
 }
 
 .brand-hp {
-  transform: scale(1.2);
+  transform: scale(0.9);
 }
 
 .info-column {

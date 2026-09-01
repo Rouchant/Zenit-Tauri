@@ -53,12 +53,25 @@ pub async fn get_system_specs() -> Result<SystemSpecs, String> {
             .with_memory(MemoryRefreshKind::everything())
     );
 
-    // 1. Detección básica de CPU vía sysinfo
-    let cpu = sys.cpus().first().ok_or("No se detectó CPU")?;
-    let proc_name = cpu.brand().trim().replace("(R)", "").replace("(TM)", "").replace("  ", " ");
-    let vendor = if proc_name.contains("Intel") {
+    // 1. Detalles profundos vía WMI (Marca, Modelo, GPU, Resolución, Almacenamiento, CPU, etc.)
+    let wmi = get_wmi_details().unwrap_or_else(|_| default_wmi_fallback());
+
+    // 2. Detección y limpieza de CPU
+    let sysinfo_cpu_name = sys.cpus().first().map(|c| c.brand().trim()).unwrap_or("");
+    
+    // Si sysinfo devuelve "Virtual CPU" o genérico, o si WMI provee el nombre físico real del hardware, se usa WMI
+    let raw_proc_name = match &wmi.cpu_name {
+        Some(wmi_name) if !wmi_name.is_empty() && (sysinfo_cpu_name.to_lowercase().contains("virtual") || !wmi_name.to_lowercase().contains("virtual")) => {
+            wmi_name.clone()
+        }
+        _ if !sysinfo_cpu_name.is_empty() => sysinfo_cpu_name.to_string(),
+        _ => wmi.cpu_name.clone().unwrap_or_else(|| "Procesador Genérico".to_string()),
+    };
+
+    let proc_name = clean_processor_name(&raw_proc_name);
+    let vendor = if proc_name.to_uppercase().contains("INTEL") {
         "Intel"
-    } else if proc_name.contains("AMD") {
+    } else if proc_name.to_uppercase().contains("AMD") {
         "AMD"
     } else if proc_name.to_lowercase().contains("snapdragon") || proc_name.to_lowercase().contains("qualcomm") {
         "Snapdragon"
@@ -67,11 +80,8 @@ pub async fn get_system_specs() -> Result<SystemSpecs, String> {
     };
     let gen = detect_generation(&proc_name);
 
-    // 2. RAM (Formateo comercial)
+    // 3. RAM (Formateo comercial)
     let ram_display = get_ram_display(sys.total_memory());
-
-    // 3. Detalles profundos vía WMI (Marca, Modelo, GPU, Resolución, Almacenamiento, etc.)
-    let wmi = get_wmi_details().unwrap_or_else(|_| default_wmi_fallback());
 
     let specs = SystemSpecs {
         brand: wmi.brand,
@@ -103,6 +113,7 @@ struct WmiData {
     ram_type: String,
     storage: String,
     os: String,
+    cpu_name: Option<String>,
 }
 
 fn default_wmi_fallback() -> WmiData {
@@ -114,6 +125,7 @@ fn default_wmi_fallback() -> WmiData {
         ram_type: "DDR4".to_string(),
         storage: get_storage_info_fallback(),
         os: System::name().unwrap_or_else(|| "Windows".to_string()).replace("Microsoft ", ""),
+        cpu_name: None,
     }
 }
 
@@ -136,11 +148,29 @@ fn get_wmi_details() -> Result<WmiData, Box<dyn std::error::Error>> {
     let display = format_display_resolution(&wmi_con, &video_results);
     let ram_type = detect_ram_type(&wmi_con);
     let os = detect_os_version(&wmi_con);
+    let cpu_name = detect_cpu_name_wmi(&wmi_con);
     
     // Detección de almacenamiento excluyendo USB
     let storage = get_storage_info_wmi(&wmi_con).unwrap_or_else(|| get_storage_info_fallback());
 
-    Ok(WmiData { brand, model, gpu, display, ram_type, storage, os })
+    Ok(WmiData { brand, model, gpu, display, ram_type, storage, os, cpu_name })
+}
+
+#[cfg(windows)]
+/// Consulta la clase Win32_Processor en WMI para obtener el nombre oficial del procesador.
+fn detect_cpu_name_wmi(wmi: &wmi::WMIConnection) -> Option<String> {
+    if let Ok(results) = wmi.raw_query("SELECT Name FROM Win32_Processor") {
+        let results: Vec<HashMap<String, serde_json::Value>> = results;
+        if let Some(res) = results.first() {
+            if let Some(name) = res.get("Name").and_then(|v| v.as_str()) {
+                let trimmed = name.trim();
+                if !trimmed.is_empty() {
+                    return Some(trimmed.to_string());
+                }
+            }
+        }
+    }
+    None
 }
 
 #[cfg(windows)]
@@ -461,7 +491,7 @@ fn detect_generation(name: &str) -> String {
         "N-Series".to_string()
     }
     else if n.contains("snapdragon") || n.contains("qualcomm") {
-        if n.contains("x elite") || n.contains("x plus") {
+        if n.contains("snapdragon x") || n.contains("x elite") || n.contains("x plus") || n.contains("x1") || n.contains("x2") || n.contains("x3") || n.contains("x4") {
             "Snapdragon X".to_string()
         } else {
             "Qualcomm ARM".to_string()
@@ -598,15 +628,83 @@ pub struct ProcessorInfo {
     pub gen: String,
 }
 
+/// Limpia y normaliza el nombre del procesador eliminando ruido técnico (marcas registradas, frecuencias, arquitecturas, sufijos WMI/Qualcomm).
+pub fn clean_processor_name(raw: &str) -> String {
+    let mut s = raw
+        .replace("(R)", "")
+        .replace("(TM)", "")
+        .replace("(tm)", "")
+        .replace("(r)", "")
+        .trim()
+        .to_string();
+
+    while s.contains("  ") {
+        s = s.replace("  ", " ");
+    }
+
+    // 1. Manejo específico para Snapdragon / Qualcomm
+    if s.to_lowercase().contains("snapdragon") || s.to_lowercase().contains("qualcomm") {
+        // Cortar ruido técnico común en Win32_Processor Name para Qualcomm/Snapdragon:
+        // Ej: "Snapdragon(R) X - X126100 - Qualcomm(R) Oryon(TM) CPU ARMv8 (64-bit) Family 8 Model 1 Revision 201 2956"
+        let cut_markers = [
+            " - Qualcomm",
+            " - Oryon",
+            " - ARMv8",
+            " Qualcomm Oryon",
+            " Oryon CPU",
+            " ARMv8",
+        ];
+        for marker in cut_markers {
+            if let Some(pos) = s.find(marker) {
+                s = s[..pos].trim().to_string();
+                break;
+            }
+        }
+
+        if s.starts_with("Qualcomm Snapdragon") {
+            s = s.replacen("Qualcomm Snapdragon", "Snapdragon", 1);
+        }
+
+        if s.is_empty() || s == "Qualcomm" {
+            s = "Snapdragon X".to_string();
+        }
+
+        return s.trim().to_string();
+    }
+
+    // 2. Manejo para Intel / AMD u otros procesadores
+    if let Some(pos) = s.find(" CPU @") {
+        s = s[..pos].trim().to_string();
+    } else if let Some(pos) = s.find("@") {
+        s = s[..pos].trim().to_string();
+    }
+
+    if s.to_lowercase().ends_with(" processor") {
+        let lower = s.to_lowercase();
+        if let Some(pos) = lower.rfind(" processor") {
+            s = s[..pos].trim().to_string();
+        }
+    }
+
+    let words: Vec<&str> = s.split_whitespace().collect();
+    if let Some(last_word) = words.last() {
+        if last_word.to_lowercase().ends_with("-core") {
+            s = words[..words.len()-1].join(" ");
+        }
+    }
+
+    s.trim().to_string()
+}
+
 /// Infiere el fabricante y la generación de un procesador a partir de su nombre utilizando la lógica robusta del backend.
 #[tauri::command]
 pub fn infer_processor_info(name: String) -> ProcessorInfo {
-    let clean_name = name.replace("(R)", "").replace("(TM)", "").replace("  ", " ");
+    let clean_name = clean_processor_name(&name);
     let vendor = if clean_name.to_uppercase().contains("INTEL") {
         "Intel".to_string()
     } else if clean_name.to_uppercase().contains("AMD") {
         "AMD".to_string()
-    } else if clean_name.to_uppercase().contains("SNAPDRAGON") || clean_name.to_uppercase().contains("QUALCOMM") {
+    } else if clean_name.to_lowercase().contains("snapdragon") || clean_name.to_lowercase().contains("qualcomm") {
         "Snapdragon".to_string()
     } else {
         "Generic".to_string()
@@ -689,6 +787,14 @@ pub async fn set_app_mode(
 }
 
 #[tauri::command]
+pub async fn get_app_mode(
+    state: tauri::State<'_, AppState>,
+) -> Result<AppMode, String> {
+    let guard = state.current_mode.lock().await;
+    Ok(*guard)
+}
+
+#[tauri::command]
 pub async fn notify_user_activity(
     state: tauri::State<'_, AppState>,
     app_handle: tauri::AppHandle,
@@ -701,6 +807,22 @@ pub async fn notify_user_activity(
     }
     Ok(())
 }
+
+#[tauri::command]
+pub async fn notify_playlist_finished(
+    state: tauri::State<'_, AppState>,
+    app_handle: tauri::AppHandle,
+) -> Result<(), String> {
+    let mut guard = state.current_mode.lock().await;
+    if *guard == AppMode::InactivityVideo {
+        *guard = AppMode::InfoView;
+        log::info!("[Rust Master Engine] Playlist finalizada reportada por Vue. Retornando a InfoView.");
+        let _ = app_handle.emit("app-mode-changed", AppMode::InfoView);
+    }
+    Ok(())
+}
+
+
 
 /// Obtiene el estado actual de la memoria RAM del sistema.
 #[tauri::command]
@@ -801,6 +923,7 @@ mod tests {
             ("AMD Ryzen 5 350U", "300 Series"),
             
             // Snapdragon / Qualcomm
+            ("Snapdragon X - X126100", "Snapdragon X"),
             ("Snapdragon X Elite X1E-84-100", "Snapdragon X"),
             ("Qualcomm Snapdragon X Plus X1P-64-100", "Snapdragon X"),
             ("Qualcomm Snapdragon 8cx Gen 3", "Qualcomm ARM"),
@@ -871,5 +994,25 @@ mod tests {
         assert_eq!(refine_model_name("ASUS", "ASUS TUF Gaming F15"), "ASUS TUF Gaming F15");
         assert_eq!(refine_model_name("HP", "HP Laptop 15s-eq2xxx"), "HP 15s eq2xxx");
         assert_eq!(refine_model_name("Lenovo", "82K2"), "Lenovo 82K2"); 
+    }
+
+    #[test]
+    fn test_clean_processor_name() {
+        assert_eq!(
+            clean_processor_name("Snapdragon(R) X - X126100 - Qualcomm(R) Oryon(TM) CPU ARMv8 (64-bit) Family 8 Model 1 Revision 201 2956"),
+            "Snapdragon X - X126100"
+        );
+        assert_eq!(
+            clean_processor_name("Qualcomm(R) Snapdragon(R) X Plus X1P-64-100 - Qualcomm(R) Oryon(TM) CPU ARMv8 (64-bit)"),
+            "Snapdragon X Plus X1P-64-100"
+        );
+        assert_eq!(
+            clean_processor_name("Intel(R) Core(TM) i7-13700H CPU @ 2.40GHz"),
+            "Intel Core i7-13700H"
+        );
+        assert_eq!(
+            clean_processor_name("AMD Ryzen 5 5600X 6-Core Processor"),
+            "AMD Ryzen 5 5600X"
+        );
     }
 }
