@@ -26,8 +26,157 @@ pub fn save_video_meta(app: &AppHandle, meta: &Vec<VideoMeta>) {
     }
 }
 
+use std::sync::atomic::{AtomicBool, Ordering};
+use crate::state::AppState;
+use tauri::Manager;
+
+#[cfg(windows)]
+use windows_sys::Win32::Foundation::*;
+#[cfg(windows)]
+use windows_sys::Win32::UI::WindowsAndMessaging::*;
+#[cfg(windows)]
+use windows_sys::Win32::UI::Input::KeyboardAndMouse::*;
+
+static IS_SELECTING_VIDEO: AtomicBool = AtomicBool::new(false);
+
+#[cfg(windows)]
+unsafe extern "system" fn disable_window_proc(hwnd: HWND, _lparam: LPARAM) -> BOOL {
+    EnableWindow(hwnd, 0);
+    1
+}
+
+#[cfg(windows)]
+unsafe extern "system" fn enable_window_proc(hwnd: HWND, _lparam: LPARAM) -> BOOL {
+    EnableWindow(hwnd, 1);
+    1
+}
+
 #[tauri::command]
 pub async fn select_video<R: Runtime>(window: WebviewWindow<R>) -> Result<Option<String>, String> {
+    // Si ya hay un diálogo abierto, descartar llamadas concurrentes para evitar duplicados
+    if IS_SELECTING_VIDEO.compare_exchange(false, true, Ordering::SeqCst, Ordering::SeqCst).is_err() {
+        log::warn!("[Vault] select_video llamado concurrentemente mientras otro diálogo está activo. Ignorando.");
+        return Ok(None);
+    }
+
+    // Desactivar temporalmente el modo always-on-top para no competir con el diálogo
+    let app_handle = window.app_handle().clone();
+    let state = app_handle.state::<AppState>();
+    {
+        let mut guard = state.enforce_always_on_top.lock().await;
+        *guard = false;
+    }
+    let _ = window.set_always_on_top(false);
+
+    #[cfg(windows)]
+    let raw_hwnd = window.hwnd().ok().map(|h| h.0 as HWND);
+
+    struct SelectionGuard {
+        #[cfg(windows)]
+        parent_hwnd: Option<HWND>,
+    }
+    impl Drop for SelectionGuard {
+        fn drop(&mut self) {
+            IS_SELECTING_VIDEO.store(false, Ordering::SeqCst);
+            #[cfg(windows)]
+            if let Some(hwnd) = self.parent_hwnd {
+                unsafe {
+                    // Re-habilitar Zenit y todos sus controles hijos (incluyendo WebView2)
+                    EnableWindow(hwnd, 1);
+                    EnumChildWindows(hwnd, Some(enable_window_proc), 0);
+                    SetForegroundWindow(hwnd);
+                }
+            }
+        }
+    }
+    let _guard = SelectionGuard {
+        #[cfg(windows)]
+        parent_hwnd: raw_hwnd,
+    };
+
+    #[cfg(windows)]
+    let cancel_watcher = std::sync::Arc::new(std::sync::atomic::AtomicBool::new(false));
+    #[cfg(windows)]
+    let cancel_watcher_clone = std::sync::Arc::clone(&cancel_watcher);
+
+    #[cfg(windows)]
+    if let Some(parent_hwnd) = raw_hwnd {
+        unsafe {
+            // 1. Quitar siempre-al-frente de Zenit temporalmente
+            SetWindowPos(parent_hwnd, HWND_NOTOPMOST, 0, 0, 0, 0, SWP_NOMOVE | SWP_NOSIZE | SWP_NOACTIVATE);
+            // 2. Deshabilitar Zenit y todos sus hijos (WebView2) para que tocar Zenit no tape el diálogo
+            EnableWindow(parent_hwnd, 0);
+            EnumChildWindows(parent_hwnd, Some(disable_window_proc), 0);
+        }
+
+        std::thread::spawn(move || {
+            struct EnumState {
+                parent: HWND,
+                current_pid: u32,
+                dialog: HWND,
+            }
+
+            unsafe extern "system" fn enum_windows_proc(
+                hwnd: HWND,
+                lparam: LPARAM,
+            ) -> BOOL {
+                let state = &mut *(lparam as *mut EnumState);
+                let owner = GetWindow(hwnd, GW_OWNER);
+                if owner == state.parent {
+                    state.dialog = hwnd;
+                    return 0; // Detener
+                }
+
+                let mut process_id = 0;
+                GetWindowThreadProcessId(hwnd, &mut process_id);
+                if process_id == state.current_pid && hwnd != state.parent {
+                    let mut class_name = [0u16; 64];
+                    let len = GetClassNameW(hwnd, class_name.as_mut_ptr(), class_name.len() as i32);
+                    if len > 0 {
+                        let class_str = String::from_utf16_lossy(&class_name[..len as usize]);
+                        if class_str == "#32770" {
+                            state.dialog = hwnd;
+                            return 0;
+                        }
+                    }
+                }
+
+                1 // Continuar
+            }
+
+            let current_pid = unsafe { windows_sys::Win32::System::Threading::GetCurrentProcessId() };
+
+            // Sondeo periódico mientras el selector esté abierto (hasta 2 minutos)
+            for _ in 0..1200 {
+                if cancel_watcher_clone.load(Ordering::SeqCst) {
+                    break;
+                }
+                std::thread::sleep(std::time::Duration::from_millis(80));
+                unsafe {
+                    let mut dialog_hwnd = GetWindow(parent_hwnd, GW_ENABLEDPOPUP);
+                    if dialog_hwnd == 0 || dialog_hwnd == parent_hwnd {
+                        let mut state = EnumState {
+                            parent: parent_hwnd,
+                            current_pid,
+                            dialog: 0,
+                        };
+                        EnumWindows(Some(enum_windows_proc), &mut state as *mut _ as isize);
+                        dialog_hwnd = state.dialog;
+                    }
+
+                    if dialog_hwnd != 0 && dialog_hwnd != parent_hwnd {
+                        SetWindowPos(
+                            dialog_hwnd,
+                            HWND_TOPMOST,
+                            0, 0, 0, 0,
+                            SWP_NOMOVE | SWP_NOSIZE | SWP_SHOWWINDOW,
+                        );
+                    }
+                }
+            }
+        });
+    }
+
     use tauri_plugin_dialog::{DialogExt, FilePath};
     let (tx, rx) = std::sync::mpsc::channel();
 
@@ -40,6 +189,10 @@ pub async fn select_video<R: Runtime>(window: WebviewWindow<R>) -> Result<Option
         });
 
     let result = rx.recv().map_err(|e| e.to_string())?;
+
+    #[cfg(windows)]
+    cancel_watcher.store(true, Ordering::SeqCst);
+
     match result {
         Some(FilePath::Path(p)) => Ok(Some(p.to_string_lossy().into_owned())),
         _ => Ok(None),

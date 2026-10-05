@@ -1,6 +1,6 @@
 import { describe, it, expect, beforeEach, vi } from 'vitest';
 import { setActivePinia, createPinia } from 'pinia';
-import { useSpecsStore } from '../src/store/specs';
+import { useSpecsStore, normalizeBrand } from '../src/store/specs';
 
 // Mockeamos la API de Tauri para simular el Backend de Rust
 vi.mock('../src/api/tauriApi', () => ({
@@ -37,8 +37,8 @@ describe('Pruebas de Estado Global (specs.js)', () => {
     // 1. Cargar especificaciones simulando inicio
     await store.loadSpecs();
 
-    // 2. Verificar que los specs mockeados se guardaron
-    expect(store.currentSpecs.brand).toBe('Asus');
+    // 2. Verificar que los specs mockeados se guardaron y normalizaron a la marca oficial
+    expect(store.currentSpecs.brand).toBe('ASUS');
     expect(store.currentSpecs.gpu).toBe('NVIDIA RTX 4060');
 
     // 3. Verificar pre-selección inteligente
@@ -113,5 +113,103 @@ describe('Pruebas de Estado Global (specs.js)', () => {
     
     expect(store.isAsus).toBe(true);
     expect(store.isGeneric).toBe(false);
+  });
+
+  it('debería identificar matchedBrand correctamente sin falsos positivos de HP en Lenovo LOQ 15AHP10', () => {
+    const store = useSpecsStore();
+
+    // Caso crítico reportado: Lenovo con código 15AHP10 NO debe detectar HP
+    store.currentSpecs = {
+      brand: 'Lenovo',
+      model: 'Lenovo LOQ 15AHP10'
+    };
+    expect(store.matchedBrand).toBe('lenovo');
+
+    // Caso HP legítimo
+    store.currentSpecs = {
+      brand: 'HP',
+      model: 'HP Victus 16'
+    };
+    expect(store.matchedBrand).toBe('hp');
+
+    // Caso ASUS legítimo
+    store.currentSpecs = {
+      brand: 'ASUS',
+      model: 'Vivobook E1504GAB'
+    };
+    expect(store.matchedBrand).toBe('asus');
+
+    // Caso Samsung legítimo
+    store.currentSpecs = {
+      brand: 'Samsung',
+      model: 'Galaxy Book 3'
+    };
+    expect(store.matchedBrand).toBe('samsung');
+
+    // Caso Acer legítimo
+    store.currentSpecs = {
+      brand: 'Acer',
+      model: 'Nitro 5'
+    };
+    expect(store.matchedBrand).toBe('acer');
+
+    // Caso marca 'Otro' -> sin logo
+    store.currentSpecs = {
+      brand: 'Otro',
+      model: 'PC Gamer Custom'
+    };
+    expect(store.matchedBrand).toBe(null);
+  });
+
+  it('debería limpiar la marca al inicio del modelo en displayModel para evitar redundancia visual con el logo', () => {
+    const store = useSpecsStore();
+
+    store.currentSpecs = {
+      brand: 'ASUS',
+      model: 'ASUS Vivobook 15 E1504GAB'
+    };
+    expect(store.displayModel).toBe('Vivobook 15 E1504GAB');
+
+    store.currentSpecs = {
+      brand: 'Lenovo',
+      model: 'Lenovo LOQ 15AHP10'
+    };
+    expect(store.displayModel).toBe('LOQ 15AHP10');
+
+    store.currentSpecs = {
+      brand: 'HP',
+      model: 'HP Pavilion Laptop 15'
+    };
+    expect(store.displayModel).toBe('Pavilion Laptop 15');
+
+    // Si el modelo ya no contiene la marca, debe permanecer intacto
+    store.currentSpecs = {
+      brand: 'ASUS',
+      model: 'Vivobook 15 E1504GAB'
+    };
+    expect(store.displayModel).toBe('Vivobook 15 E1504GAB');
+
+    // Si la marca es 'Otro', mantiene el modelo tal cual
+    store.currentSpecs = {
+      brand: 'Otro',
+      model: 'Gamer Master PC'
+    };
+    expect(store.displayModel).toBe('Gamer Master PC');
+  });
+
+  it('debería normalizar a "Otro" cualquier fabricante sin logo oficial (ej. ASRock, Dell, Gigabyte)', () => {
+    expect(normalizeBrand('ASRock')).toBe('Otro');
+    expect(normalizeBrand('asrock')).toBe('Otro');
+    expect(normalizeBrand('Dell')).toBe('Otro');
+    expect(normalizeBrand('Gigabyte')).toBe('Otro');
+    expect(normalizeBrand('MSI')).toBe('Otro');
+    expect(normalizeBrand('ASUS')).toBe('ASUS');
+    expect(normalizeBrand('asus')).toBe('ASUS');
+    expect(normalizeBrand('Lenovo')).toBe('Lenovo');
+    expect(normalizeBrand('HP')).toBe('HP');
+    expect(normalizeBrand('Samsung')).toBe('Samsung');
+    expect(normalizeBrand('Acer')).toBe('Acer');
+    expect(normalizeBrand(null)).toBe('Otro');
+    expect(normalizeBrand('')).toBe('Otro');
   });
 });

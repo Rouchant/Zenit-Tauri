@@ -30,8 +30,8 @@ const formatText = (text) => {
     <header class="header">
       <div class="header-top-row">
         <div class="header-branding">
-          <div class="logo-placeholder" id="header-logo-container">
-            <img v-if="brandLogo" :src="brandLogo" :alt="store.currentSpecs?.brand" class="brand-logo" :class="'brand-' + store.matchedBrand">
+          <div class="logo-placeholder" id="header-logo-container" v-if="brandLogo">
+            <img :src="brandLogo" :alt="store.currentSpecs?.brand" class="brand-logo" :class="'brand-' + store.matchedBrand">
           </div>
           <div class="logo-separator" v-if="brandLogo && storeLogo"></div>
           <div class="store-logo-placeholder" id="store-logo-container" v-if="storeLogo">
@@ -48,7 +48,7 @@ const formatText = (text) => {
           </div>
 
           <div class="brand-model-group">
-            <div class="brand-badge" id="display-brand" v-html="formatText(store.currentSpecs?.model || 'Cargando...')">
+            <div class="brand-badge" id="display-brand" v-html="formatText(store.displayModel || 'Cargando...')">
             </div>
             <div v-if="store.currentSpecs?.sku" class="sku-badge">
               SKU: {{ store.currentSpecs.sku }}

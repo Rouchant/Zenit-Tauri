@@ -39,6 +39,15 @@ export const INTERNAL_PATHS = {
   [INTERNAL_VIDEOS.ASUS_ZENBOOK_2026]: 'videos/assets/brand_a/v_a_zb26.mp4'
 };
 
+export const SUPPORTED_LOGO_BRANDS = ['ASUS', 'Lenovo', 'HP', 'Samsung', 'Acer'];
+
+export const normalizeBrand = (val) => {
+  if (!val) return 'Otro';
+  const clean = String(val).trim();
+  const matched = SUPPORTED_LOGO_BRANDS.find(b => b.toLowerCase() === clean.toLowerCase());
+  return matched || 'Otro';
+};
+
 export const formatPrice = (val) => {
   if (val === null || val === undefined || val === '') return '';
   const digits = String(val).replace(/\D/g, '');
@@ -148,6 +157,8 @@ export const useSpecsStore = defineStore('specs', () => {
         localStorage.setItem('zenit-theme', theme.value);
         if (matchedBrand.value) {
           localStorage.setItem('zenit-brand', matchedBrand.value);
+        } else {
+          localStorage.removeItem('zenit-brand');
         }
       }
     } catch { /* SecurityError en contextos restringidos */ }
@@ -200,6 +211,10 @@ export const useSpecsStore = defineStore('specs', () => {
       specs.priceSecondary = cleanPrice(specs.priceSecondary);
     }
 
+    if (specs.brand) {
+      specs.brand = normalizeBrand(specs.brand);
+    }
+
     // Merge to avoid losing non-editable fields (like auto-detected ones)
     currentSpecs.value = { ...currentSpecs.value, ...specs };
 
@@ -248,6 +263,10 @@ export const useSpecsStore = defineStore('specs', () => {
         ...autoDetectedSpecs.value, 
         ...(storedSpecs || {}) 
       };
+
+      if (currentSpecs.value.brand) {
+        currentSpecs.value.brand = normalizeBrand(currentSpecs.value.brand);
+      }
 
       // Limpieza retroactiva de precios existentes en disco / cache
       if (currentSpecs.value.pricePrimary !== undefined) {
@@ -369,6 +388,9 @@ export const useSpecsStore = defineStore('specs', () => {
               ...autoDetectedSpecs.value, 
               ...currentSpecs.value 
             };
+            if (currentSpecs.value.brand) {
+              currentSpecs.value.brand = normalizeBrand(currentSpecs.value.brand);
+            }
 
             // Pre-selección inteligente de videos
             const isAsusBrand = (currentSpecs.value.brand || '').toLowerCase().includes('asus') || (currentSpecs.value.model || '').toLowerCase().includes('asus');
@@ -525,52 +547,111 @@ export const useSpecsStore = defineStore('specs', () => {
     getVideoRawPath,
     isMpvReady,
     isAsus: computed(() => {
-      const b = (currentSpecs.value.brand || '').toLowerCase();
-      const m = (currentSpecs.value.model || '').toLowerCase();
+      const b = (currentSpecs.value.brand || '').toLowerCase().trim();
+      const m = (currentSpecs.value.model || '').toLowerCase().trim();
       
-      // Si el modelo contiene 'asus', tiene prioridad absoluta
-      if (m.includes('asus')) {
+      if (b === 'otro' || b === 'other') return false;
+
+      // Si el modelo contiene 'asus' como palabra completa, tiene prioridad
+      if (/\basus\b/i.test(m)) {
         return true;
       }
       
       // Si la marca contiene otros fabricantes conocidos, NO es Asus.
-      const knownBrands = ['hp', 'lenovo', 'samsung', 'acer', 'dell', 'msi', 'gigabyte', 'asrock'];
-      if (knownBrands.some(brand => b.includes(brand))) {
+      const otherBrands = [/\bhp\b/i, /hewlett/i, /\blenovo\b/i, /\bsamsung\b/i, /\bacer\b/i, /\bdell\b/i, /\bmsi\b/i, /\bgigabyte\b/i, /\basrock\b/i];
+      if (otherBrands.some(rx => rx.test(b))) {
         return false;
       }
       
-      return b.includes('asus');
+      return /\basus\b/i.test(b);
     }),
     isRTX: computed(() => {
       const g = (currentSpecs.value.gpu || '').toLowerCase();
       return g.includes('rtx');
     }),
     isGeneric: computed(() => {
-      const b = (currentSpecs.value.brand || '').toLowerCase();
-      const m = (currentSpecs.value.model || '').toLowerCase();
+      const b = (currentSpecs.value.brand || '').toLowerCase().trim();
+      const m = (currentSpecs.value.model || '').toLowerCase().trim();
       
+      if (b === 'otro' || b === 'other' || b.includes('generico') || b.includes('generic')) {
+        return true;
+      }
+
       // Si el modelo contiene 'asus', no es genérico (prioridad absoluta)
-      if (m.includes('asus')) {
+      if (/\basus\b/i.test(m)) {
         return false;
       }
       
       // Si la marca es de otro fabricante conocido, es genérico.
-      const knownBrands = ['hp', 'lenovo', 'samsung', 'acer', 'dell', 'msi', 'gigabyte', 'asrock'];
-      if (knownBrands.some(brand => b.includes(brand))) {
+      const knownBrands = [/\bhp\b/i, /hewlett/i, /\blenovo\b/i, /\bsamsung\b/i, /\bacer\b/i, /\bdell\b/i, /\bmsi\b/i, /\bgigabyte\b/i, /\basrock\b/i];
+      if (knownBrands.some(rx => rx.test(b))) {
         return true;
       }
 
-      const asus = b.includes('asus');
-      return !asus || b.includes('generico');
+      const asus = /\basus\b/i.test(b);
+      return !asus;
     }),
     formattedPricePrimary: computed(() => formatPrice(currentSpecs.value?.pricePrimary)),
     formattedPriceSecondary: computed(() => formatPrice(currentSpecs.value?.priceSecondary)),
     matchedBrand: computed(() => {
-      const brand = (currentSpecs.value.brand || '').toLowerCase();
-      const model = (currentSpecs.value.model || '').toLowerCase();
-      const combined = `${brand} ${model}`;
-      const knownBrands = ['asus', 'hp', 'samsung', 'acer', 'lenovo'];
-      return knownBrands.find(b => combined.includes(b)) || null;
+      const brand = (currentSpecs.value.brand || '').trim().toLowerCase();
+      
+      // Si la marca es explícitamente "otro" o genérica, no mostrar logo
+      if (!brand || ['otro', 'other', 'generico', 'generic', 'none'].includes(brand)) {
+        return null;
+      }
+
+      const matchPatterns = [
+        { key: 'asus', regex: /\basus\b/i },
+        { key: 'lenovo', regex: /\blenovo\b/i },
+        { key: 'hp', regex: /\bhp\b/i, extra: (s) => s.includes('hewlett') },
+        { key: 'samsung', regex: /\bsamsung\b/i },
+        { key: 'acer', regex: /\bacer\b/i }
+      ];
+
+      // 1. Prioridad Absoluta: Validar la marca directamente (sin mezclar con model)
+      for (const p of matchPatterns) {
+        if (p.regex.test(brand) || (p.extra && p.extra(brand))) {
+          return p.key;
+        }
+      }
+
+      // 2. Solo si la marca es indeterminada ("pc", "computadora", "desktop"), revisar modelo con límites de palabra (\b)
+      if (['computadora', 'pc', 'pc desktop', 'desktop', 'notebook', 'laptop'].includes(brand)) {
+        const model = (currentSpecs.value.model || '').trim();
+        for (const p of matchPatterns) {
+          if (p.regex.test(model) || (p.extra && p.extra(model.toLowerCase()))) {
+            return p.key;
+          }
+        }
+      }
+
+      return null;
+    }),
+    displayModel: computed(() => {
+      const rawModel = (currentSpecs.value?.model || '').trim();
+      if (!rawModel) return '';
+
+      const brand = (currentSpecs.value?.brand || '').trim();
+      const mBrand = (currentSpecs.value?.brand || '').toLowerCase().trim();
+
+      let cleaned = rawModel;
+      const brandsToRemove = new Set([
+        'asus', 'lenovo', 'hp', 'samsung', 'acer', 'dell', 'msi'
+      ]);
+      if (brand && !['otro', 'other', 'generico', 'generic'].includes(mBrand)) {
+        brandsToRemove.add(brand.toLowerCase());
+      }
+
+      for (const b of brandsToRemove) {
+        if (!b || b.length < 2) continue;
+        const regex = new RegExp(`^${b}\\b[\\s-_]*`, 'gi');
+        while (regex.test(cleaned)) {
+          cleaned = cleaned.replace(regex, '').trim();
+        }
+      }
+
+      return cleaned || rawModel;
     })
   };
 });

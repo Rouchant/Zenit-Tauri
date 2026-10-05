@@ -309,7 +309,8 @@
 
             // Actualizar logo
             const b = (effectiveBrand || '').toLowerCase().trim();
-            if (b && validBrands.includes(b) && logoImg && logoContainer) {
+            const isNoLogoBrand = !b || ['otro', 'other', 'generico', 'generic', 'none'].includes(b);
+            if (!isNoLogoBrand && validBrands.includes(b) && logoImg && logoContainer) {
                 logoImg.src = '/assets/logos/' + b + '.svg';
                 logoImg.className = 'brand-' + b;
                 logoContainer.style.display = 'block';

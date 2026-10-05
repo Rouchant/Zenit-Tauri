@@ -294,6 +294,9 @@ const shouldBePlaying = ref(true);
 // Sincronizar estado global de modales y re-evaluar orientación al cerrar cualquier modal
 watch([showPasswordModal, showAdminModal, showSpecsModal, showFirstStartModal], ([p, a, s, f], [op, oa, os, of_]) => {
   store.isModalOpen = p || a || s || f;
+  if (a) {
+    tauriAPI.setAlwaysOnTop(false);
+  }
   // Si algún modal pasó de abierto a cerrado, forzar re-evaluación de is-portrait de inmediato
   const anyJustClosed = (!p && op) || (!a && oa) || (!s && os) || (!f && of_);
   if (anyJustClosed) {
@@ -357,15 +360,25 @@ const handleHotspotClick = (mode) => {
 // Solo se pausan al minimizar explícitamente (botón "Prueba esta PC") o al abrir modales.
 
 
+// Escalafón de compatibilidad gráfica progresiva:
+// Intento 1 y 2: d3d11va (Directo a GPU, ultra-rápido sin sobrecarga; se repite una vez en caso de error)
+// Intento 3: d3d11va-copy (Máxima compatibilidad con drivers AMD Radeon / APUs)
+// Intento 4: no (Decodificación CPU por software, 100% infalible en Ryzen/Intel)
+const HWDEC_ATTEMPTS = ['d3d11va', 'd3d11va', 'd3d11va-copy', 'no'];
+const MAX_MPV_INIT_ATTEMPTS = HWDEC_ATTEMPTS.length;
+
 const initMpvGlobal = async (forceReinit = false) => {
   if (store.isMpvReady && !forceReinit) return true;
-  try {
-    if (window.__TAURI_INTERNALS__) {
-      await invoke('log_frontend_debug', { msg: '[App JS] Starting global init of libmpv...' });
+  if (!window.__TAURI_INTERNALS__) return false;
+
+  for (let attempt = 1; attempt <= MAX_MPV_INIT_ATTEMPTS; attempt++) {
+    try {
+      const hwdecSetting = HWDEC_ATTEMPTS[attempt - 1];
+      await invoke('log_frontend_debug', { msg: `[App JS] Starting global init of libmpv (Attempt ${attempt}/${MAX_MPV_INIT_ATTEMPTS}, hwdec=${hwdecSetting})...` });
       await init({
         initialOptions: {
           'vo': 'gpu',
-          'hwdec': 'd3d11va-copy',   // Decodificación por hardware de alta compatibilidad para GPUs AMD Radeon / Windows 11
+          'hwdec': hwdecSetting,
           'fbo-format': 'rgba8',     // Evita colapsar bus de RAM compartida en equipos de gama baja
           'scale': 'bicubic',        // Más nítido que bilinear para pantallas premium, pero ligero en i3
           'dither': 'ordered',       // Suaviza degradados en pantallas premium sin impacto de GPU
@@ -388,25 +401,30 @@ const initMpvGlobal = async (forceReinit = false) => {
         ]
       });
       store.isMpvReady = true;
-      console.log('[App] Global libmpv initialized');
+      console.log(`[App] Global libmpv initialized successfully (Attempt ${attempt})`);
       if (window.__TAURI_INTERNALS__ && !isGlobalMpvListening) {
         isGlobalMpvListening = true;
         listenEvents((mpvEvent) => {
           store.handleGlobalMpvEvent(mpvEvent);
         });
       }
-      await invoke('log_frontend_debug', { msg: '[App JS] Global init of libmpv succeeded!' });
+      await invoke('log_frontend_debug', { msg: `[App JS] Global init of libmpv succeeded on attempt ${attempt}!` });
       return true;
+    } catch (e) {
+      console.error(`[App] Failed to initialize global libmpv on attempt ${attempt}:`, e);
+      store.isMpvReady = false;
+      try {
+        const errStr = e instanceof Error ? e.stack || e.message : String(e);
+        await invoke('log_frontend_debug', { msg: `[App JS] Global init of libmpv failed (Attempt ${attempt}): ${errStr}` });
+      } catch (ignore) {}
+
+      if (attempt < MAX_MPV_INIT_ATTEMPTS) {
+        // Pausa breve progresiva antes del siguiente reintento
+        await new Promise(res => setTimeout(res, attempt * 250));
+      }
     }
-  } catch (e) {
-    console.error('[App] Failed to initialize global libmpv:', e);
-    store.isMpvReady = false;
-    try {
-      const errStr = e instanceof Error ? e.stack || e.message : String(e);
-      await invoke('log_frontend_debug', { msg: `[App JS] Global init of libmpv failed: ${errStr}` });
-    } catch (ignore) {}
-    return false;
   }
+  return false;
 };
 
 const reinitMpvGlobal = async () => {
@@ -427,6 +445,17 @@ const handleBgVideoFailure = async (reason = 'unknown') => {
   if (bgVideoTimeout) {
     clearTimeout(bgVideoTimeout);
     bgVideoTimeout = null;
+  }
+
+  // Si MPV no está listo, intentar re-inicializar el contexto nativo primero
+  if (!store.isMpvReady) {
+    console.log('[App MPV Recovery] MPV no está listo, intentando re-inicialización del módulo...');
+    const reinitSuccess = await reinitMpvGlobal();
+    if (!reinitSuccess && bgRetryCount.value >= 3) {
+      isBgVideoFailed.value = true;
+      showStaticFallback.value = true;
+      return;
+    }
   }
 
   if (bgRetryCount.value === 1) {
@@ -967,20 +996,28 @@ onMounted(async () => {
   updateScale();
   window.addEventListener('resize', updateScale);
   
+  // Iniciar inicialización de MPV en segundo plano en paralelo con specs para máxima velocidad
+  const mpvInitPromise = window.__TAURI_INTERNALS__ ? initMpvGlobal() : Promise.resolve(false);
+
   await store.loadSpecs();
 
-  // Si es el primer inicio, activar el modal e isModalOpen ANTES de iniciar reproducción de video
+  // Si es el primer inicio, activar el modal e isModalOpen INMEDIATAMENTE sin esperar a MPV
   if (!store.currentSpecs.firstStartCompleted) {
     showFirstStartModal.value = true;
     store.isModalOpen = true;
   }
 
   if (window.__TAURI_INTERNALS__) {
-    await initMpvGlobal();
     if (!store.isModalOpen) {
-      playBgVideoNative();
+      await mpvInitPromise;
+      if (store.isMpvReady) {
+        playBgVideoNative();
+      }
     } else {
-      pauseInfoVideos();
+      // En modo modal o primer inicio, MPV se inicializa en segundo plano y se pausa silenciosamente
+      mpvInitPromise.then(() => {
+        pauseInfoVideos();
+      });
     }
   }
   

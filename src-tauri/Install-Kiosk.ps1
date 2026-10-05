@@ -59,6 +59,10 @@ Set-ItemProperty -Path $policyPath -Name 'NoWindowMinimizingShortcuts' -Value 1 
 Stop-Service -Name "vdmss" -Force -ErrorAction SilentlyContinue
 Set-Service -Name "vdmss" -StartupType Disabled -ErrorAction SilentlyContinue
 
-# 3. Exclusiones de Antivirus (Windows Defender)
+# 3. Exclusiones de Antivirus (Windows Defender) y Desbloqueo de Archivos (SmartScreen)
 Add-MpPreference -ExclusionPath $InstallDir -ErrorAction SilentlyContinue
 Add-MpPreference -ExclusionProcess "zenit.exe" -ErrorAction SilentlyContinue
+
+# Desbloquear archivos NTFS recursivamente para evitar bloqueos de SmartScreen en libmpv y dependencias
+Get-ChildItem -Path "$InstallDir" -Recurse -ErrorAction SilentlyContinue | Unblock-File -ErrorAction SilentlyContinue
+

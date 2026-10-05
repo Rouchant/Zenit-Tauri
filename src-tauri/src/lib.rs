@@ -82,11 +82,21 @@ pub fn run() {
             #[cfg(windows)]
             {
                 use std::os::windows::ffi::OsStrExt;
+                use std::os::windows::process::CommandExt;
                 use tauri::Manager;
 
                 let mut lib_dir = app.path().resource_dir().unwrap_or_default();
                 lib_dir.push("lib");
                 if lib_dir.exists() {
+                    // Desbloquear libmpv y dependencias en segundo plano si tienen Zone.Identifier (SmartScreen)
+                    let lib_dir_str = lib_dir.to_string_lossy().to_string();
+                    std::thread::spawn(move || {
+                        let _ = std::process::Command::new("powershell")
+                            .args(["-WindowStyle", "Hidden", "-Command", &format!("Get-ChildItem -Path '{}' -Recurse -ErrorAction SilentlyContinue | Unblock-File -ErrorAction SilentlyContinue", lib_dir_str)])
+                            .creation_flags(0x08000000)
+                            .status();
+                    });
+
                     let mut path_utf16: Vec<u16> = lib_dir.as_os_str().encode_wide().collect();
                     path_utf16.push(0); // Null terminator
                     unsafe {
@@ -401,11 +411,15 @@ pub fn run() {
                                 }
                             }
                             // Re-activar la vigilancia de foco al recuperar el foco de la ventana principal
+                            // SOLO si no estamos en un modal abierto (para permitir que los selectores de archivos queden al frente)
                             let handle = window.app_handle().clone();
                             tauri::async_runtime::spawn(async move {
                                 let state = handle.state::<AppState>();
-                                let mut guard = state.enforce_always_on_top.lock().await;
-                                *guard = true;
+                                let mode = *state.current_mode.lock().await;
+                                if mode != crate::state::AppMode::ModalOpen {
+                                    let mut guard = state.enforce_always_on_top.lock().await;
+                                    *guard = true;
+                                }
                             });
                         } else {
                             // Vigilancia reactiva de foco: Si pierde el foco y el modo Kiosk está activo, reclamarlo al instante.
@@ -414,9 +428,18 @@ pub fn run() {
                             let handle = window.app_handle().clone();
                             let state = handle.state::<AppState>();
                             let enforce_flag = Arc::clone(&state.enforce_always_on_top);
+                            let mode_flag = Arc::clone(&state.current_mode);
                             let window_clone = window.clone();
 
                             tauri::async_runtime::spawn(async move {
+                                let mode = {
+                                    let guard = mode_flag.lock().await;
+                                    *guard
+                                };
+                                if mode == crate::state::AppMode::ModalOpen {
+                                    return;
+                                }
+
                                 let should_enforce = {
                                     let guard = enforce_flag.lock().await;
                                     *guard

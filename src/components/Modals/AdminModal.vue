@@ -1,6 +1,6 @@
 <script setup>
 import { ref, reactive, onMounted, computed } from 'vue';
-import { useSpecsStore, INTERNAL_VIDEOS } from '../../store/specs';
+import { useSpecsStore, INTERNAL_VIDEOS, normalizeBrand } from '../../store/specs';
 import { tauriAPI, notify } from '../../api/tauriApi';
 import { getVersion } from '@tauri-apps/api/app';
 import { BADGES_CATALOG } from '../../utils/badges';
@@ -72,6 +72,7 @@ const editableSpecs = reactive({
     customComment: store.currentSpecs.customComment || '',
     selectedBadges: Array.isArray(store.currentSpecs.selectedBadges) ? [...store.currentSpecs.selectedBadges] : (store.currentSpecs.storeBadge === 'touch' ? ['touch'] : []),
     ...store.currentSpecs,
+    brand: normalizeBrand(store.currentSpecs.brand),
     coresAndThreads: store.currentSpecs.coresAndThreads || (store.currentSpecs.cores ? `${store.currentSpecs.cores} Núcleos / ${store.currentSpecs.threads} Hilos` : ''),
     customVideoPaths: initCustomVideoPaths()
 });
@@ -90,21 +91,23 @@ const toggleBadge = (badgeId) => {
 };
 
 const isAsus = computed(() => {
-    const b = (editableSpecs.brand || '').toLowerCase();
-    const m = (editableSpecs.model || '').toLowerCase();
+    const b = (editableSpecs.brand || '').toLowerCase().trim();
+    const m = (editableSpecs.model || '').toLowerCase().trim();
     
-    // Si el modelo contiene 'asus', tiene prioridad absoluta
-    if (m.includes('asus')) {
+    if (b === 'otro' || b === 'other') return false;
+
+    // Si el modelo contiene 'asus' como palabra completa, tiene prioridad
+    if (/\basus\b/i.test(m)) {
         return true;
     }
     
     // Si la marca contiene otros fabricantes conocidos, NO es Asus.
-    const knownBrands = ['hp', 'lenovo', 'samsung', 'acer', 'dell', 'msi', 'gigabyte', 'asrock'];
-    if (knownBrands.some(brand => b.includes(brand))) {
+    const otherBrands = [/\bhp\b/i, /hewlett/i, /\blenovo\b/i, /\bsamsung\b/i, /\bacer\b/i, /\bdell\b/i, /\bmsi\b/i, /\bgigabyte\b/i, /\basrock\b/i];
+    if (otherBrands.some(rx => rx.test(b))) {
         return false;
     }
     
-    return b.includes('asus');
+    return /\basus\b/i.test(b);
 });
 
 // Opciones filtradas según hardware (dependen de editableSpecs)
@@ -122,9 +125,7 @@ const INTERNAL_OPTIONS = computed(() => {
             INTERNAL_VIDEOS.ASUS_ZENBOOK_2026
         ];
         if (asusVideos.includes(v.path)) {
-            const b = (editableSpecs.brand || '').toLowerCase();
-            const m = (editableSpecs.model || '').toLowerCase();
-            return b.includes('asus') || m.includes('asus');
+            return isAsus.value;
         }
         return true;
     });
@@ -133,6 +134,7 @@ const INTERNAL_OPTIONS = computed(() => {
 const LANDING_INTERNAL_OPTIONS = INTERNAL_OPTIONS;
 
 const isProcessing = ref(false);
+const isSelectingVideo = ref(false);
 const slotErrorIndex = ref(null);
 const uploadError = ref({ type: null, index: null, msg: '' });
 
@@ -175,49 +177,58 @@ const save = () => {
 const restoreField = (field) => {
     if (field === 'coresAndThreads') {
         editableSpecs.coresAndThreads = store.autoDetectedSpecs.cores ? `${store.autoDetectedSpecs.cores} Núcleos / ${store.autoDetectedSpecs.threads} Hilos` : '';
+    } else if (field === 'brand') {
+        editableSpecs.brand = normalizeBrand(store.autoDetectedSpecs.brand);
     } else {
         editableSpecs[field] = store.autoDetectedSpecs[field] || '';
     }
 };
 
 const selectVideo = async (type, index = null) => {
-    if (isProcessing.value) return;
+    if (isSelectingVideo.value || isProcessing.value) return;
+    isSelectingVideo.value = true;
     uploadError.value = { type: null, index: null, msg: '' };
 
-    // Asegurar que el diálogo nativo pueda aparecer sobre la ventana kiosk
-    await tauriAPI.setAlwaysOnTop(false);
-    
-    const res = await tauriAPI.selectVideo();
-    if (res) {
-        isProcessing.value = true;
-        try {
-            const safePath = await tauriAPI.saveCustomVideo(res);
-            if (safePath) {
-                if (type === 'inactivity' && index !== null) {
-                    const slot = editableSpecs.customVideoPaths[index];
-                    slot.path = safePath;
-                    onVaultSelectionChange(slot, 'inactivity');
-                    editableSpecs.videoType = 'custom';
-                } else if (type === 'landing') {
-                    editableSpecs.customLandingVideoPath = safePath;
-                    editableSpecs.landingVideoType = 'custom';
-                    onVaultSelectionChange(null, 'landing');
+    try {
+        // Asegurar que el diálogo nativo pueda aparecer sobre la ventana kiosk
+        await tauriAPI.setAlwaysOnTop(false);
+        
+        const res = await tauriAPI.selectVideo();
+        if (res) {
+            isProcessing.value = true;
+            try {
+                const safePath = await tauriAPI.saveCustomVideo(res);
+                if (safePath) {
+                    if (type === 'inactivity' && index !== null) {
+                        const slot = editableSpecs.customVideoPaths[index];
+                        slot.path = safePath;
+                        onVaultSelectionChange(slot, 'inactivity');
+                        editableSpecs.videoType = 'custom';
+                    } else if (type === 'landing') {
+                        editableSpecs.customLandingVideoPath = safePath;
+                        editableSpecs.landingVideoType = 'custom';
+                        onVaultSelectionChange(null, 'landing');
+                    }
+                    
+                    // Actualizar la lista de videos guardados (Bóveda)
+                    const videos = await tauriAPI.listCustomVideos();
+                    if (videos) savedVideos.value = videos;
+                    
+                    notify('Zenit', 'Video guardado correctamente en la Bóveda ✓');
                 }
-                
-                // Actualizar la lista de videos guardados (Bóveda)
-                const videos = await tauriAPI.listCustomVideos();
-                if (videos) savedVideos.value = videos;
-                
-                notify('Zenit', 'Video guardado correctamente en la Bóveda ✓');
+            } catch (err) {
+                uploadError.value = { type, index, msg: err };
+                setTimeout(() => {
+                    uploadError.value = { type: null, index: null, msg: '' };
+                }, 5000);
+            } finally {
+                isProcessing.value = false;
             }
-        } catch (err) {
-            uploadError.value = { type, index, msg: err };
-            setTimeout(() => {
-                uploadError.value = { type: null, index: null, msg: '' };
-            }, 5000);
-        } finally {
-            isProcessing.value = false;
         }
+    } catch (err) {
+        console.error('[AdminModal] Error al abrir selector de video:', err);
+    } finally {
+        isSelectingVideo.value = false;
     }
 };
 
@@ -427,9 +438,19 @@ const openUpdatesUrl = async () => {
                 <section class="settings-section">
                     <div class="hardware-grid">
                         <div class="input-group">
-                            <label for="brand-input">Marca (Detectada)</label>
+                            <label for="brand-select">Marca (Fabricante)</label>
                             <div class="input-with-action">
-                                <input id="brand-input" name="brand" type="text" v-model="editableSpecs.brand" disabled style="opacity: 0.6; cursor: not-allowed;">
+                                <div class="custom-select" style="flex: 1;">
+                                    <select id="brand-select" name="brand" v-model="editableSpecs.brand">
+                                        <option value="ASUS">ASUS</option>
+                                        <option value="Lenovo">Lenovo</option>
+                                        <option value="HP">HP</option>
+                                        <option value="Samsung">Samsung</option>
+                                        <option value="Acer">Acer</option>
+                                        <option value="Otro">Otro (Sin Logo)</option>
+                                    </select>
+                                </div>
+                                <button class="restore-btn" @click="restoreField('brand')" title="Restaurar marca detectada por hardware">↺</button>
                             </div>
                         </div>
                         <div class="input-group">
@@ -597,7 +618,9 @@ const openUpdatesUrl = async () => {
                                 </div>
                                 <div style="flex: 3; display: flex; flex-direction: column; gap: 12px; padding-left: 20px;">
                                     <strong style="font-size: 0.85rem; color: var(--white);">Opcion 2: Desde PC Local</strong>
-                                    <button class="btn btn-secondary select-file-btn" style="align-self: flex-start;" @click="selectVideo('landing')">Subir Nuevo Video</button>
+                                    <button class="btn btn-secondary select-file-btn" style="align-self: flex-start;" :disabled="isSelectingVideo || isProcessing" @click="selectVideo('landing')">
+                                        {{ isSelectingVideo ? 'Abriendo...' : 'Subir Nuevo Video' }}
+                                    </button>
                                     <div v-if="uploadError.type === 'landing'" class="slot-error-msg" style="margin: 0; font-size: 0.7rem;">
                                         ⚠️ {{ uploadError.msg }}
                                     </div>
@@ -654,7 +677,9 @@ const openUpdatesUrl = async () => {
                                     
                                     <div style="flex: 3; display: flex; flex-direction: column; gap: 12px; padding-left: 20px;">
                                         <strong style="font-size: 0.85rem; color: var(--white);">Opcion 2: Desde PC Local</strong>
-                                        <button class="btn btn-secondary select-file-btn" style="align-self: flex-start;" @click="selectVideo('inactivity', index)">Subir Video</button>
+                                        <button class="btn btn-secondary select-file-btn" style="align-self: flex-start;" :disabled="isSelectingVideo || isProcessing" @click="selectVideo('inactivity', index)">
+                                            {{ isSelectingVideo ? 'Abriendo...' : 'Subir Video' }}
+                                        </button>
                                         <div v-if="uploadError.type === 'inactivity' && uploadError.index === index" class="slot-error-msg" style="margin: 0; font-size: 0.7rem;">
                                             ⚠️ {{ uploadError.msg }}
                                         </div>

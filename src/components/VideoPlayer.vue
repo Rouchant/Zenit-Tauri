@@ -377,7 +377,7 @@ defineExpose({ videoRef: mockVideoEl });
           <!-- Columna Derecha (más ancha): Modelo y Precios -->
           <div class="info-column">
             <!-- Modelo Arriba -->
-            <div class="model-name">{{ store.currentSpecs?.model }}</div>
+            <div class="model-name">{{ store.displayModel }}</div>
 
             <!-- Seccion de precios: solo se muestra si existe al menos uno -->
             <template v-if="store.currentSpecs.pricePrimary || store.currentSpecs.priceSecondary">

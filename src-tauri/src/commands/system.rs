@@ -512,11 +512,12 @@ fn get_ram_display(total_bytes: u64) -> String {
 /// Normaliza nombres técnicos de fabricantes a sus nombres comerciales conocidos.
 fn clean_brand_name(raw: &str) -> String {
     let r = raw.to_uppercase();
-    if r.contains("ASUSTEK") { "ASUS" }
-    else if r.contains("HEWLETT-PACKARD") || r.contains("HP") { "HP" }
+    if r.contains("ASUSTEK") || r.contains("ASUS") { "ASUS" }
+    else if r.contains("HEWLETT-PACKARD") || r.split_whitespace().any(|w| w == "HP") || r == "HP" { "HP" }
     else if r.contains("SAMSUNG") { "Samsung" }
     else if r.contains("DELL") { "Dell" }
     else if r.contains("LENOVO") { "Lenovo" }
+    else if r.contains("ACER") { "Acer" }
     else if r.contains("ASROCK") { "ASRock" }
     else if r.contains("GIGABYTE") { "Gigabyte" }
     else if r.contains("MSI") || r.contains("MICRO-STAR") { "MSI" }
@@ -532,6 +533,7 @@ fn is_generic_info(brand: &str, model: &str) -> bool {
 }
 
 /// Refina el nombre del modelo eliminando ruido repetitivo, normalizando espaciados de ASUS y deduplicando palabras.
+/// La marca NO se antepone al modelo resultante para evitar redundancia visual con el logo.
 fn refine_model_name(brand: &str, model: &str) -> String {
     let noise = ["ASUSTEK", "COMPUTER", "INC", "CORP", "CORPORATION", "LTD", "SYSTEMS", "PRODUCT", "NAME", "LAPTOP"];
     
@@ -551,7 +553,7 @@ fn refine_model_name(brand: &str, model: &str) -> String {
     for &word in &words {
         let word_up = word.to_uppercase().replace(".", "");
         if noise.contains(&word_up.as_str()) { continue; }
-        if word_up == brand_up || word_up.contains(&brand_up) { continue; }
+        if word_up == brand_up || (brand_up.len() > 2 && word_up.contains(&brand_up)) { continue; }
 
         if let Some(last) = unique_words.last() {
             let last_up = last.to_uppercase();
@@ -567,7 +569,7 @@ fn refine_model_name(brand: &str, model: &str) -> String {
     }
 
     let result_model = unique_words.join(" ");
-    if result_model.is_empty() { brand.to_string() } else { format!("{} {}", brand, result_model) }
+    if result_model.is_empty() { brand.to_string() } else { result_model }
 }
 
 // --- OTROS COMANDOS ---
@@ -991,9 +993,11 @@ mod tests {
 
     #[test]
     fn test_refine_model_name() {
-        assert_eq!(refine_model_name("ASUS", "ASUS TUF Gaming F15"), "ASUS TUF Gaming F15");
-        assert_eq!(refine_model_name("HP", "HP Laptop 15s-eq2xxx"), "HP 15s eq2xxx");
-        assert_eq!(refine_model_name("Lenovo", "82K2"), "Lenovo 82K2"); 
+        assert_eq!(refine_model_name("ASUS", "ASUS TUF Gaming F15"), "TUF Gaming F15");
+        assert_eq!(refine_model_name("HP", "HP Laptop 15s-eq2xxx"), "15s eq2xxx");
+        assert_eq!(refine_model_name("Lenovo", "82K2"), "82K2"); 
+        assert_eq!(refine_model_name("Lenovo", "Lenovo LOQ 15AHP10"), "LOQ 15AHP10");
+        assert_eq!(refine_model_name("ASUS", "ASUS Vivobook 15 E1504GAB"), "Vivobook 15 E1504GAB");
     }
 
     #[test]
