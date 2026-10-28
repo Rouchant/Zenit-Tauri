@@ -249,13 +249,10 @@ unsafe extern "system" fn low_level_keyboard_proc(n_code: i32, w_param: WPARAM, 
         _ => {}
     }
 
-    // Resetear el estado WAS_BLOCKED al soltar modificadores y suprimir Alt KeyUp si se bloqueó un atajo
+    // Resetear el estado WAS_BLOCKED al soltar modificadores (sin suprimir KeyUp para no desincronizar el buffer de Windows)
     if is_up && WAS_BLOCKED.load(Ordering::SeqCst) {
         if matches!(key, VK_LMENU | VK_RMENU | VK_MENU | VK_LWIN | VK_RWIN | VK_LCONTROL | VK_RCONTROL) {
             WAS_BLOCKED.store(false, Ordering::SeqCst);
-            if matches!(key, VK_LMENU | VK_RMENU | VK_MENU) {
-                return 1;
-            }
         }
     }
 
@@ -298,8 +295,10 @@ unsafe extern "system" fn low_level_keyboard_proc(n_code: i32, w_param: WPARAM, 
         }
 
         // 2. Bloqueos consolidados (Evaluación independiente sin cortocircuito por orden)
+        let alt_physical = (kbd_struct.flags & LLKHF_ALTDOWN) != 0 || is_sys;
         let is_dev_shortcut = (ctrl && shift && matches!(key, VK_I | VK_J | VK_C | VK_K)) || (key == VK_F12);
-        let should_block = (alt && matches!(key, VK_ESCAPE | VK_F4 | VK_SPACE))
+        let should_block = (alt && matches!(key, VK_ESCAPE | VK_F4))
+            || (alt_physical && key == VK_SPACE)
             || (win && key != VK_LWIN && key != VK_RWIN && matches!(key, VK_L | VK_I | VK_X))
             || (ctrl && ((key == VK_ESCAPE && !shift) || (win && matches!(key, VK_F4))))
             || (key == VK_APPS)
