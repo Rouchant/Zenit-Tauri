@@ -246,7 +246,35 @@ unsafe extern "system" fn low_level_keyboard_proc(n_code: i32, w_param: WPARAM, 
             LALT_DOWN.store(is_down, Ordering::SeqCst);
             RALT_DOWN.store(is_down, Ordering::SeqCst);
         }
-        _ => {}
+        _ => {
+            // Auto-sanación de modificadores: si se perdió un WM_KEYUP previo (ej. gestos multitáctiles de trackpad,
+            // cambio de escritorio UAC/Win+L), sincronizar las banderas atómicas con el estado físico real del teclado.
+            if LWIN_DOWN.load(Ordering::Relaxed) && GetAsyncKeyState(VK_LWIN as i32) >= 0 {
+                LWIN_DOWN.store(false, Ordering::SeqCst);
+            }
+            if RWIN_DOWN.load(Ordering::Relaxed) && GetAsyncKeyState(VK_RWIN as i32) >= 0 {
+                RWIN_DOWN.store(false, Ordering::SeqCst);
+            }
+            if LCTRL_DOWN.load(Ordering::Relaxed) && GetAsyncKeyState(VK_LCONTROL as i32) >= 0 && GetAsyncKeyState(VK_CONTROL as i32) >= 0 {
+                LCTRL_DOWN.store(false, Ordering::SeqCst);
+            }
+            if RCTRL_DOWN.load(Ordering::Relaxed) && GetAsyncKeyState(VK_RCONTROL as i32) >= 0 && GetAsyncKeyState(VK_CONTROL as i32) >= 0 {
+                RCTRL_DOWN.store(false, Ordering::SeqCst);
+            }
+            if LSHIFT_DOWN.load(Ordering::Relaxed) && GetAsyncKeyState(VK_LSHIFT as i32) >= 0 && GetAsyncKeyState(VK_SHIFT as i32) >= 0 {
+                LSHIFT_DOWN.store(false, Ordering::SeqCst);
+            }
+            if RSHIFT_DOWN.load(Ordering::Relaxed) && GetAsyncKeyState(VK_RSHIFT as i32) >= 0 && GetAsyncKeyState(VK_SHIFT as i32) >= 0 {
+                RSHIFT_DOWN.store(false, Ordering::SeqCst);
+            }
+            let alt_hw = ((kbd_struct.flags & LLKHF_ALTDOWN) != 0) || is_sys;
+            if LALT_DOWN.load(Ordering::Relaxed) && !alt_hw && GetAsyncKeyState(VK_LMENU as i32) >= 0 && GetAsyncKeyState(VK_MENU as i32) >= 0 {
+                LALT_DOWN.store(false, Ordering::SeqCst);
+            }
+            if RALT_DOWN.load(Ordering::Relaxed) && !alt_hw && GetAsyncKeyState(VK_RMENU as i32) >= 0 && GetAsyncKeyState(VK_MENU as i32) >= 0 {
+                RALT_DOWN.store(false, Ordering::SeqCst);
+            }
+        }
     }
 
     // Resetear el estado WAS_BLOCKED al soltar modificadores (sin suprimir KeyUp para no desincronizar el buffer de Windows)

@@ -243,7 +243,7 @@ import PasswordModal from './components/Modals/PasswordModal.vue';
 import FirstStartModal from './components/Modals/FirstStartModal.vue';
 
 // Lazy loaded components (Inactivity Video & Heavy Modals)
-const VideoPlayer = defineAsyncComponent(() => import('./components/VideoPlayer.vue'));
+import VideoPlayer from './components/VideoPlayer.vue';
 const SpecsModal = defineAsyncComponent(() => import('./components/Modals/SpecsModal.vue'));
 
 const store = useSpecsStore();
@@ -279,6 +279,13 @@ let bgVideoTimeout = null;
 let unlistenPowerResume = null;
 let unlistenMpvProps = null;
 let isRestartingApp = false;
+let isReloadingApp = false;
+
+const safeReloadApp = () => {
+  if (isReloadingApp) return;
+  isReloadingApp = true;
+  window.location.reload();
+};
 
 watch(currentBgVideoSrc, () => {
   isBgVideoFailed.value = false;
@@ -503,11 +510,14 @@ watch(() => store.mpvTimePos, (pos) => {
 });
 
 const playBgVideoNative = async () => {
-  if (!store.isMpvReady || store.isVideoMode || store.isModalOpen || !shouldBePlaying.value) {
+  if (!store.isMpvReady || store.isVideoMode || store.isModalOpen || !shouldBePlaying.value || renderVideoView.value) {
     return;
   }
   const rawBgPath = await store.getVideoRawPath(currentBgVideoSrc.value);
   if (!rawBgPath || rawBgPath === lastMpvBgPath) return; // Guard contra spam
+  if (!store.isMpvReady || store.isVideoMode || store.isModalOpen || !shouldBePlaying.value || renderVideoView.value) {
+    return;
+  }
 
   if (bgVideoTimeout) {
     clearTimeout(bgVideoTimeout);
@@ -799,6 +809,7 @@ const onFirstStartCompleted = () => {
 watch(() => store.isVideoMode, (isVideo) => {
   tauriAPI.setAppMode(isVideo ? 'inactivityVideo' : 'infoView');
   if (isVideo) {
+    bgLoadToken++; // Invalidar cualquier carga en vuelo de background video
     renderVideoView.value = true;
     pauseInfoVideos();
     // Ocultar la imagen estática para que los videos de inactividad (MPV detrás del WebView) sean visibles
@@ -825,6 +836,7 @@ watch(() => store.isVideoMode, (isVideo) => {
     lastMpvBgPath = ''; // Limpiar la ruta guardada para obligar a MPV a recargar background.mp4
     showStaticFallback.value = true;
     renderVideoView.value = false;
+    nextTick(() => updateScale());
     isBgVideoLoading.value = false;
 
     if (!store.isModalOpen) {
@@ -906,7 +918,7 @@ const resetTimer = (event) => {
     if (window.__TAURI_INTERNALS__) {
       tauriAPI.restartApp();
     } else {
-      window.location.reload();
+      safeReloadApp();
     }
     return;
   }
@@ -969,11 +981,12 @@ const createTouchRipple = (e) => {
 };
 
 const updateScale = () => {
+  if (window.innerWidth < 200 || window.innerHeight < 200) return;
   const isPortrait = window.innerHeight > window.innerWidth;
   const baseWidth = isPortrait ? 1080 : 1920;
   const baseHeight = isPortrait ? 1920 : 1080;
 
-  const scale = Math.min(window.innerWidth / baseWidth, window.innerHeight / baseHeight);
+  const scale = Math.max(0.2, Math.min(window.innerWidth / baseWidth, window.innerHeight / baseHeight));
   document.documentElement.style.setProperty('--scale-x', scale);
   document.documentElement.style.setProperty('--scale-y', scale);
 
@@ -1047,6 +1060,11 @@ onMounted(async () => {
     // Cuando Rust le dice al frontend que reproduzca los videos
     unlistenPlay = await listen('play-info-videos', () => {
       console.log('[Tauri Event] play-info-videos recibido. Forzando remontaje de videos.');
+      if (store.isVideoMode) {
+        console.log('[Tauri Event] Ignorando play-info-videos porque isVideoMode está activo.');
+        return;
+      }
+      updateScale();
       shouldBePlaying.value = false;
       nextTick(() => {
         shouldBePlaying.value = true;
@@ -1100,7 +1118,7 @@ onMounted(async () => {
     // Cuando Windows despierta de suspensión (evento capturado por Rust): recargar la app limpiamente
     unlistenPowerResume = await listen('app-system-power-resume', () => {
       console.warn('[Power Resume Event] Despertar de suspensión detectado por Rust. Recargando aplicación para estado 100% fresco...');
-      window.location.reload();
+      safeReloadApp();
     });
   }
 
@@ -1115,12 +1133,31 @@ onMounted(async () => {
     
     if (drift > 15000) {
       console.warn('[Watchdog] Wake-from-sleep detectado por salto de tiempo (drift: ' + drift + 'ms). Recargando aplicación...');
-      window.location.reload();
+      safeReloadApp();
       return;
     }
     lastDriftTime = now;
 
-    // 2. Verificar estado de reproducción de videos
+
+    // 2. Verificar estado de reproducción de videos y sanidad visual de la UI
+    if (!store.isVideoMode && renderVideoView.value) {
+      console.warn('[Watchdog] Desincronización detectada: renderVideoView estaba activo fuera de isVideoMode. Restaurando InfoView...');
+      renderVideoView.value = false;
+      updateScale();
+      if (!store.isModalOpen && shouldBePlaying.value) {
+        resumeInfoVideos();
+      }
+    }
+    if (!store.isVideoMode && !renderVideoView.value && !store.isLoading && window.innerWidth >= 200 && window.innerHeight >= 200) {
+      const containerEl = document.querySelector('.app-container');
+      if (containerEl) {
+        const rect = containerEl.getBoundingClientRect();
+        if (rect.width < 100 || rect.height < 100) {
+          console.warn('[Watchdog] Dimensiones de .app-container inválidas (' + rect.width + 'x' + rect.height + '). Recalculando escala...');
+          updateScale();
+        }
+      }
+    }
     checkVideosPlayState();
 
     // 3. Verificación de seguridad de modo inactividad (si lleva > 300s en isVideoMode, notificar fin de playlist a Rust)

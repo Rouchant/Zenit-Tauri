@@ -25,6 +25,7 @@ pub async fn minimize_app(
         .ok_or("Return window not found")?;
 
     // Desactivar temporalmente la vigilancia de foco para evitar bucles durante la minimización
+    state.is_restoring_from_idle.store(false, Ordering::SeqCst);
     {
         let mut guard = state.enforce_always_on_top.lock().await;
         *guard = false;
@@ -50,6 +51,7 @@ pub async fn minimize_app(
 /// Restaura la aplicación al estado de pantalla completa, deteniendo el monitor de inactividad.
 #[tauri::command]
 pub async fn restore_app(app: AppHandle, state: tauri::State<'_, AppState>) -> Result<(), String> {
+    state.is_restoring_from_idle.store(false, Ordering::SeqCst);
     stop_idle_monitor(&state).await;
     stop_restore_monitor(&state).await;
     restore_app_logic(&app, true).await
@@ -347,6 +349,9 @@ async fn position_return_window(
 async fn start_idle_monitor(app: AppHandle, state: tauri::State<'_, AppState>) {
     let app_clone = app.clone();
     let state_clone = Arc::clone(&state.maximize_timer);
+    let restore_timer_clone = Arc::clone(&state.restore_timer);
+    let current_mode_clone = Arc::clone(&state.current_mode);
+    let is_restoring_flag = Arc::clone(&state.is_restoring_from_idle);
 
     let mut timer_guard = state_clone.lock().await;
     if let Some(handle) = timer_guard.take() {
@@ -369,6 +374,20 @@ async fn start_idle_monitor(app: AppHandle, state: tauri::State<'_, AppState>) {
 
             // Si el PC está inactivo por el tiempo límite, restaurar Zenit (Modo Kiosk Activo)
             if !is_restored && idle_time >= IDLE_LIMIT_MS {
+                // Marcar restauración automática por inactividad y cancelar el monitor de barra de tareas
+                // para evitar que Focused(true) o restore_monitor disparen play-info-videos por error.
+                is_restoring_flag.store(true, Ordering::SeqCst);
+                {
+                    let mut r_guard = restore_timer_clone.lock().await;
+                    if let Some(r_handle) = r_guard.take() {
+                        r_handle.abort();
+                    }
+                }
+                {
+                    let mut mode_guard = current_mode_clone.lock().await;
+                    *mode_guard = crate::state::AppMode::InactivityVideo;
+                }
+
                 // Notificar al frontend ANTES de restaurar para que cambie a modo video mientras está oculto
                 let _ = app_clone.emit("trigger-inactivity-video", ());
 
@@ -379,10 +398,12 @@ async fn start_idle_monitor(app: AppHandle, state: tauri::State<'_, AppState>) {
                 is_restored = true;
                 // Pequeña espera para evitar detectar la actividad propia de la restauración
                 tokio::time::sleep(tokio::time::Duration::from_secs(3)).await;
+                is_restoring_flag.store(false, Ordering::SeqCst);
             }
 
             // Si ya se restauró pero detectamos actividad real del cliente, salir del loop
             if is_restored && idle_time < ACTIVITY_THRESHOLD {
+                is_restoring_flag.store(false, Ordering::SeqCst);
                 let _ = app_clone.emit("system-activity-detected", ());
                 break;
             }

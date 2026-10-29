@@ -122,6 +122,7 @@ pub fn run() {
                 restore_timer: Arc::new(Mutex::new(None)),  // Timer para vigilar la restauración
                 enforce_always_on_top: Arc::new(Mutex::new(true)), // Flag para vigilancia de foco
                 current_mode: Arc::new(Mutex::new(crate::state::AppMode::InfoView)),
+                is_restoring_from_idle: Arc::new(std::sync::atomic::AtomicBool::new(false)),
             });
 
             // 2. Ejecutar configuración del sistema (Energía, Registro, etc.)
@@ -391,7 +392,12 @@ pub fn run() {
                             // fue des-minimizada nativamente por el usuario.
                             if let Some(ret_win) = window.app_handle().get_webview_window("return")
                             {
-                                if ret_win.is_visible().unwrap_or(false) {
+                                let is_idle_restore = window
+                                    .app_handle()
+                                    .state::<AppState>()
+                                    .is_restoring_from_idle
+                                    .load(std::sync::atomic::Ordering::SeqCst);
+                                if ret_win.is_visible().unwrap_or(false) && !is_idle_restore {
                                     let _ = ret_win.hide();
                                     let _ = ret_win.set_always_on_top(false);
                                     let _ = window.emit("play-info-videos", ());

@@ -25,6 +25,7 @@ const currentIndex = ref(0);
 const retryCount = ref(0);
 const rawUrls = ref([]);
 let playlistLoaded = false;
+let isPromoPlaybackRequested = false;
 
 const resolveRawUrls = async () => {
   const customPaths = store.currentSpecs?.customVideoPaths || [];
@@ -60,6 +61,7 @@ const clearWatchdogTimer = () => {
 
 const onVideoError = async (reason = 'unknown') => {
   console.error(`[VideoPlayer] Video error detected (Reason: ${reason}, Retry ${retryCount.value + 1}/3)`);
+  isPromoPlaybackRequested = false;
   playlistLoaded = false;
   clearWatchdogTimer();
 
@@ -119,6 +121,8 @@ async function playVideo() {
   }
   
   console.log('[VideoPlayer] Initializing gapless playlist playback starting with:', firstPath);
+  isPromoPlaybackRequested = false;
+  store.mpvTimePos = 0;
   startSafetyTimer(300);
   clearWatchdogTimer();
   
@@ -153,6 +157,7 @@ async function playVideo() {
         
         if (store.mpvSessionToken !== currentSessionToken) return;
         await withTimeout(setProperty('pause', false));
+        isPromoPlaybackRequested = true;
         setTimeout(() => {
           if (store.mpvSessionToken === currentSessionToken) {
             playlistLoaded = true;
@@ -261,7 +266,11 @@ watch(() => store.isModalOpen, async (isOpen) => {
     stopOverlayCycle();
   } else {
     if (window.__TAURI_INTERNALS__ && store.isMpvReady) {
-      await setProperty('pause', false).catch(() => {});
+      if (!playlistLoaded && !isPromoPlaybackRequested) {
+        playVideo();
+      } else {
+        await setProperty('pause', false).catch(() => {});
+      }
     }
     boxPosition.value = 'top-right';
     startInitialOverlayTimer();
@@ -281,7 +290,7 @@ watch(() => store.mpvPaused, (paused) => {
 });
 
 watch(() => store.mpvTimePos, (pos) => {
-  if (pos > 0) {
+  if (pos > 0 && isPromoPlaybackRequested) {
     clearWatchdogTimer();
   }
 });
@@ -300,6 +309,12 @@ watch(() => store.lastMpvEvent, (mpvEvent) => {
       console.warn('[VideoPlayer] MPV end-file error reason detected:', mpvEvent.reason);
       onVideoError(mpvEvent.reason);
     }
+  }
+});
+
+watch(() => store.isMpvReady, (ready) => {
+  if (ready && !playlistLoaded && !isPromoPlaybackRequested) {
+    playVideo();
   }
 });
 
@@ -330,7 +345,11 @@ const mockVideoEl = computed(() => ({
   play: async () => {
     console.log('[VideoPlayer] Watchdog reanudando video...');
     if (window.__TAURI_INTERNALS__ && store.isMpvReady) {
-      await setProperty('pause', false).catch(() => {});
+      if (!playlistLoaded && !isPromoPlaybackRequested) {
+        playVideo();
+      } else {
+        await setProperty('pause', false).catch(() => {});
+      }
     }
   },
   pause: () => {

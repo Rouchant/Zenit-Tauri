@@ -17,6 +17,7 @@ pub struct AppState {
     pub restore_timer: Arc<Mutex<Option<JoinHandle<()>>>>,
     pub enforce_always_on_top: Arc<Mutex<bool>>,
     pub current_mode: Arc<Mutex<AppMode>>,
+    pub is_restoring_from_idle: Arc<std::sync::atomic::AtomicBool>,
 }
 
 /// Devuelve la ruta del directorio userData de la app
